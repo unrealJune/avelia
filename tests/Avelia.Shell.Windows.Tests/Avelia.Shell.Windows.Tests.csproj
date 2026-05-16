@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <IsPackable>false</IsPackable>
+        <IsTestProject>true</IsTestProject>
+        <RootNamespace>Avelia.Shell.Windows.Tests</RootNamespace>
+        <Nullable>enable</Nullable>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Microsoft.NET.Test.Sdk" />
+        <PackageReference Include="xunit" />
+        <PackageReference Include="xunit.runner.visualstudio" />
+        <PackageReference Include="CommunityToolkit.Mvvm" />
+    </ItemGroup>
+
+    <!--
+        Avelia.Shell.Windows targets net10.0-windows10.0.19041.0 (WinUI), so we cannot
+        directly reference the csproj from a pure-net10.0 test project — the TFM is
+        incompatible. Instead we compile the platform-independent MainViewModel.cs
+        into this test assembly. This keeps view-model logic testable without
+        a WinUI runtime.
+    -->
+    <ItemGroup>
+        <Compile
+            Include="..\..\src\Avelia.Shell.Windows\ViewModels\MainViewModel.cs"
+            Link="ViewModels\MainViewModel.cs"
+        />
+    </ItemGroup>
+</Project>

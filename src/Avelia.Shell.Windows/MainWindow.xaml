@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Window
+    x:Class="Avelia.Shell.Windows.MainWindow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:Avelia.Shell.Windows.ViewModels"
+    Title="Avelia"
+>
+    <Grid Padding="24" RowSpacing="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock
+            Grid.Row="0"
+            x:Name="WelcomeText"
+            AutomationProperties.AutomationId="WelcomeTextBlock"
+            Style="{StaticResource TitleTextBlockStyle}"
+            Text="Welcome to Avelia."
+        />
+
+        <Button
+            Grid.Row="1"
+            x:Name="GreetButton"
+            AutomationProperties.AutomationId="GreetButton"
+            Command="{x:Bind ViewModel.GreetCommand}"
+            Content="Greet"
+        />
+    </Grid>
+</Window>

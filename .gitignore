@@ -1,0 +1,48 @@
+# Build output
+bin/
+obj/
+out/
+publish/
+*.user
+*.suo
+
+# IDE
+.vs/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.shared.json
+.idea/
+
+# Test results
+TestResults/
+*.trx
+coverage.*.xml
+*.coverage
+
+# NuGet
+packages/
+*.nupkg
+*.snupkg
+
+# WinUI / MSIX
+AppX/
+AppPackages/
+BundleArtifacts/
+GeneratedArtifacts/
+*.pfx
+!**/dev-cert.pfx
+*.cer
+*.appx
+*.appxbundle
+*.msix
+*.msixbundle
+*.msixupload
+
+# Logs / tmp
+*.log
+*.tlog
+*.tmp
+
+# OS
+Thumbs.db
+.DS_Store

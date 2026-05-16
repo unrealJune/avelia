@@ -1,0 +1,26 @@
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{ps1,cmd,bat}]
+end_of_line = crlf
+
+[*.{json,yml,yaml,md}]
+indent_size = 2
+
+[*.{fs,fsi,fsx}]
+indent_size = 4
+
+[*.{cs,csproj,fsproj,xaml,props,targets}]
+indent_size = 4
+
+[*.cs]
+dotnet_diagnostic.CA1014.severity = none
+csharp_new_line_before_open_brace = all
+csharp_style_namespace_declarations = file_scoped:warning

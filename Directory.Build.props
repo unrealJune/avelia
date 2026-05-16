@@ -1,0 +1,23 @@
+<Project>
+    <PropertyGroup>
+        <LangVersion>latest</LangVersion>
+        <Nullable>enable</Nullable>
+        <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+        <NeutralLanguage>en-US</NeutralLanguage>
+        <Authors>Avelia Contributors</Authors>
+        <Product>Avelia</Product>
+        <RepositoryUrl>https://github.com/avelia/avelia</RepositoryUrl>
+    </PropertyGroup>
+
+    <PropertyGroup>
+        <ParallelCompilation>true</ParallelCompilation>
+        <ProduceReferenceAssembly>true</ProduceReferenceAssembly>
+        <ParallelReferenceResolution>true</ParallelReferenceResolution>
+    </PropertyGroup>
+
+    <PropertyGroup Condition="'$(IsTestProject)' == 'true'">
+        <IsPackable>false</IsPackable>
+    </PropertyGroup>
+</Project>
