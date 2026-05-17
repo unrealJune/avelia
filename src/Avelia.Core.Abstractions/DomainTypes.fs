@@ -24,6 +24,21 @@ type ModelChoice =
     | Haiku45
     | CustomModel of name: string
 
+    /// Visitor over the union — keeps C# off the F# DU's nested case types.
+    /// Same pattern as <c>MessageEvent.Match</c> / <c>OperationResult.Match</c>.
+    member this.Match<'TResult>
+        (
+            sonnet45: System.Func<'TResult>,
+            opus41: System.Func<'TResult>,
+            haiku45: System.Func<'TResult>,
+            custom: System.Func<string, 'TResult>
+        ) : 'TResult =
+        match this with
+        | Sonnet45 -> sonnet45.Invoke()
+        | Opus41 -> opus41.Invoke()
+        | Haiku45 -> haiku45.Invoke()
+        | CustomModel name -> custom.Invoke name
+
 /// State of a pull request as Avelia tracks it.
 [<RequireQualifiedAccess>]
 type PrStatus =
@@ -163,6 +178,27 @@ type MessageEvent =
     | ToolBatchAppended of ToolBatch
     | ChangeNoteAppended of ChangeNote
     | AgentMarkdownAppended of AgentMarkdown
+
+    /// Visitor over the union — the C#-side projection point. Mirrors the
+    /// pattern used by <c>OperationResult.Match</c>: typed delegates per case
+    /// and the F# compiler enforces exhaustiveness, so adding a new event
+    /// kind breaks compilation until every consumer is updated.
+    member this.Match<'TResult>
+        (
+            onUser: System.Func<UserMessage, 'TResult>,
+            onAgent: System.Func<AgentMessage, 'TResult>,
+            onError: System.Func<AgentErrorMessage, 'TResult>,
+            onTool: System.Func<ToolBatch, 'TResult>,
+            onChange: System.Func<ChangeNote, 'TResult>,
+            onMarkdown: System.Func<AgentMarkdown, 'TResult>
+        ) : 'TResult =
+        match this with
+        | UserMessageAppended u -> onUser.Invoke u
+        | AgentMessageAppended a -> onAgent.Invoke a
+        | AgentErrorAppended e -> onError.Invoke e
+        | ToolBatchAppended t -> onTool.Invoke t
+        | ChangeNoteAppended c -> onChange.Invoke c
+        | AgentMarkdownAppended m -> onMarkdown.Invoke m
 
 type Conversation = {
     Id: ConversationId

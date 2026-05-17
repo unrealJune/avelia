@@ -47,6 +47,10 @@ type IConversationService =
         * refs: string array
         * CancellationToken
         -> Task<OperationResult<UserMessage>>
+    /// Stream of events appended to the conversation *after* the subscription
+    /// starts. Pairs with <c>GetForWorkspaceAsync</c> for the initial snapshot.
+    /// The enumerator completes when the cancellation token is signalled.
+    abstract ObserveMessages: conversationId: ConversationId * CancellationToken -> IAsyncEnumerable<MessageEvent>
 
 type IDiffService =
     abstract GetWorkspaceDiffAsync: workspaceId: WorkspaceId * CancellationToken -> Task<IReadOnlyList<DiffFile>>

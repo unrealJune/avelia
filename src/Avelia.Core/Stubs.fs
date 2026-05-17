@@ -3,6 +3,7 @@ namespace Avelia.Core.Stubs
 open System
 open System.Collections.Generic
 open System.Threading
+open System.Threading.Channels
 open System.Threading.Tasks
 open Avelia.Core
 open Avelia.Core.Abstractions
@@ -111,6 +112,22 @@ type StubConversationService
     let byId = Dictionary<ConversationId, Conversation>()
     do for c in initialConversations do byId.[c.Id] <- c
 
+    // One channel per active observer. <c>PostUserMessageAsync</c> fans new
+    // events out to every subscriber's channel; subscribers remove themselves
+    // when their cancellation token is signalled. The lock guards mutation of
+    // <c>subscribers</c> across post and subscribe operations.
+    let subscribers = Dictionary<ConversationId, ResizeArray<Channel<MessageEvent>>>()
+    let gate = obj ()
+
+    let broadcast (conversationId: ConversationId) (event: MessageEvent) =
+        let snapshot : Channel<MessageEvent> array =
+            lock gate (fun () ->
+                match subscribers.TryGetValue conversationId with
+                | true, list -> list.ToArray()
+                | _ -> Array.empty)
+        for ch in snapshot do
+            ch.Writer.TryWrite event |> ignore
+
     interface IConversationService with
         member _.GetForWorkspaceAsync(workspaceId, ct) =
             ct.ThrowIfCancellationRequested()
@@ -130,8 +147,48 @@ type StubConversationService
                 }
                 let event = UserMessageAppended msg
                 byId.[conversationId] <- Conversation.applyEvent conv event
+                broadcast conversationId event
                 Task.FromResult (Success msg)
             | _ -> Task.FromResult (notFound $"Conversation {conversationId}")
+
+        member _.ObserveMessages(conversationId, ct) =
+            // AllowSynchronousContinuations lets the reader's continuation run on
+            // the writer's thread when a value lands — keeps stub-driven flows
+            // observable end-to-end on a single thread, which the shell's
+            // ImmediateUiDispatcher tests depend on. A real backend (Chunk 10)
+            // should leave this off so a slow VM can't stall the writer.
+            let opts =
+                UnboundedChannelOptions(
+                    SingleReader = true,
+                    AllowSynchronousContinuations = true)
+            let channel = Channel.CreateUnbounded<MessageEvent>(opts)
+            lock gate (fun () ->
+                let list =
+                    match subscribers.TryGetValue conversationId with
+                    | true, l -> l
+                    | _ ->
+                        let l = ResizeArray<Channel<MessageEvent>>()
+                        subscribers.[conversationId] <- l
+                        l
+                list.Add channel)
+
+            let cleanup () =
+                channel.Writer.TryComplete() |> ignore
+                lock gate (fun () ->
+                    match subscribers.TryGetValue conversationId with
+                    | true, l -> l.Remove channel |> ignore
+                    | _ -> ())
+
+            let registration = ct.Register(Action(fun () -> cleanup ()))
+            // Dispose the registration once the channel completes for any
+            // reason (cancellation OR external Complete) — otherwise the
+            // callback pins the channel + subscribers list for the lifetime
+            // of the CT, even after the subscriber is gone.
+            channel.Reader.Completion.ContinueWith(
+                (fun _ -> registration.Dispose()),
+                TaskContinuationOptions.ExecuteSynchronously)
+            |> ignore
+            channel.Reader.ReadAllAsync(ct)
 
 // ============================================================================
 //  Stub: Diff

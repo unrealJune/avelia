@@ -31,7 +31,8 @@ The Avelia repo is a clean skeleton: F# core with one DU (`TaskStatus`), three n
 | 1 — F# domain + design data + stubs | ✅ done | New `Primitives.fs`, `DomainTypes.fs`, `DesignData.fs`, `Stubs.fs`, `Composition.fs`. 54 Core tests (PBT for state machines, ID uniqueness, conversation replay). |
 | 2 — TabView title bar + NavView rail + Frame | ✅ done | `MainViewModel` is the composition root; 4 child VMs; 5 controls/converters; `PlaceholderPage` for not-yet-built sections. 19 shell tests including tab dedup + close-active. Sidebar mockup-parity: repos default-expanded, muted secondary-text name, count chip. |
 | Post-Chunk-2 cleanup | ✅ done | Code review + targeted fixes (see "Code review fixes" below). |
-| 3 — Workspace page center pane | ⏳ pending | Pivot + chat transcript + composer |
+| 3 — Workspace page center pane | ✅ done | `WorkspacePage` (center column real, right column stub), 6 message templates + `MessageTemplateSelector`, `WorkspaceViewModel` + 6 `MessageViewModel` subclasses, `Composer` / `ChatPivot` / `ModelBadge` / `Chip` / `CodeRefBlock` controls. F# `IConversationService.ObserveMessages` added (Channel-backed broadcast). `MessageEvent.Match` + `MessageId.Value` + `ModelChoice.Match` give C# a typed boundary so the projection never touches F# DU internals. `IUiDispatcher` (+ Immediate / DispatcherQueue impls) keeps the VM link-compileable into tests. |
+| Post-Chunk-3 review fixes | ✅ done | Code-review + targeted fixes (see "Chunk-3 review fixes" below). Theme tracking fixed (dark mode regression resolved), transcript moved to virtualizing ListView, page lifecycle hardened, F# CTS leak closed, WCAG contrast + theme-usage lint tests added. 53 shell tests + 54 core tests green. |
 | 4 — Workspace page right pane | ⏳ pending | PR header + file list + terminal |
 | 5 — Settings page | ⏳ pending | |
 | 6 — PR review + diff viewer | ⏳ pending | |
@@ -40,7 +41,25 @@ The Avelia repo is a clean skeleton: F# core with one DU (`TaskStatus`), three n
 | 9 — Accessibility & test pass | ⏳ pending | |
 | 10 — Real backend (Persistence/VCS/Agent) | ⏳ future | Out of scope for v1 |
 
-**Test count after Chunks 0–2 + cleanup: 77 passing** (54 Avelia.Core, 19 Avelia.Shell.Windows, plus 4 from the other F# test projects). Build is clean — 0 warnings, 0 errors.
+**Test count after Chunks 0–3 + review fixes: 111 passing** (54 Avelia.Core, 53 Avelia.Shell.Windows — 8 VM/projection + 22 WCAG contrast + 2 theme-usage lint + 19 from Chunk 2, plus 4 from the other F# test projects). Build is clean — 0 warnings, 0 errors.
+
+### Chunk-3 review fixes
+
+Ran a code-review pass against the Chunk-3 surface. Bundled fixes:
+
+| ID | What | File(s) |
+|---|---|---|
+| **E-1** Dark-mode brush capture | Resolved brushes via `Application.Current.Resources["X"]` in C# freeze at first paint and don't track theme — workspace name stayed black on dark theme, code-style refs stayed dark-blue. Added `AveliaRepoGroupNameStyle` / `AveliaRepoGroupCountStyle` (TextBlock styles holding `{ThemeResource ...}`); `BuildRepoNavItem` now applies the styles. `CodeRefBlock` subscribes to `ActualThemeChanged` and re-resolves the accent brush from the merged ThemeDictionaries each rebuild. `Chip` moved its defaults to XAML `{ThemeResource}` initial values; DP change handlers only override when consumers explicitly supply a brush. | `Themes/ControlStyles.xaml`, `MainWindow.xaml.cs`, `Controls/CodeRefBlock.cs`, `Controls/Chip.xaml{,.cs}` |
+| **E-2** Transcript virtualization | `ItemsRepeater` inside a `ScrollViewer` realizes every row up front (the ScrollViewer's measure-to-infinity defeats virtualization). Replaced with `ListView` (built-in UI virtualization) + `AveliaTranscriptItemContainerStyle` stripping selection/hover chrome. | `Pages/WorkspacePage.xaml`, `Themes/ControlStyles.xaml` |
+| **E-3 / W-1** Page lifecycle | `OnNavigatedFrom` was `async void` racing itself, and the VM was rebuilt + bindings refreshed on every navigation. Fixed: page constructs the VM once, subsequent navigations call `LoadAsync` against a new workspace id (which already handles "swap workspace" cleanly); `OnNavigatedFrom` is synchronous and calls a new `WorkspaceViewModel.StopObserving()` that cancels the CTS without awaiting. | `Pages/WorkspacePage.xaml.cs`, `ViewModels/WorkspaceViewModel.cs` |
+| **W-3** Composer Enter | Old code unconditionally marked Enter as handled, swallowing the keystroke even when the composer was empty (user typed Enter into a blank box and nothing visible happened). Now only handled if `CanExecute` succeeds. | `Controls/Composer.xaml.cs` |
+| **W-5** Drop unused `ThreadSelected` event | The `TwoWay` binding on `ActiveThread` was the actual signal; the event had no consumers. | `Controls/ChatPivot.xaml.cs` |
+| **W-7** `MessageViewModel` is a DTO, not observable | Subclasses had no observable properties; the inherited `ObservableObject` overhead was pure cost. Dropped the base. Streaming text will be a sibling VM, not a mutation. | `ViewModels/MessageViewModel.cs` |
+| **W-8** Observe loop only caught OCE | Real-backend errors would crash the process via unobserved task. Now catches `Exception` and logs to Debug. | `ViewModels/WorkspaceViewModel.cs` |
+| **W-10** F# `CancellationTokenRegistration` leak | The registration captured the channel + subscribers list for the lifetime of the CT, even after the channel completed. Now disposed on `Reader.Completion`. | `Avelia.Core/Stubs.fs` |
+| **N-1** Drop `Mode=OneWay` on the SendCommand binding | Command bindings don't change; OneTime is correct. | `Pages/WorkspacePage.xaml` |
+| **N-9** Wire Composer `ModelName` from VM | Was a dead "Sonnet 4.5" literal. Added `WorkspaceViewModel.ModelName` populated from the workspace's `Agent` via a new `ModelChoice.Match` visitor. | `ViewModels/WorkspaceViewModel.cs`, `Pages/WorkspacePage.xaml`, `Avelia.Core.Abstractions/DomainTypes.fs` |
+| **A11y tests** | New `ThemeContrastTests` parses `Tokens.xaml` and asserts WCAG 2.1 AA contrast (4.5:1 body, 3:1 large) for every text/surface pairing in both Light and Default theme dictionaries, with alpha compositing onto Mica base. New `ThemeUsageLintTests` scans every shell XAML for hardcoded hex literals on color attributes, and for `{StaticResource}` references to `Avelia*Brush` keys (which would freeze the brush at parse time) — catches the E-1 bug class at source level. **A runtime A11y scan via `Axe.Windows.Automation` is the next-tier test and belongs in Chunk 9**, where it'll run against the live shell. | `tests/Avelia.Shell.Windows.Tests/ThemeContrastTests.cs`, `ThemeUsageLintTests.cs` |
 
 ### Code review fixes (post-Chunk-2)
 
@@ -77,12 +96,16 @@ These are queued for Chunk 9's accessibility & polish pass — none are bugs:
 
 1. **`[ObservableProperty]` uses the field-based pattern, not partial properties.** MVVM Toolkit 8.4 emits `MVVMTK0045` warning recommending partial properties for AOT/CsWinRT, but the generator hasn't shipped support for the partial-property feature in this version (declarations produce `CS9248 Partial property must have implementation`). Warning is now suppressed via `NoWarn`; migrate when the toolkit version bumps.
 2. **`IThemeService` / `ISettingsService` stayed C#-only.** The plan put them in F# core; in practice they're shell-internal state with WinUI side effects, so a single shell-side `ThemeService` is enough. Revisit if persistence needs to read them.
-3. **`Observe*` (live-streaming) service methods deferred to Chunk 3.** Snapshot methods only for now; we'll add `Channel<T>`-backed `IAsyncEnumerable` surfaces when the WorkspacePage needs them.
+3. **`Observe*` (live-streaming) service methods landed in Chunk 3.** `IConversationService.ObserveMessages` returns `IAsyncEnumerable<MessageEvent>` backed by a per-subscriber `Channel<MessageEvent>` in `StubConversationService`. `AllowSynchronousContinuations = true` on the channel keeps stub-driven flows observable on a single thread (the test pattern). Real-backend builds should leave the option off so slow consumers can't stall the writer.
+
+3a. **F#/C# DU boundary.** Pattern-matching on F# DU nested case classes from C# is technically possible but leaks generated `Item` accessors into the shell. Following the precedent set by `OperationResult.Match`, `MessageEvent` now exposes a typed `Match<'TResult>` member taking one `Func` per case — C# calls `ev.Match(onUser: …, onAgent: …, …)` and never touches the union internals. Adding a new event kind forces a compile error in `MessageViewModel.FromEvent`. `MessageId` likewise grew a `.Value` member so `MessageId.value(id)` (an F# module function with the awkward `MessageIdModule.value` C# name) isn't needed.
+
+3b. **`IUiDispatcher` abstraction.** WinUI's `DispatcherQueue` is in `Microsoft.UI.Dispatching`, which would prevent `WorkspaceViewModel` from link-compiling into the net10.0 test project. Introduced `IUiDispatcher` (interface-only, link-compileable) with `DispatcherQueueUiDispatcher` (production, WinUI ref) and `ImmediateUiDispatcher` (synchronous, tests). The VM captures the dispatcher at construction per CLAUDE.md §gotcha-4.
 4. **No `BoolToRailDisplayMode` converter.** Using `{StaticResource Converter}` inside an `{x:Bind}` on a `Window` makes the XAML codegen try to cast `this` (Window) to `FrameworkElement`, which fails. Bound `NavigationView.PaneDisplayMode` from code-behind on `PropertyChanged` instead. Bonus: keeps `Microsoft.UI.Xaml.*` out of the VM so it still link-compiles into the `net10.0` test project.
 
 ### Where to pick up next
 
-Chunk 3 — center pane of the workspace page. Goal: the pivot tab strip + the scrollable chat transcript (six message templates: agent, agent-error, tool-batch, change-note, user, agent-md) + the composer at the bottom. Bind to `DesignData.archiveConversation` via `IConversationService.GetForWorkspaceAsync`. See "Chunk 3" section below for the file list.
+Chunk 4 — right pane of the workspace page. Goal: PR header (number, branch/base, Merge button, stats row) + Changes/Files pivot + scrollable file-row list + sticky bottom terminal panel. Bind to `IPullRequestService.GetForWorkspaceAsync` and `IDiffService.GetWorkspaceDiffAsync`; the right column is already a placeholder Border in `WorkspacePage.xaml` ready for content replacement. See "Chunk 4" section below for the file list.
 
 ## Architectural shape
 

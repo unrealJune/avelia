@@ -51,5 +51,17 @@
             Include="..\..\src\Avelia.Shell.Windows\Services\ThemeService.cs"
             Link="Services\ThemeService.cs"
         />
+        <Compile
+            Include="..\..\src\Avelia.Shell.Windows\Services\IUiDispatcher.cs"
+            Link="Services\IUiDispatcher.cs"
+        />
+        <Compile
+            Include="..\..\src\Avelia.Shell.Windows\ViewModels\MessageViewModel.cs"
+            Link="ViewModels\MessageViewModel.cs"
+        />
+        <Compile
+            Include="..\..\src\Avelia.Shell.Windows\ViewModels\WorkspaceViewModel.cs"
+            Link="ViewModels\WorkspaceViewModel.cs"
+        />
     </ItemGroup>
 </Project>
