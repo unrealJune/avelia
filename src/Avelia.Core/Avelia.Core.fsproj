@@ -6,6 +6,9 @@
 
   <ItemGroup>
     <Compile Include="Domain.fs" />
+    <Compile Include="DesignData.fs" />
+    <Compile Include="Stubs.fs" />
+    <Compile Include="Composition.fs" />
   </ItemGroup>
 
   <ItemGroup>

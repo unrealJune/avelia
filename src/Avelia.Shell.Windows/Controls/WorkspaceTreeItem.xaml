@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Avelia.Shell.Windows.Controls.WorkspaceTreeItem"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Avelia.Shell.Windows.Controls"
+    xmlns:conv="using:Avelia.Shell.Windows.Converters"
+>
+    <UserControl.Resources>
+        <conv:PositiveIntToVisibilityConverter x:Key="PositiveVis" />
+        <conv:PrefixIntConverter x:Key="PrefixInt" />
+    </UserControl.Resources>
+
+    <!--
+        One workspace row inside an expanded repository group in the nav rail.
+        Mirrors styles-v2.css :: .v2-rail-ws — status dot + branch + +/- chips.
+    -->
+    <Grid ColumnSpacing="10" VerticalAlignment="Center" Padding="0,2,8,2">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <local:StatusDot
+            Grid.Column="0"
+            Status="{x:Bind Item.Status, Mode=OneWay, FallbackValue={x:Null}}"
+        />
+
+        <TextBlock
+            Grid.Column="1"
+            Style="{StaticResource AveliaBodyTextStyle}"
+            FontSize="13"
+            TextTrimming="CharacterEllipsis"
+            VerticalAlignment="Center"
+            Text="{x:Bind Item.Branch, Mode=OneWay, FallbackValue=''}"
+        />
+
+        <StackPanel
+            Grid.Column="2"
+            Orientation="Horizontal"
+            Spacing="4"
+            VerticalAlignment="Center"
+        >
+            <Border
+                Style="{StaticResource AveliaChipBorderStyle}"
+                Background="{ThemeResource AveliaSuccessBgBrush}"
+                BorderBrush="Transparent"
+                Visibility="{x:Bind Item.Add, Converter={StaticResource PositiveVis}, Mode=OneWay, FallbackValue=Collapsed}"
+            >
+                <TextBlock
+                    Style="{StaticResource AveliaChipTextStyle}"
+                    Foreground="{ThemeResource AveliaSuccessBrush}"
+                    Text="{x:Bind Item.Add, Converter={StaticResource PrefixInt}, ConverterParameter='+', Mode=OneWay, FallbackValue=''}"
+                />
+            </Border>
+            <Border
+                Style="{StaticResource AveliaChipBorderStyle}"
+                Background="{ThemeResource AveliaDangerBgBrush}"
+                BorderBrush="Transparent"
+                Visibility="{x:Bind Item.Del, Converter={StaticResource PositiveVis}, Mode=OneWay, FallbackValue=Collapsed}"
+            >
+                <TextBlock
+                    Style="{StaticResource AveliaChipTextStyle}"
+                    Foreground="{ThemeResource AveliaDangerBrush}"
+                    Text="{x:Bind Item.Del, Converter={StaticResource PrefixInt}, ConverterParameter='−', Mode=OneWay, FallbackValue=''}"
+                />
+            </Border>
+        </StackPanel>
+    </Grid>
+</UserControl>

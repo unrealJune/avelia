@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+>
+    <!--
+        Reusable Fluent-flavored control styles. First pass — covers the
+        buttons / chips / pivot underline used by every screen of the
+        design. Later chunks extend with more (TabViewItem, NavigationView,
+        SettingsCard, etc.) as those screens land.
+    -->
+
+    <!-- Accent button — pure accent fill, on-accent text. Inherits sizing from AccentButtonStyle. -->
+    <Style x:Key="AveliaAccentButtonStyle" TargetType="Button" BasedOn="{StaticResource AccentButtonStyle}">
+        <Setter Property="Background" Value="{ThemeResource AveliaAccentDefaultBrush}" />
+        <Setter Property="Foreground" Value="{ThemeResource AveliaTextOnAccentBrush}" />
+        <Setter Property="BorderBrush" Value="{ThemeResource AveliaAccentSecondaryBrush}" />
+        <Setter Property="CornerRadius" Value="{StaticResource AveliaCornerRadiusSmall}" />
+        <Setter Property="Padding" Value="12,5" />
+    </Style>
+
+    <!-- Subtle (ghost) button — transparent, hover bg. -->
+    <Style x:Key="AveliaSubtleButtonStyle" TargetType="Button">
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Foreground" Value="{ThemeResource AveliaTextPrimaryBrush}" />
+        <Setter Property="CornerRadius" Value="{StaticResource AveliaCornerRadiusSmall}" />
+        <Setter Property="Padding" Value="12,5" />
+        <Setter Property="FontFamily" Value="{StaticResource AveliaUiFontFamily}" />
+        <Setter Property="FontSize" Value="14" />
+        <Setter Property="VerticalContentAlignment" Value="Center" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+    </Style>
+
+    <!-- Icon button (32×32) -->
+    <Style x:Key="AveliaIconButtonStyle" TargetType="Button" BasedOn="{StaticResource AveliaSubtleButtonStyle}">
+        <Setter Property="Width" Value="32" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="Padding" Value="6" />
+        <Setter Property="MinWidth" Value="32" />
+    </Style>
+
+    <!-- Icon button small (26×26) -->
+    <Style x:Key="AveliaIconSmallButtonStyle" TargetType="Button" BasedOn="{StaticResource AveliaSubtleButtonStyle}">
+        <Setter Property="Width" Value="26" />
+        <Setter Property="Height" Value="26" />
+        <Setter Property="Padding" Value="4" />
+        <Setter Property="MinWidth" Value="26" />
+    </Style>
+
+    <!-- Merge button — distinct green gradient, used on the right pane and PR review. -->
+    <Style x:Key="AveliaMergeButtonStyle" TargetType="Button">
+        <Setter Property="Background" Value="{ThemeResource AveliaMergeButtonBackgroundBrush}" />
+        <Setter Property="Foreground" Value="#FFFFFF" />
+        <Setter Property="BorderBrush" Value="#1AFFFFFF" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource AveliaCornerRadiusSmall}" />
+        <Setter Property="Padding" Value="12,5" />
+        <Setter Property="FontFamily" Value="{StaticResource AveliaUiFontFamily}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+    </Style>
+
+    <!-- Caption (window control) button — flat, hover-fill, 46x32. Used by Chunk 2's custom caption row. -->
+    <Style x:Key="AveliaCaptionButtonStyle" TargetType="Button">
+        <Setter Property="Width" Value="46" />
+        <Setter Property="Height" Value="32" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="CornerRadius" Value="0" />
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="MinWidth" Value="46" />
+        <Setter Property="Foreground" Value="{ThemeResource AveliaTextPrimaryBrush}" />
+    </Style>
+
+    <!-- Chip — small pill used for +/- diff counts, status labels. Border-based so it can host any content. -->
+    <Style x:Key="AveliaChipBorderStyle" TargetType="Border">
+        <Setter Property="Background" Value="{ThemeResource AveliaSubtleFillSecondaryBrush}" />
+        <Setter Property="BorderBrush" Value="{ThemeResource AveliaSurfaceStrokeBrush}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{StaticResource AveliaCornerRadiusPill}" />
+        <Setter Property="Padding" Value="7,1" />
+    </Style>
+
+    <!-- TextBlock used as chip content — 11px, tabular-nums vibe (no kerning needed in XAML). -->
+    <Style x:Key="AveliaChipTextStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource AveliaUiFontFamily}" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="LineHeight" Value="16" />
+        <Setter Property="FontWeight" Value="Medium" />
+        <Setter Property="Foreground" Value="{ThemeResource AveliaTextSecondaryBrush}" />
+    </Style>
+
+    <!--
+        Section header — small uppercase caps with letter-spacing, used by
+        "PULL REQUEST" label in the right pane and "REPOSITORIES" group
+        header in the nav rail.
+    -->
+    <Style x:Key="AveliaSectionLabelTextStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource AveliaUiFontFamily}" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="CharacterSpacing" Value="60" />
+        <Setter Property="Foreground" Value="{ThemeResource AveliaTextTertiaryBrush}" />
+    </Style>
+
+</ResourceDictionary>

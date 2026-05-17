@@ -3,29 +3,195 @@
     x:Class="Avelia.Shell.Windows.MainWindow"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Avelia.Shell.Windows.Controls"
     xmlns:vm="using:Avelia.Shell.Windows.ViewModels"
     Title="Avelia"
 >
-    <Grid Padding="24" RowSpacing="16">
+    <!--
+        SystemBackdrop is set in code-behind (TrySetSystemBackdrop) so we can
+        fall back from Mica → DesktopAcrylic → solid on hosts that don't
+        support Mica. Setting it here would override that fallback.
+    -->
+    <Grid x:Name="RootGrid">
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto" />
-            <RowDefinition Height="Auto" />
+            <RowDefinition Height="40" />
+            <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
-        <TextBlock
-            Grid.Row="0"
-            x:Name="WelcomeText"
-            AutomationProperties.AutomationId="WelcomeTextBlock"
-            Style="{StaticResource TitleTextBlockStyle}"
-            Text="Welcome to Avelia."
-        />
+        <!-- ============================================================
+             Title bar: app icon + TabView + tools + caption-button reserve
+             ============================================================ -->
+        <Grid x:Name="AppTitleBar" Grid.Row="0" Background="Transparent">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition x:Name="CaptionButtonReserve" Width="144" />
+            </Grid.ColumnDefinitions>
 
-        <Button
+            <!-- App icon (left of tabs) -->
+            <FontIcon
+                Grid.Column="0"
+                Margin="12,0,8,0"
+                FontFamily="Segoe Fluent Icons"
+                FontSize="16"
+                Foreground="{ThemeResource AveliaAccentDefaultBrush}"
+                Glyph="&#xE7A8;"
+                VerticalAlignment="Center"
+            />
+
+            <!-- TabView: workspace tabs in the title bar -->
+            <TabView
+                Grid.Column="1"
+                x:Name="WorkspaceTabs"
+                AutomationProperties.AutomationId="WorkspaceTabs"
+                CanReorderTabs="False"
+                CanDragTabs="False"
+                IsAddTabButtonVisible="True"
+                TabWidthMode="SizeToContent"
+                VerticalAlignment="Stretch"
+                TabItemsSource="{x:Bind ViewModel.OpenTabs, Mode=OneWay}"
+                SelectedItem="{x:Bind ViewModel.ActiveTab, Mode=TwoWay}"
+                TabCloseRequested="OnTabCloseRequested"
+            >
+                <TabView.TabItemTemplate>
+                    <DataTemplate x:DataType="vm:WorkspaceTabViewModel">
+                        <TabViewItem>
+                            <TabViewItem.Header>
+                                <controls:WorkspaceTabHeader Tab="{x:Bind}" />
+                            </TabViewItem.Header>
+                        </TabViewItem>
+                    </DataTemplate>
+                </TabView.TabItemTemplate>
+            </TabView>
+
+            <!-- Title-bar tools (search, theme toggle). Clickable; sit above the drag region. -->
+            <StackPanel
+                Grid.Column="2"
+                Orientation="Horizontal"
+                Spacing="2"
+                Padding="6,0"
+                VerticalAlignment="Center"
+            >
+                <Button
+                    AutomationProperties.Name="Search"
+                    Style="{StaticResource AveliaIconButtonStyle}"
+                    Width="36"
+                    Height="32"
+                >
+                    <FontIcon FontFamily="Segoe Fluent Icons" FontSize="14" Glyph="&#xE721;" />
+                </Button>
+                <Button
+                    x:Name="ThemeToggleButton"
+                    AutomationProperties.Name="Toggle theme"
+                    Style="{StaticResource AveliaIconButtonStyle}"
+                    Width="36"
+                    Height="32"
+                    Click="OnToggleTheme"
+                >
+                    <FontIcon FontFamily="Segoe Fluent Icons" FontSize="14" Glyph="&#xE793;" />
+                </Button>
+            </StackPanel>
+
+            <!-- Drag region reserved for the system caption buttons. -->
+            <Grid Grid.Column="3" Background="Transparent" />
+        </Grid>
+
+        <!-- ============================================================
+             Body: NavigationView rail + Frame
+             ============================================================ -->
+        <NavigationView
             Grid.Row="1"
-            x:Name="GreetButton"
-            AutomationProperties.AutomationId="GreetButton"
-            Command="{x:Bind ViewModel.GreetCommand}"
-            Content="Greet"
-        />
+            x:Name="RailNav"
+            AutomationProperties.AutomationId="RailNav"
+            IsBackButtonVisible="Collapsed"
+            IsSettingsVisible="False"
+            IsTitleBarAutoPaddingEnabled="False"
+            CompactPaneLength="48"
+            OpenPaneLength="312"
+            IsPaneToggleButtonVisible="True"
+            PaneDisplayMode="Left"
+            PaneClosing="OnRailPaneClosing"
+            PaneOpening="OnRailPaneOpening"
+            SelectionChanged="OnRailSelectionChanged"
+        >
+            <NavigationView.MenuItems>
+                <NavigationViewItem
+                    x:Name="HomeItem"
+                    AutomationProperties.AutomationId="HomeItem"
+                    Content="Home"
+                    Tag="Home"
+                >
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE80F;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem
+                    x:Name="InboxItem"
+                    AutomationProperties.AutomationId="InboxItem"
+                    Content="Inbox"
+                    Tag="Inbox"
+                >
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE715;" />
+                    </NavigationViewItem.Icon>
+                    <NavigationViewItem.InfoBadge>
+                        <InfoBadge Value="{x:Bind ViewModel.InboxCount, Mode=OneWay}" />
+                    </NavigationViewItem.InfoBadge>
+                </NavigationViewItem>
+                <NavigationViewItem
+                    AutomationProperties.AutomationId="PinnedItem"
+                    Content="Pinned"
+                    Tag="Pinned"
+                >
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE718;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+
+                <NavigationViewItemHeader Content="Repositories" />
+                <!-- Repo groups are added at runtime in code-behind from
+                     ViewModel.RepoGroups (NavigationView doesn't accept
+                     ItemsSource for nested menu items in x:Bind directly). -->
+
+                <NavigationViewItemSeparator />
+
+                <NavigationViewItem
+                    AutomationProperties.AutomationId="HistoryItem"
+                    Content="History"
+                    Tag="History"
+                >
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE81C;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+                <NavigationViewItem
+                    AutomationProperties.AutomationId="ArchiveItem"
+                    Content="Archive"
+                    Tag="Archive"
+                >
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE7B8;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.MenuItems>
+
+            <NavigationView.FooterMenuItems>
+                <NavigationViewItem
+                    AutomationProperties.AutomationId="SettingsItem"
+                    Content="Settings"
+                    Tag="Settings"
+                >
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE713;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
+            </NavigationView.FooterMenuItems>
+
+            <Frame
+                x:Name="ContentFrame"
+                AutomationProperties.AutomationId="ContentFrame"
+            />
+        </NavigationView>
     </Grid>
 </Window>

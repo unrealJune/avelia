@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Avelia.Shell.Windows.Controls.WorkspaceTabHeader"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:local="using:Avelia.Shell.Windows.Controls"
+    xmlns:vm="using:Avelia.Shell.Windows.ViewModels"
+>
+    <!--
+        TabViewItem content. Mirrors the design's pattern from styles-v2.css ::
+        .tab — status dot + branch name. The base branch is shown for the
+        *active* tab only, but for Chunk 2 we keep it visible on all tabs to
+        keep the binding simple. Chunk 3 differentiates active vs. inactive.
+    -->
+    <Grid ColumnSpacing="8" VerticalAlignment="Center" MinWidth="140">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <local:StatusDot
+            Grid.Column="0"
+            Status="{x:Bind Tab.Status, Mode=OneWay, FallbackValue={x:Null}}"
+        />
+
+        <TextBlock
+            Grid.Column="1"
+            Style="{StaticResource AveliaBodyTextStyle}"
+            FontSize="13"
+            TextTrimming="CharacterEllipsis"
+            VerticalAlignment="Center"
+            Text="{x:Bind Tab.Branch, Mode=OneWay, FallbackValue=''}"
+        />
+
+        <TextBlock
+            Grid.Column="2"
+            Style="{StaticResource AveliaMonoCaptionTextStyle}"
+            VerticalAlignment="Center"
+            Foreground="{ThemeResource AveliaTextTertiaryBrush}"
+            Text="{x:Bind Tab.Base, Mode=OneWay, FallbackValue=''}"
+        />
+    </Grid>
+</UserControl>

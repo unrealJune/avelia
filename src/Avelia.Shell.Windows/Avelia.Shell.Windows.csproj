@@ -20,6 +20,14 @@
         <Nullable>enable</Nullable>
         <!-- winapp run drops a loose-layout copy of the app into ./AppX. Keep it out of the SDK's default glob. -->
         <DefaultItemExcludes>$(DefaultItemExcludes);AppX\**\*</DefaultItemExcludes>
+        <!--
+            MVVMTK0045 — MVVM Toolkit 8.4 emits this warning recommending partial
+            properties for AOT/CsWinRT, but the toolkit's source generator does not
+            yet implement the partial-property feature (the field pattern is the
+            only one that compiles). Drop the suppression once we bump past the
+            version that ships the generator so a real regression isn't masked.
+        -->
+        <NoWarn>$(NoWarn);MVVMTK0045</NoWarn>
     </PropertyGroup>
 
     <ItemGroup>

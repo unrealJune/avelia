@@ -14,17 +14,42 @@
         <PackageReference Include="CommunityToolkit.Mvvm" />
     </ItemGroup>
 
+    <ItemGroup>
+        <ProjectReference Include="..\..\src\Avelia.Core.Abstractions\Avelia.Core.Abstractions.fsproj" />
+        <ProjectReference Include="..\..\src\Avelia.Core\Avelia.Core.fsproj" />
+    </ItemGroup>
+
     <!--
         Avelia.Shell.Windows targets net10.0-windows10.0.19041.0 (WinUI), so we cannot
         directly reference the csproj from a pure-net10.0 test project — the TFM is
-        incompatible. Instead we compile the platform-independent MainViewModel.cs
-        into this test assembly. This keeps view-model logic testable without
+        incompatible. Instead we compile the platform-independent source files into
+        this test assembly. This keeps view-model + service logic testable without
         a WinUI runtime.
     -->
     <ItemGroup>
         <Compile
+            Include="..\..\src\Avelia.Shell.Windows\ViewModels\NavRailSection.cs"
+            Link="ViewModels\NavRailSection.cs"
+        />
+        <Compile
+            Include="..\..\src\Avelia.Shell.Windows\ViewModels\WorkspaceTabViewModel.cs"
+            Link="ViewModels\WorkspaceTabViewModel.cs"
+        />
+        <Compile
+            Include="..\..\src\Avelia.Shell.Windows\ViewModels\WorkspaceItemViewModel.cs"
+            Link="ViewModels\WorkspaceItemViewModel.cs"
+        />
+        <Compile
+            Include="..\..\src\Avelia.Shell.Windows\ViewModels\RepoGroupViewModel.cs"
+            Link="ViewModels\RepoGroupViewModel.cs"
+        />
+        <Compile
             Include="..\..\src\Avelia.Shell.Windows\ViewModels\MainViewModel.cs"
             Link="ViewModels\MainViewModel.cs"
+        />
+        <Compile
+            Include="..\..\src\Avelia.Shell.Windows\Services\ThemeService.cs"
+            Link="Services\ThemeService.cs"
         />
     </ItemGroup>
 </Project>
