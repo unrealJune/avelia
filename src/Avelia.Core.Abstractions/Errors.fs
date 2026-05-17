@@ -12,6 +12,26 @@ type AveliaError =
     | Network of message: string
     | Internal of message: string
 
+    /// Visitor over the union — gives C# consumers exhaustive dispatch
+    /// (adding a new error case becomes a compile error at every Match site).
+    /// Mirrors <c>MessageEvent.Match</c> / <c>DiffKind.Match</c>.
+    member this.Match<'TResult>
+        (
+            onNotFound: System.Func<string, 'TResult>,
+            onValidation: System.Func<string, 'TResult>,
+            onUnauthorized: System.Func<'TResult>,
+            onConflict: System.Func<string, 'TResult>,
+            onNetwork: System.Func<string, 'TResult>,
+            onInternal: System.Func<string, 'TResult>
+        ) : 'TResult =
+        match this with
+        | NotFound resource -> onNotFound.Invoke resource
+        | Validation msg -> onValidation.Invoke msg
+        | Unauthorized -> onUnauthorized.Invoke()
+        | Conflict msg -> onConflict.Invoke msg
+        | Network msg -> onNetwork.Invoke msg
+        | Internal msg -> onInternal.Invoke msg
+
 /// C#-friendly wrapper around <c>Result&lt;'T, AveliaError&gt;</c>.
 ///
 /// F# core code may use <see cref="FSharpResult"/> freely, but the shell binds

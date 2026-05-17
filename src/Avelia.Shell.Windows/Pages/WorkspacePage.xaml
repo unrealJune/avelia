@@ -299,28 +299,62 @@
             />
         </Grid>
 
-        <!-- =========== Right column (Chunk 4 fills this) =========== -->
-        <Border
+        <!-- =========== Right column: PR header + file list + terminal =========== -->
+        <Grid
             Grid.Column="1"
             Background="{ThemeResource AveliaCardBackgroundBrush}"
             BorderBrush="{ThemeResource AveliaSurfaceStrokeBrush}"
             BorderThickness="1,0,0,0"
-            Padding="20,16"
         >
-            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center" Spacing="6">
-                <TextBlock
-                    Style="{StaticResource AveliaCaptionTextStyle}"
-                    Foreground="{ThemeResource AveliaTextTertiaryBrush}"
-                    HorizontalAlignment="Center"
-                    Text="PR + Changes + Terminal"
-                />
-                <TextBlock
-                    Style="{StaticResource AveliaBodyTextStyle}"
-                    Foreground="{ThemeResource AveliaTextSecondaryBrush}"
-                    HorizontalAlignment="Center"
-                    Text="Ships in Chunk 4"
-                />
-            </StackPanel>
-        </Border>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- PR header -->
+            <controls:PrHeader
+                Grid.Row="0"
+                AutomationProperties.AutomationId="PrHeader"
+                ViewModel="{x:Bind ViewModel.PrPane, Mode=OneWay}"
+            />
+
+            <!-- Hairline + Changes/Files pivot strip. The strip ships as a
+                 design affordance for Chunk 10's real backend split between
+                 workspace diff and PR diff; today both pivots render the same
+                 file list, so the SelectionChanged handler just updates
+                 ViewModel.PrPane.ActiveTab without re-querying. The shape is
+                 right for the eventual split. -->
+            <Border
+                Grid.Row="1"
+                BorderBrush="{ThemeResource AveliaDividerStrokeBrush}"
+                BorderThickness="0,0,0,1"
+                Padding="12,4,12,0"
+            >
+                <SelectorBar
+                    AutomationProperties.AutomationId="PrPaneTabStrip"
+                    AutomationProperties.Name="Changes or files"
+                    SelectionChanged="OnPrPaneTabSelectionChanged"
+                >
+                    <SelectorBarItem AutomationProperties.AutomationId="PrPaneChangesTab" Text="Changes" IsSelected="True" />
+                    <SelectorBarItem AutomationProperties.AutomationId="PrPaneFilesTab" Text="Files" />
+                </SelectorBar>
+            </Border>
+
+            <!-- File list -->
+            <controls:FileChangeList
+                Grid.Row="2"
+                AutomationProperties.AutomationId="FileChangeList"
+                Files="{x:Bind ViewModel.PrPane.Files, Mode=OneWay}"
+            />
+
+            <!-- Terminal panel — sticky bottom -->
+            <controls:TerminalPanel
+                Grid.Row="3"
+                AutomationProperties.AutomationId="TerminalPanel"
+                ViewModel="{x:Bind ViewModel.Terminal, Mode=OneWay}"
+            />
+        </Grid>
     </Grid>
 </Page>

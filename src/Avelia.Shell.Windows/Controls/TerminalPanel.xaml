@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Avelia.Shell.Windows.Controls.TerminalPanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Unloaded="OnUnloaded"
+>
+    <!--
+        Sticky bottom panel: SelectorBar (Run / Terminal) with Run-button on
+        the right, body switched by ViewModel.ActiveTab. Real run wiring
+        (IRunService.ObserveOutput) lands in a later chunk; today the Run
+        body is an empty placeholder and the Run command just flips to the
+        Run tab.
+
+        The Storyboard for the blinking cursor is created once in code-behind
+        when the cursor is loaded and stopped in OnUnloaded so the animation
+        doesn't accumulate across page navigations.
+    -->
+    <Border
+        Background="{ThemeResource AveliaCardBackgroundSecondaryBrush}"
+        BorderBrush="{ThemeResource AveliaSurfaceStrokeBrush}"
+        BorderThickness="0,1,0,0"
+    >
+        <Grid RowSpacing="0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- Tab strip + Run button -->
+            <Grid
+                Grid.Row="0"
+                Padding="12,4,12,0"
+                ColumnSpacing="8"
+            >
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <SelectorBar
+                    x:Name="TabStrip"
+                    Grid.Column="0"
+                    AutomationProperties.AutomationId="TerminalTabStrip"
+                    AutomationProperties.Name="Run or terminal"
+                    SelectionChanged="OnTabSelectionChanged"
+                >
+                    <SelectorBarItem
+                        x:Name="RunTabItem"
+                        AutomationProperties.AutomationId="TerminalRunTab"
+                        Text="Run"
+                    />
+                    <SelectorBarItem
+                        x:Name="TerminalTabItem"
+                        AutomationProperties.AutomationId="TerminalTerminalTab"
+                        Text="Terminal"
+                        IsSelected="True"
+                    />
+                </SelectorBar>
+
+                <Button
+                    Grid.Column="1"
+                    AutomationProperties.AutomationId="TerminalRunButton"
+                    AutomationProperties.Name="Run command"
+                    Style="{StaticResource AveliaSubtleButtonStyle}"
+                    Padding="8,4"
+                    FontSize="12"
+                    Command="{x:Bind ViewModel.RunCommand, Mode=OneWay}"
+                >
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <FontIcon FontFamily="Segoe Fluent Icons" FontSize="12" Glyph="&#xE768;" Foreground="{ThemeResource AveliaSuccessBrush}" />
+                        <TextBlock Text="Run" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+
+            <!-- Body: prompt+cursor when Terminal is active, placeholder when Run -->
+            <Grid Grid.Row="1" Padding="14,8,14,12">
+                <!-- Terminal body -->
+                <StackPanel
+                    AutomationProperties.AutomationId="TerminalBody"
+                    Spacing="2"
+                    Visibility="{x:Bind ViewModel.IsTerminalActive, Mode=OneWay, FallbackValue=Visible}"
+                >
+                    <TextBlock
+                        AutomationProperties.AutomationId="TerminalPromptLine"
+                        FontFamily="{StaticResource AveliaMonoFontFamily}"
+                        FontSize="12"
+                        Foreground="{ThemeResource AveliaTextSecondaryBrush}"
+                        Text="{x:Bind ViewModel.PromptLine, Mode=OneWay, FallbackValue=''}"
+                    />
+                    <Rectangle
+                        x:Name="TerminalCursor"
+                        Width="7"
+                        Height="14"
+                        HorizontalAlignment="Left"
+                        Fill="{ThemeResource AveliaTextPrimaryBrush}"
+                        Loaded="OnCursorLoaded"
+                    />
+                </StackPanel>
+
+                <!-- Run body — placeholder until Chunk 10 wires real output -->
+                <TextBlock
+                    AutomationProperties.AutomationId="TerminalRunPlaceholder"
+                    Style="{StaticResource AveliaCaptionTextStyle}"
+                    FontFamily="{StaticResource AveliaMonoFontFamily}"
+                    Foreground="{ThemeResource AveliaTextTertiaryBrush}"
+                    Text="No run output yet."
+                    Visibility="{x:Bind ViewModel.IsRunActive, Mode=OneWay, FallbackValue=Collapsed}"
+                />
+            </Grid>
+        </Grid>
+    </Border>
+</UserControl>

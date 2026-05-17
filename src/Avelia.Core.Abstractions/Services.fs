@@ -50,6 +50,15 @@ type IConversationService =
     /// Stream of events appended to the conversation *after* the subscription
     /// starts. Pairs with <c>GetForWorkspaceAsync</c> for the initial snapshot.
     /// The enumerator completes when the cancellation token is signalled.
+    ///
+    /// <para>Threading contract: the shell consumes this on the UI thread (no
+    /// <c>Task.Run</c> wrapping the iteration) so that synchronous channel
+    /// continuations can fan events directly into the UI dispatcher without
+    /// re-marshalling. Implementations therefore MUST NOT do blocking work on
+    /// the call thread — both the initial subscription-setup and every
+    /// <c>MoveNextAsync</c> must yield promptly. Real backends with sync I/O
+    /// (database setup, file watcher registration) should hop to a worker
+    /// thread internally and surface the stream as a non-blocking enumerable.</para>
     abstract ObserveMessages: conversationId: ConversationId * CancellationToken -> IAsyncEnumerable<MessageEvent>
 
 type IDiffService =

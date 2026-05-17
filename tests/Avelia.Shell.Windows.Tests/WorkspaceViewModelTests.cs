@@ -81,6 +81,45 @@ public class WorkspaceViewModelTests
     }
 
     [Fact]
+    public async Task LoadAsync_AlsoLoadsPrPaneAndTerminal()
+    {
+        var vm = MakeVm();
+        await vm.LoadAsync(DesignData.archiveWorkspaceId);
+
+        // Right-pane composite is hydrated alongside the conversation.
+        Assert.True(vm.PrPane.HasPullRequest);
+        Assert.Equal(DesignData.archivePullRequest.Number, vm.PrPane.Number);
+        Assert.Equal(DesignData.diffFiles.Count, vm.PrPane.Files.Count);
+
+        // Terminal panel reflects the active workspace's branch + base.
+        var workspace = DesignData.workspaces
+            .First(w => w.Id.Equals(DesignData.archiveWorkspaceId));
+        Assert.Equal(workspace.Branch.Value, vm.Terminal.Branch);
+        Assert.Equal(workspace.Base.Value, vm.Terminal.Base);
+    }
+
+    [Fact]
+    public async Task LoadAsync_UnknownWorkspace_ClearsTerminalAndModelName()
+    {
+        var vm = MakeVm();
+        // Hydrate with a real workspace first so we can verify the reset path
+        // actually clears existing state (not just "stayed empty").
+        await vm.LoadAsync(DesignData.archiveWorkspaceId);
+        Assert.NotEqual(string.Empty, vm.Terminal.PromptLine);
+        Assert.NotEqual(string.Empty, vm.ModelName);
+
+        var bogus = WorkspaceId.NewWorkspaceId(System.Guid.NewGuid());
+        await vm.LoadAsync(bogus);
+
+        Assert.Equal(string.Empty, vm.ModelName);
+        Assert.Equal(string.Empty, vm.Terminal.PromptLine);
+        Assert.Equal(string.Empty, vm.Terminal.Branch);
+        Assert.Equal(string.Empty, vm.Terminal.Base);
+        Assert.False(vm.PrPane.HasPullRequest);
+        Assert.Empty(vm.PrPane.Files);
+    }
+
+    [Fact]
     public async Task LoadAsync_ResettingToSameWorkspace_StartsFreshTranscript()
     {
         var vm = MakeVm();

@@ -1,0 +1,150 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Avelia.Shell.Windows.Controls.PrHeader"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+>
+    <!--
+        PR header for the workspace right pane. Matches the design's V2Right
+        header block: caption label → #NNNN + title + Merge button → base ←
+        branch (mono) → stats row (files · +/− · checks).
+
+        Collapses entirely (no PR card) when ViewModel.HasPullRequest is false.
+        Hairline divider sits at the bottom so the pivot strip below stacks
+        flush.
+    -->
+    <Grid Padding="20,16,20,12" RowSpacing="8">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Caption -->
+        <TextBlock
+            Grid.Row="0"
+            AutomationProperties.Name="Pull request"
+            Style="{StaticResource AveliaSectionLabelTextStyle}"
+            Text="PULL REQUEST"
+        />
+
+        <!-- #NNNN + title + Merge button -->
+        <Grid Grid.Row="1" ColumnSpacing="10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+            <TextBlock
+                Grid.Column="0"
+                VerticalAlignment="Center"
+                Style="{StaticResource AveliaBodyStrongTextStyle}"
+                Foreground="{ThemeResource AveliaAccentTextBrush}"
+                Text="{x:Bind ViewModel.NumberDisplay, Mode=OneWay, FallbackValue=''}"
+            />
+            <TextBlock
+                Grid.Column="1"
+                VerticalAlignment="Center"
+                Style="{StaticResource AveliaBodyStrongTextStyle}"
+                TextTrimming="CharacterEllipsis"
+                Text="{x:Bind ViewModel.Title, Mode=OneWay, FallbackValue=''}"
+            />
+            <Button
+                Grid.Column="2"
+                AutomationProperties.AutomationId="MergeButton"
+                AutomationProperties.Name="Merge pull request"
+                Style="{StaticResource AveliaMergeButtonStyle}"
+                Command="{x:Bind ViewModel.MergeCommand, Mode=OneWay}"
+                Visibility="{x:Bind ViewModel.HasPullRequest, Mode=OneWay, FallbackValue=Collapsed}"
+            >
+                <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                    <FontIcon FontFamily="Segoe Fluent Icons" FontSize="12" Glyph="&#xE8AB;" />
+                    <TextBlock Text="Merge" />
+                </StackPanel>
+            </Button>
+        </Grid>
+
+        <!-- base ← branch in mono -->
+        <StackPanel
+            Grid.Row="2"
+            Orientation="Horizontal"
+            Spacing="8"
+            VerticalAlignment="Center"
+            Visibility="{x:Bind ViewModel.HasPullRequest, Mode=OneWay, FallbackValue=Collapsed}"
+        >
+            <TextBlock
+                Style="{StaticResource AveliaMonoCaptionTextStyle}"
+                Foreground="{ThemeResource AveliaTextPrimaryBrush}"
+                Text="{x:Bind ViewModel.Base, Mode=OneWay, FallbackValue=''}"
+            />
+            <FontIcon
+                FontFamily="Segoe Fluent Icons"
+                FontSize="10"
+                Glyph="&#xE76B;"
+                Foreground="{ThemeResource AveliaTextTertiaryBrush}"
+                VerticalAlignment="Center"
+            />
+            <TextBlock
+                Style="{StaticResource AveliaMonoCaptionTextStyle}"
+                Foreground="{ThemeResource AveliaTextPrimaryBrush}"
+                Text="{x:Bind ViewModel.Branch, Mode=OneWay, FallbackValue=''}"
+            />
+        </StackPanel>
+
+        <!-- Stats row: N files · +ADD · -DEL · M/N checks -->
+        <StackPanel
+            Grid.Row="3"
+            Orientation="Horizontal"
+            Spacing="10"
+            VerticalAlignment="Center"
+        >
+            <TextBlock
+                Style="{StaticResource AveliaCaptionTextStyle}"
+                Foreground="{ThemeResource AveliaTextSecondaryBrush}"
+                Text="{x:Bind ViewModel.FileCountDisplay, Mode=OneWay, FallbackValue=''}"
+            />
+            <TextBlock
+                Style="{StaticResource AveliaCaptionTextStyle}"
+                Foreground="{ThemeResource AveliaTextTertiaryBrush}"
+                Text="·"
+            />
+            <TextBlock
+                Style="{StaticResource AveliaCaptionTextStyle}"
+                Foreground="{ThemeResource AveliaSuccessBrush}"
+                FontFamily="{StaticResource AveliaMonoFontFamily}"
+                Text="{x:Bind ViewModel.TotalAddDisplay, Mode=OneWay, FallbackValue=''}"
+            />
+            <TextBlock
+                Style="{StaticResource AveliaCaptionTextStyle}"
+                Foreground="{ThemeResource AveliaDangerBrush}"
+                FontFamily="{StaticResource AveliaMonoFontFamily}"
+                Text="{x:Bind ViewModel.TotalDelDisplay, Mode=OneWay, FallbackValue=''}"
+            />
+            <TextBlock
+                Style="{StaticResource AveliaCaptionTextStyle}"
+                Foreground="{ThemeResource AveliaTextTertiaryBrush}"
+                Text="·"
+                Visibility="{x:Bind ViewModel.HasPullRequest, Mode=OneWay, FallbackValue=Collapsed}"
+            />
+            <TextBlock
+                Style="{StaticResource AveliaCaptionTextStyle}"
+                Foreground="{ThemeResource AveliaTextSecondaryBrush}"
+                Text="{x:Bind ViewModel.ChecksSummary, Mode=OneWay, FallbackValue=''}"
+                Visibility="{x:Bind ViewModel.HasPullRequest, Mode=OneWay, FallbackValue=Collapsed}"
+            />
+        </StackPanel>
+
+        <!-- Error surface (merge / load failures). Hidden when there's no
+             pending error so it doesn't take vertical space in the common path. -->
+        <InfoBar
+            Grid.Row="4"
+            AutomationProperties.AutomationId="PrPaneError"
+            IsClosable="False"
+            IsOpen="{x:Bind ViewModel.HasError, Mode=OneWay, FallbackValue=False}"
+            Severity="Error"
+            Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay, FallbackValue=''}"
+        />
+    </Grid>
+</UserControl>

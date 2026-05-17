@@ -72,6 +72,22 @@ type DiffKind =
     | Deleted
     | Renamed of from: RelativePath
 
+    /// Visitor over the union — keeps C# off the F# DU's nested case types
+    /// and makes adding a new kind a compile error at every consumer.
+    /// Mirrors <c>MessageEvent.Match</c> / <c>ModelChoice.Match</c>.
+    member this.Match<'TResult>
+        (
+            onModified: System.Func<'TResult>,
+            onAdded: System.Func<'TResult>,
+            onDeleted: System.Func<'TResult>,
+            onRenamed: System.Func<RelativePath, 'TResult>
+        ) : 'TResult =
+        match this with
+        | Modified -> onModified.Invoke()
+        | Added -> onAdded.Invoke()
+        | Deleted -> onDeleted.Invoke()
+        | Renamed from' -> onRenamed.Invoke from'
+
 /// Per-line kind in a unified diff.
 type DiffLineKind =
     | Context

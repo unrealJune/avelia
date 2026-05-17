@@ -63,5 +63,17 @@
             Include="..\..\src\Avelia.Shell.Windows\ViewModels\WorkspaceViewModel.cs"
             Link="ViewModels\WorkspaceViewModel.cs"
         />
+        <Compile
+            Include="..\..\src\Avelia.Shell.Windows\ViewModels\DiffFileViewModel.cs"
+            Link="ViewModels\DiffFileViewModel.cs"
+        />
+        <Compile
+            Include="..\..\src\Avelia.Shell.Windows\ViewModels\PrPaneViewModel.cs"
+            Link="ViewModels\PrPaneViewModel.cs"
+        />
+        <Compile
+            Include="..\..\src\Avelia.Shell.Windows\ViewModels\TerminalPanelViewModel.cs"
+            Link="ViewModels\TerminalPanelViewModel.cs"
+        />
     </ItemGroup>
 </Project>
