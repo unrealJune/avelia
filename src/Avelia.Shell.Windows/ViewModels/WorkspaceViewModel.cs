@@ -33,7 +33,15 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
     {
         _services = services;
         _dispatcher = dispatcher;
+        PrPane = new PrPaneViewModel(services);
+        Terminal = new TerminalPanelViewModel();
     }
+
+    /// <summary>Right-pane PR header + workspace file list. Always present; <see cref="PrPaneViewModel.HasPullRequest"/> reflects whether a PR exists.</summary>
+    public PrPaneViewModel PrPane { get; }
+
+    /// <summary>Sticky bottom terminal panel — prompt line + tab strip.</summary>
+    public TerminalPanelViewModel Terminal { get; }
 
     // -------- Observable state --------
 
@@ -95,11 +103,25 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
         _conversationId = null;
 
         // Resolve the workspace first so we know which agent model to show on
-        // the composer. Then the conversation snapshot.
+        // the composer + which branch the terminal panel renders. Then the
+        // conversation snapshot. PR + diff load alongside so the right pane
+        // populates in the same logical step.
         var workspaceResult = await _services.Workspaces.GetAsync(id, ct).ConfigureAwait(true);
-        ModelName = workspaceResult.IsSuccess
-            ? FormatModel(workspaceResult.Value.Agent)
-            : string.Empty;
+        if (workspaceResult.IsSuccess)
+        {
+            ModelName = FormatModel(workspaceResult.Value.Agent);
+            Terminal.Load(workspaceResult.Value);
+        }
+        else
+        {
+            ModelName = string.Empty;
+            // Without this, the terminal would keep showing the previous
+            // workspace's prompt — the right pane would look stale rather
+            // than empty.
+            Terminal.Reset();
+        }
+
+        await PrPane.LoadAsync(id, ct).ConfigureAwait(true);
 
         var result = await _services.Conversations.GetForWorkspaceAsync(id, ct).ConfigureAwait(true);
         if (!result.IsSuccess)
@@ -177,32 +199,45 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
     {
         _observeCts = new CancellationTokenSource();
         var token = _observeCts.Token;
-        _observeTask = Task.Run(async () =>
+
+        // Run the observe loop inline (no Task.Run): the IAsyncEnumerable yields
+        // at each MoveNextAsync, so the loop is non-blocking on the UI thread.
+        // Avoiding Task.Run also closes a race where the threadpool task might
+        // not have reached its first MoveNextAsync by the time a synchronous
+        // caller posts the next event — the stub channel uses
+        // AllowSynchronousContinuations=true so it depends on a pending consumer.
+        // This is the inverse side of the threading contract documented on
+        // IConversationService.ObserveMessages — implementations must not
+        // block the call thread; if they need to, they hop to a worker on
+        // their side.
+        _observeTask = ObserveLoopAsync(conversationId, token);
+    }
+
+    private async Task ObserveLoopAsync(ConversationId conversationId, CancellationToken token)
+    {
+        try
         {
-            try
+            await foreach (var ev in _services.Conversations.ObserveMessages(conversationId, token).ConfigureAwait(false))
             {
-                await foreach (var ev in _services.Conversations.ObserveMessages(conversationId, token).ConfigureAwait(false))
+                if (token.IsCancellationRequested)
                 {
-                    if (token.IsCancellationRequested)
-                    {
-                        break;
-                    }
-                    var vm = MessageViewModel.FromEvent(ev);
-                    _dispatcher.Post(() => Messages.Add(vm));
+                    break;
                 }
+                var vm = MessageViewModel.FromEvent(ev);
+                _dispatcher.Post(() => Messages.Add(vm));
             }
-            catch (OperationCanceledException)
-            {
-                // Expected on page navigation / dispose.
-            }
-            catch (Exception ex)
-            {
-                // Anything else — log so the unobserved-task GC finalizer
-                // doesn't fail-fast the process. Real backends (Chunk 10)
-                // will surface network / auth errors here.
-                System.Diagnostics.Debug.WriteLine($"[WorkspaceViewModel] ObserveMessages failed: {ex}");
-            }
-        }, token);
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected on page navigation / dispose.
+        }
+        catch (Exception ex)
+        {
+            // Anything else — log so the unobserved-task GC finalizer
+            // doesn't fail-fast the process. Real backends (Chunk 10)
+            // will surface network / auth errors here.
+            System.Diagnostics.Debug.WriteLine($"[WorkspaceViewModel] ObserveMessages failed: {ex}");
+        }
     }
 
     private static string FormatModel(ModelChoice agent) =>

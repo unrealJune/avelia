@@ -129,20 +129,20 @@
     </Style>
 
     <!--
-        Transcript ListViewItem — strips the default selection/hover chrome
-        and removes the indent so transcript rows look like a stack of plain
-        templated blocks. ListView is used for virtualization; we just don't
-        want it to look like a list.
+        Plain ListViewItem — strips the default selection/hover chrome and
+        removes indent + minimum height so rows render as bare templated
+        content. ListView is used for virtualization; we just don't want it
+        to look like a list. Used by the workspace transcript and the file
+        change list; child styles override IsTabStop / UseSystemFocusVisuals
+        depending on whether the row is interactive.
     -->
-    <Style x:Key="AveliaTranscriptItemContainerStyle" TargetType="ListViewItem">
+    <Style x:Key="AveliaPlainListItemContainerStyle" TargetType="ListViewItem">
         <Setter Property="Padding" Value="0" />
         <Setter Property="MinHeight" Value="0" />
         <Setter Property="Margin" Value="0" />
         <Setter Property="Background" Value="Transparent" />
         <Setter Property="BorderBrush" Value="Transparent" />
         <Setter Property="HorizontalContentAlignment" Value="Stretch" />
-        <Setter Property="IsTabStop" Value="False" />
-        <Setter Property="UseSystemFocusVisuals" Value="False" />
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="ListViewItem">
@@ -157,6 +157,21 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <!-- Transcript — non-interactive rows, no tab stop, no focus visual. -->
+    <Style x:Key="AveliaTranscriptItemContainerStyle"
+           TargetType="ListViewItem"
+           BasedOn="{StaticResource AveliaPlainListItemContainerStyle}">
+        <Setter Property="IsTabStop" Value="False" />
+        <Setter Property="UseSystemFocusVisuals" Value="False" />
+    </Style>
+
+    <!-- File change list — interactive rows; keep tab stop + focus visual. -->
+    <Style x:Key="AveliaPlainInteractiveListItemContainerStyle"
+           TargetType="ListViewItem"
+           BasedOn="{StaticResource AveliaPlainListItemContainerStyle}">
+        <Setter Property="UseSystemFocusVisuals" Value="True" />
     </Style>
 
 </ResourceDictionary>

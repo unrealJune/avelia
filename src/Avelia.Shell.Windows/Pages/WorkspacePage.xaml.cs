@@ -3,6 +3,7 @@ using Avelia.Core;
 using Avelia.Core.Abstractions;
 using Avelia.Shell.Windows.Services;
 using Avelia.Shell.Windows.ViewModels;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Navigation;
 
@@ -64,6 +65,15 @@ public sealed partial class WorkspacePage : Page
         // task self-completes via the channel's cancellation registration.
         // Any straggling completion is awaited by the next LoadAsync call.
         ViewModel?.StopObserving();
+    }
+
+    private void OnPrPaneTabSelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
+    {
+        if (ViewModel is null || sender.SelectedItem is not SelectorBarItem item || item.Text is null)
+        {
+            return;
+        }
+        ViewModel.PrPane.ActiveTab = item.Text;
     }
 }
 

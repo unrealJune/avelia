@@ -33,7 +33,7 @@ The Avelia repo is a clean skeleton: F# core with one DU (`TaskStatus`), three n
 | Post-Chunk-2 cleanup | ✅ done | Code review + targeted fixes (see "Code review fixes" below). |
 | 3 — Workspace page center pane | ✅ done | `WorkspacePage` (center column real, right column stub), 6 message templates + `MessageTemplateSelector`, `WorkspaceViewModel` + 6 `MessageViewModel` subclasses, `Composer` / `ChatPivot` / `ModelBadge` / `Chip` / `CodeRefBlock` controls. F# `IConversationService.ObserveMessages` added (Channel-backed broadcast). `MessageEvent.Match` + `MessageId.Value` + `ModelChoice.Match` give C# a typed boundary so the projection never touches F# DU internals. `IUiDispatcher` (+ Immediate / DispatcherQueue impls) keeps the VM link-compileable into tests. |
 | Post-Chunk-3 review fixes | ✅ done | Code-review + targeted fixes (see "Chunk-3 review fixes" below). Theme tracking fixed (dark mode regression resolved), transcript moved to virtualizing ListView, page lifecycle hardened, F# CTS leak closed, WCAG contrast + theme-usage lint tests added. 53 shell tests + 54 core tests green. |
-| 4 — Workspace page right pane | ⏳ pending | PR header + file list + terminal |
+| 4 — Workspace page right pane | ✅ done | PR header + Changes/Files selector + file list + sticky terminal panel. `PrPaneViewModel` (+`DiffFileViewModel`) loads PR + workspace diff at navigation time; `TerminalPanelViewModel` derives the prompt line from the active workspace's branch/base. `Merge` command toggles VM state on success (real API call lands in Chunk 10). File-row clicks raise `PrPaneViewModel.FileOpened` and single-select the focused row (PR-review navigation lands in Chunk 6). Observe loop moved off `Task.Run` to close a synchronous-continuation race (see "Chunk-4 fixes" below). 68 shell tests + 54 core tests green. |
 | 5 — Settings page | ⏳ pending | |
 | 6 — PR review + diff viewer | ⏳ pending | |
 | 7 — Inbox page | ⏳ pending | |
@@ -42,6 +42,12 @@ The Avelia repo is a clean skeleton: F# core with one DU (`TaskStatus`), three n
 | 10 — Real backend (Persistence/VCS/Agent) | ⏳ future | Out of scope for v1 |
 
 **Test count after Chunks 0–3 + review fixes: 111 passing** (54 Avelia.Core, 53 Avelia.Shell.Windows — 8 VM/projection + 22 WCAG contrast + 2 theme-usage lint + 19 from Chunk 2, plus 4 from the other F# test projects). Build is clean — 0 warnings, 0 errors.
+
+### Chunk-4 fixes
+
+| ID | What | File(s) |
+|---|---|---|
+| **F-1** Observe-loop race | `StartObserving` ran the `await foreach` inside `Task.Run`. The F# stub channel uses `AllowSynchronousContinuations = true`, which means a write only fires the consumer's continuation synchronously if the consumer is already at `MoveNextAsync` when the write happens. With `Task.Run`, scheduling latency could land an event in the channel queue before the consumer reached its first await — the test then asserted on `Messages.Count` before the loop had drained it. Moved the loop inline (it yields at every `MoveNextAsync`, so it doesn't block the UI thread); registration on the F# side is synchronous, so by the time `LoadAsync` returns the channel is registered AND the consumer is awaiting. Race observed and reproduced 10/10 with the new test load; 0/10 after the fix. A real backend with blocking I/O can re-introduce `Task.Run` on its side of the boundary (per CLAUDE.md threading discipline §3). | `ViewModels/WorkspaceViewModel.cs` |
 
 ### Chunk-3 review fixes
 
@@ -105,7 +111,11 @@ These are queued for Chunk 9's accessibility & polish pass — none are bugs:
 
 ### Where to pick up next
 
-Chunk 4 — right pane of the workspace page. Goal: PR header (number, branch/base, Merge button, stats row) + Changes/Files pivot + scrollable file-row list + sticky bottom terminal panel. Bind to `IPullRequestService.GetForWorkspaceAsync` and `IDiffService.GetWorkspaceDiffAsync`; the right column is already a placeholder Border in `WorkspacePage.xaml` ready for content replacement. See "Chunk 4" section below for the file list.
+Chunk 5 — Settings page. Goal: side-nav + cards for Appearance (theme/accent/transparency/density toggles) + Agents (Sonnet 4.5 / Opus 4.1 / Haiku 4.5 cards + extended-thinking) + Profile (avatar/name/email) + placeholders for the rest. Reachable from the nav rail and a future title-bar gear. Theme + accent already plumbed through `ThemeService`; this chunk just builds the page that exposes them. See "Chunk 5" section below.
+
+Notes for Chunk 6 follow-up:
+- `PrPaneViewModel.FileOpened` event already raises with the typed `RelativePath` — Chunk 6's `MainWindow` (or page) hook should listen and call `ContentFrame.Navigate(typeof(PrReviewPage), …)` with the file pre-selected.
+- The `Changes` / `Files` SelectorBar in `WorkspacePage.xaml` is visual-only today (both pivots render the same diff). Chunk 10's backend split between workspace diff and PR diff is the trigger to wire `SelectionChanged` to `IDiffService.GetPullRequestDiffAsync`.
 
 ## Architectural shape
 
