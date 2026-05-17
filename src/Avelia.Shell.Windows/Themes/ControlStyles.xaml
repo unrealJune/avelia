@@ -106,4 +106,57 @@
         <Setter Property="Foreground" Value="{ThemeResource AveliaTextTertiaryBrush}" />
     </Style>
 
+    <!--
+        Repository tree (nav rail) — repo group label + workspace count.
+        These ship as Styles rather than C#-resolved brushes so the Foreground
+        re-resolves through ThemeResource on theme switch. Used by
+        MainWindow.BuildRepoNavItem when constructing the runtime tree.
+    -->
+    <Style x:Key="AveliaRepoGroupNameStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource AveliaUiFontFamily}" />
+        <Setter Property="FontSize" Value="13" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="TextTrimming" Value="CharacterEllipsis" />
+        <Setter Property="Foreground" Value="{ThemeResource AveliaTextSecondaryBrush}" />
+    </Style>
+
+    <Style x:Key="AveliaRepoGroupCountStyle" TargetType="TextBlock">
+        <Setter Property="FontFamily" Value="{StaticResource AveliaUiFontFamily}" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Foreground" Value="{ThemeResource AveliaTextTertiaryBrush}" />
+    </Style>
+
+    <!--
+        Transcript ListViewItem — strips the default selection/hover chrome
+        and removes the indent so transcript rows look like a stack of plain
+        templated blocks. ListView is used for virtualization; we just don't
+        want it to look like a list.
+    -->
+    <Style x:Key="AveliaTranscriptItemContainerStyle" TargetType="ListViewItem">
+        <Setter Property="Padding" Value="0" />
+        <Setter Property="MinHeight" Value="0" />
+        <Setter Property="Margin" Value="0" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderBrush" Value="Transparent" />
+        <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+        <Setter Property="IsTabStop" Value="False" />
+        <Setter Property="UseSystemFocusVisuals" Value="False" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="ListViewItem">
+                    <ContentPresenter
+                        Background="Transparent"
+                        ContentTransitions="{TemplateBinding ContentTransitions}"
+                        Content="{TemplateBinding Content}"
+                        ContentTemplate="{TemplateBinding ContentTemplate}"
+                        HorizontalContentAlignment="Stretch"
+                        Padding="0"
+                    />
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
 </ResourceDictionary>

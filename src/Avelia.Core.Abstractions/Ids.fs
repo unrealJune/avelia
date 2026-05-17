@@ -25,7 +25,11 @@ type WorkspaceId = WorkspaceId of Guid
 type ConversationId = ConversationId of Guid
 
 /// Identity of a single message event inside a conversation.
-type MessageId = MessageId of Guid
+type MessageId =
+    | MessageId of Guid
+
+    /// C#-friendly accessor — equivalent to <c>MessageId.value</c> in F#.
+    member this.Value = let (MessageId g) = this in g
 
 /// Identity of a long-running command spawned by a workspace (e.g. <c>pnpm dev</c>).
 type RunId = RunId of Guid

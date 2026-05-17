@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Avelia.Shell.Windows.Controls.ModelBadge"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+>
+    <!--
+        Composer-row badge: agent model + caret + chevron, looks like a
+        dropdown trigger. Match data.jsx :: composer "Sonnet 4.5" badge.
+    -->
+    <Border
+        CornerRadius="{StaticResource AveliaCornerRadiusSmall}"
+        Background="{ThemeResource AveliaSubtleFillSecondaryBrush}"
+        BorderBrush="{ThemeResource AveliaSurfaceStrokeBrush}"
+        BorderThickness="1"
+        Padding="8,3"
+    >
+        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+            <Ellipse Width="8" Height="8" Fill="{ThemeResource AveliaAccentDefaultBrush}" />
+            <TextBlock
+                Style="{StaticResource AveliaBodyTextStyle}"
+                FontSize="12"
+                Text="{x:Bind ModelName, Mode=OneWay}"
+            />
+            <FontIcon
+                FontFamily="Segoe Fluent Icons"
+                FontSize="10"
+                Glyph="&#xE70D;"
+                Foreground="{ThemeResource AveliaTextTertiaryBrush}"
+            />
+        </StackPanel>
+    </Border>
+</UserControl>

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Avelia.Shell.Windows.Controls.Chip"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+>
+    <!--
+        Pill-shaped chip — small label with tinted fill + stroke. Default
+        brushes are set declaratively via ThemeResource so they re-resolve on
+        theme switch; consumers override via the typed DPs for diff-add /
+        diff-del / status variants (change handlers in code-behind redirect
+        the override onto the inner Border / TextBlock).
+    -->
+    <Border
+        x:Name="ChipBorder"
+        CornerRadius="999"
+        Padding="7,1"
+        BorderThickness="1"
+        Background="{ThemeResource AveliaSubtleFillSecondaryBrush}"
+        BorderBrush="{ThemeResource AveliaSurfaceStrokeBrush}"
+    >
+        <TextBlock
+            x:Name="ChipText"
+            FontFamily="{StaticResource AveliaUiFontFamily}"
+            FontSize="11"
+            FontWeight="Medium"
+            LineHeight="16"
+            Foreground="{ThemeResource AveliaTextSecondaryBrush}"
+            Text="{x:Bind Text, Mode=OneWay, FallbackValue=''}"
+        />
+    </Border>
+</UserControl>

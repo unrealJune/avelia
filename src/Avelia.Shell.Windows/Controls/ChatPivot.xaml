@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Avelia.Shell.Windows.Controls.ChatPivot"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:Avelia.Shell.Windows.ViewModels"
+>
+    <!--
+        Chat-thread pivot strip — mirrors the design's .v2c-pivot: tab text
+        + count chip, with a 3px accent underline on the active tab. Built as
+        an ItemsRepeater + buttons rather than the WinUI Pivot control to get
+        full control over the underline width and color tokens.
+    -->
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <ItemsRepeater
+            x:Name="ThreadStrip"
+            Grid.Row="0"
+            ItemsSource="{x:Bind Threads, Mode=OneWay}"
+        >
+            <ItemsRepeater.Layout>
+                <StackLayout Orientation="Horizontal" Spacing="0" />
+            </ItemsRepeater.Layout>
+            <ItemsRepeater.ItemTemplate>
+                <DataTemplate x:DataType="vm:ChatThreadViewModel">
+                    <Button
+                        Style="{StaticResource AveliaSubtleButtonStyle}"
+                        Padding="14,8"
+                        Click="OnThreadButtonClick"
+                        Tag="{x:Bind}"
+                    >
+                        <StackPanel Orientation="Horizontal" Spacing="8" VerticalAlignment="Center">
+                            <TextBlock
+                                Style="{StaticResource AveliaBodyTextStyle}"
+                                FontSize="13"
+                                FontWeight="SemiBold"
+                                Text="{x:Bind Title, Mode=OneWay, FallbackValue=''}"
+                            />
+                            <Border
+                                CornerRadius="999"
+                                Background="{ThemeResource AveliaSubtleFillSecondaryBrush}"
+                                Padding="6,1"
+                            >
+                                <TextBlock
+                                    Style="{StaticResource AveliaChipTextStyle}"
+                                    Text="{x:Bind MessageCount, Mode=OneWay, FallbackValue=''}"
+                                />
+                            </Border>
+                        </StackPanel>
+                    </Button>
+                </DataTemplate>
+            </ItemsRepeater.ItemTemplate>
+        </ItemsRepeater>
+
+        <!-- 3px underline. Width hugs the strip; the active accent slice will
+             move in Chunk 3.5 once multi-thread lands. -->
+        <Rectangle
+            Grid.Row="1"
+            Height="2"
+            Fill="{ThemeResource AveliaDividerStrokeBrush}"
+        />
+    </Grid>
+</UserControl>

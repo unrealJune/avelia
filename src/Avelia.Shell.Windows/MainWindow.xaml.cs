@@ -30,6 +30,8 @@ public sealed partial class MainWindow : Window
 {
     private readonly ThemeService _themeService;
     private readonly WindowsSystemDispatcherQueueHelper _dispatcherQueueHelper = new();
+    private readonly AveliaServices _services;
+    private readonly IUiDispatcher _uiDispatcher;
 
     /// <summary>
     /// Re-entry guard for the rail pane events. <see cref="ApplyRailDisplayMode"/>
@@ -46,9 +48,12 @@ public sealed partial class MainWindow : Window
     public MainWindow(ThemeService themeService, AveliaServices services)
     {
         _themeService = themeService;
+        _services = services;
         ViewModel = new MainViewModel(services);
 
         InitializeComponent();
+
+        _uiDispatcher = new DispatcherQueueUiDispatcher(DispatcherQueue);
 
         _dispatcherQueueHelper.EnsureWindowsSystemDispatcherQueueController();
         ExtendsContentIntoTitleBar = true;
@@ -106,7 +111,38 @@ public sealed partial class MainWindow : Window
         if (e.PropertyName == nameof(MainViewModel.IsRailExpanded))
         {
             ApplyRailDisplayMode();
+            return;
         }
+        if (e.PropertyName == nameof(MainViewModel.ActiveTab))
+        {
+            if (ViewModel.ActiveSection == NavRailSection.Home)
+            {
+                NavigateToActiveWorkspace();
+            }
+            return;
+        }
+    }
+
+    /// <summary>
+    /// Navigate the content Frame to the <see cref="WorkspacePage"/> bound to
+    /// the active tab's workspace, or to the empty-state placeholder if no tab
+    /// is open. Called from both <see cref="NavigateToSection"/> and the
+    /// ActiveTab property-change handler.
+    /// </summary>
+    private void NavigateToActiveWorkspace()
+    {
+        var active = ViewModel.ActiveTab;
+        if (active is null)
+        {
+            ContentFrame.Navigate(typeof(PlaceholderPage),
+                new PlaceholderPageArgs(
+                    "No workspace open",
+                    "Open a workspace from the rail to start a session."));
+            return;
+        }
+
+        var args = new WorkspacePageArgs(active.Id, _services, _uiDispatcher);
+        ContentFrame.Navigate(typeof(WorkspacePage), args, new DrillInNavigationTransitionInfo());
     }
 
     private void ApplyRailDisplayMode()
@@ -286,14 +322,13 @@ public sealed partial class MainWindow : Window
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
+        // Foreground brushes are routed through Styles holding ThemeResource
+        // references so the labels re-resolve on theme switch. Setting
+        // Foreground directly here would freeze the brush at first paint.
         var nameText = new TextBlock
         {
             Text = group.Name,
-            FontSize = 13,
-            FontWeight = FontWeights.SemiBold,
-            VerticalAlignment = VerticalAlignment.Center,
-            Foreground = (Brush)Application.Current.Resources["AveliaTextSecondaryBrush"],
-            TextTrimming = TextTrimming.CharacterEllipsis,
+            Style = (Style)Application.Current.Resources["AveliaRepoGroupNameStyle"],
         };
         Grid.SetColumn(nameText, 0);
         content.Children.Add(nameText);
@@ -303,9 +338,7 @@ public sealed partial class MainWindow : Window
             var countText = new TextBlock
             {
                 Text = group.Workspaces.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
-                FontSize = 11,
-                VerticalAlignment = VerticalAlignment.Center,
-                Foreground = (Brush)Application.Current.Resources["AveliaTextTertiaryBrush"],
+                Style = (Style)Application.Current.Resources["AveliaRepoGroupCountStyle"],
             };
             Grid.SetColumn(countText, 1);
             content.Children.Add(countText);
@@ -340,11 +373,7 @@ public sealed partial class MainWindow : Window
         switch (section)
         {
             case NavRailSection.Home:
-                ContentFrame.Navigate(typeof(PlaceholderPage),
-                    new PlaceholderPageArgs(
-                        "Workspace",
-                        "The 3-pane workspace view (chat + PR + terminal) ships in Chunks 3 and 4."),
-                    new DrillInNavigationTransitionInfo());
+                NavigateToActiveWorkspace();
                 break;
             case NavRailSection.Inbox:
                 ContentFrame.Navigate(typeof(PlaceholderPage),
