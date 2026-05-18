@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Avelia.Shell.Windows.Controls.RecentRepoRow"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:conv="using:Avelia.Shell.Windows.Converters"
+>
+    <UserControl.Resources>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+    </UserControl.Resources>
+
+    <!--
+        Row in the Add Repository dialog's "Recent repositories" list. Folder
+        icon + repo name (body strong) + full path (caption secondary) +
+        optional workspace-count chip aligned right. Bindings are declarative
+        via x:Bind on the Item DP, OneWay so ListView container recycling
+        re-resolves on rebind — same pattern as WorkspaceTreeItem.
+    -->
+    <Grid Padding="10,8" ColumnSpacing="10" VerticalAlignment="Center">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <FontIcon
+            Grid.Column="0"
+            FontFamily="Segoe Fluent Icons"
+            FontSize="14"
+            Foreground="{ThemeResource AveliaTextSecondaryBrush}"
+            Glyph="&#xE8B7;"
+            VerticalAlignment="Center"
+        />
+
+        <StackPanel Grid.Column="1" Spacing="2" VerticalAlignment="Center">
+            <TextBlock
+                Style="{StaticResource AveliaBodyStrongTextStyle}"
+                Text="{x:Bind Item.Name, Mode=OneWay, FallbackValue=''}"
+            />
+            <TextBlock
+                Style="{StaticResource AveliaMonoCaptionTextStyle}"
+                TextTrimming="CharacterEllipsis"
+                Text="{x:Bind Item.Path, Mode=OneWay, FallbackValue=''}"
+            />
+        </StackPanel>
+
+        <Border
+            Grid.Column="2"
+            Style="{StaticResource AveliaChipBorderStyle}"
+            Visibility="{x:Bind Item.HasCount, Mode=OneWay, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}"
+        >
+            <TextBlock
+                Style="{StaticResource AveliaChipTextStyle}"
+                Text="{x:Bind Item.WorkspaceCount, Mode=OneWay, FallbackValue=''}"
+            />
+        </Border>
+    </Grid>
+</UserControl>

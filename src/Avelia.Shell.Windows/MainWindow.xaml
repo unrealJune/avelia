@@ -65,7 +65,7 @@
                 </TabView.TabItemTemplate>
             </TabView>
 
-            <!-- Title-bar tools (search, theme toggle). Clickable; sit above the drag region. -->
+            <!-- Title-bar tools (add repo, search, theme toggle). Clickable; sit above the drag region. -->
             <StackPanel
                 Grid.Column="2"
                 Orientation="Horizontal"
@@ -73,6 +73,18 @@
                 Padding="6,0"
                 VerticalAlignment="Center"
             >
+                <Button
+                    x:Name="AddRepoButton"
+                    AutomationProperties.Name="Add repository"
+                    AutomationProperties.AutomationId="AddRepoButton"
+                    Style="{StaticResource AveliaIconButtonStyle}"
+                    Width="36"
+                    Height="32"
+                    Command="{x:Bind ViewModel.OpenAddRepoDialogCommand}"
+                    ToolTipService.ToolTip="Add repository"
+                >
+                    <FontIcon FontFamily="Segoe Fluent Icons" FontSize="14" Glyph="&#xE710;" />
+                </Button>
                 <Button
                     AutomationProperties.Name="Search"
                     Style="{StaticResource AveliaIconButtonStyle}"
@@ -114,6 +126,7 @@
             PaneClosing="OnRailPaneClosing"
             PaneOpening="OnRailPaneOpening"
             SelectionChanged="OnRailSelectionChanged"
+            ItemInvoked="OnRailItemInvoked"
         >
             <NavigationView.MenuItems>
                 <NavigationViewItem
@@ -150,6 +163,17 @@
                 </NavigationViewItem>
 
                 <NavigationViewItemHeader Content="Repositories" />
+                <NavigationViewItem
+                    x:Name="AddRepoNavItem"
+                    AutomationProperties.AutomationId="AddRepoNavItem"
+                    Content="Add repository"
+                    Tag="AddRepo"
+                    SelectsOnInvoked="False"
+                >
+                    <NavigationViewItem.Icon>
+                        <FontIcon FontFamily="Segoe Fluent Icons" Glyph="&#xE710;" />
+                    </NavigationViewItem.Icon>
+                </NavigationViewItem>
                 <!-- Repo groups are added at runtime in code-behind from
                      ViewModel.RepoGroups (NavigationView doesn't accept
                      ItemsSource for nested menu items in x:Bind directly). -->

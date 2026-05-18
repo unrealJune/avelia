@@ -65,12 +65,46 @@ public partial class MainViewModel : ObservableObject
 
     public ObservableCollection<RepoGroupViewModel> RepoGroups { get; } = new();
 
+    /// <summary>
+    /// Raised when the user clicks the title-bar "+" button or the rail
+    /// "Add repository" item. The host (MainWindow) subscribes to open the
+    /// <c>AddRepositoryDialog</c>; the VM stays free of WinUI types so it
+    /// link-compiles into the net10.0 test project.
+    /// </summary>
+    public event EventHandler? OpenAddRepoDialogRequested;
+
     // -------- Commands --------
 
     [RelayCommand]
     private void ToggleRail()
     {
         IsRailExpanded = !IsRailExpanded;
+    }
+
+    [RelayCommand]
+    private void OpenAddRepoDialog()
+    {
+        OpenAddRepoDialogRequested?.Invoke(this, EventArgs.Empty);
+    }
+
+    /// <summary>
+    /// Append a freshly-added repository to the rail tree. Called by the host
+    /// after <see cref="AddRepositoryViewModel.RepositoryAdded"/> fires. We
+    /// don't re-pull the whole list from the service to avoid losing the
+    /// per-group expansion state.
+    /// </summary>
+    public void AppendRepository(Repository repo)
+    {
+        // Skip duplicates — the service uses the typed ID and we want the
+        // rail to remain idempotent under double-fires (e.g. test harness).
+        foreach (var existing in RepoGroups)
+        {
+            if (existing.Id.Equals(repo.Id))
+            {
+                return;
+            }
+        }
+        RepoGroups.Add(RepoGroupViewModel.FromRepo(repo));
     }
 
     [RelayCommand]

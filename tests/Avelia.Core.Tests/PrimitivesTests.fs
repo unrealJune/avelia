@@ -1,6 +1,8 @@
 module Avelia.Core.Tests.PrimitivesTests
 
 open Xunit
+open FsCheck
+open FsCheck.Xunit
 open Avelia.Core.Abstractions
 
 // ----- BranchName -----
@@ -87,6 +89,19 @@ let ``RepoPath accepts absolute path`` () =
     match RepoPath.TryCreate "C:/work/conductor" with
     | Ok _ -> ()
     | Error msg -> Assert.Fail $"Expected success, got: {msg}"
+
+[<Property>]
+let ``RepoPath rejects any path with a '..' segment`` (prefix: NonEmptyString) (suffix: NonEmptyString) =
+    // Sanitize: drop slashes from the random affixes so the only ".."
+    // segment in the constructed path is the one we're testing.
+    let strip (s: string) = s.Replace('/', 'x').Replace('\\', 'x')
+    let p = strip prefix.Get
+    let s = strip suffix.Get
+    let path = p + "/../" + s
+
+    match RepoPath.TryCreate path with
+    | Error _ -> true
+    | Ok _ -> false
 
 // ----- RelativePath -----
 

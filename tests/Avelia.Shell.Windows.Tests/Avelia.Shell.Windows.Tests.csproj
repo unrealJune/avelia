@@ -99,5 +99,9 @@
             Include="..\..\src\Avelia.Shell.Windows\ViewModels\ProfileSubpageViewModel.cs"
             Link="ViewModels\ProfileSubpageViewModel.cs"
         />
+        <Compile
+            Include="..\..\src\Avelia.Shell.Windows\ViewModels\AddRepositoryViewModel.cs"
+            Link="ViewModels\AddRepositoryViewModel.cs"
+        />
     </ItemGroup>
 </Project>
