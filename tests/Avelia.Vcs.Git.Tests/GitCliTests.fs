@@ -2,7 +2,10 @@ module Avelia.Vcs.Git.Tests.GitCliTests
 
 open System
 open System.IO
+open System.Net
+open System.Net.Sockets
 open System.Threading
+open System.Threading.Tasks
 open Xunit
 open Avelia.Core.Abstractions
 open Avelia.Vcs.Git
@@ -21,6 +24,51 @@ let private assertSuccess (label: string) (r: OperationResult<'T>) : 'T =
 let private siblingPath (repoPath: string) (name: string) : RepoPath =
     let parent = Path.GetFullPath(Path.Combine(repoPath, ".."))
     RepoPath.Create(Path.Combine(parent, name))
+
+/// Localhost TCP listener that accepts connections but never sends a
+/// response. Used to make the cancellation test deterministic — git
+/// completes the TCP handshake against <c>127.0.0.1</c>, sends its HTTP
+/// request, then blocks forever waiting for the reply. No network
+/// assumptions: works offline, in CI, behind a VPN.
+type private HangingHttpServer() =
+    let listener = new TcpListener(IPAddress.Loopback, 0)
+    do listener.Start()
+    let port = (listener.LocalEndpoint :?> IPEndPoint).Port
+
+    // Keep accepted clients alive so the kernel doesn't close their sockets
+    // when their TcpClient handle gets GC'd before the test finishes.
+    let accepted = ResizeArray<TcpClient>()
+    let acceptCts = new CancellationTokenSource()
+
+    let _ =
+        task {
+            try
+                while not acceptCts.IsCancellationRequested do
+                    let! client = listener.AcceptTcpClientAsync acceptCts.Token
+                    lock accepted (fun () -> accepted.Add client)
+            with _ ->
+                ()
+        }
+
+    member _.Url = sprintf "http://127.0.0.1:%d/repo" port
+
+    interface IDisposable with
+        member _.Dispose() =
+            try
+                acceptCts.Cancel()
+            with _ ->
+                ()
+
+            try
+                listener.Stop()
+            with _ ->
+                ()
+
+            for c in accepted do
+                try
+                    (c :> IDisposable).Dispose()
+                with _ ->
+                    ()
 
 [<Trait("Category", "Integration")>]
 [<Fact>]
@@ -139,18 +187,19 @@ let ``Fetch against a nonexistent remote returns External error`` () =
 [<Fact>]
 let ``Cancellation kills the subprocess and surfaces OperationCanceledException`` () =
     use repo = new TempRepo()
-    // Fetch from a black-hole address that's guaranteed to hang in connect.
-    // Using a private-range IP keeps the test independent of internet access.
-    let bogusUrl = "https://10.255.255.1/no.git"
+    // Point git at a localhost TCP server that completes the handshake but
+    // never sends a response — the fetch blocks indefinitely waiting for
+    // HTTP. Cancellation must kill the process before the test ends.
+    use server = new HangingHttpServer()
 
     let setRemote =
-        (GitProcess.runAsync repo.Path [| "remote"; "add"; "slow"; bogusUrl |] CancellationToken.None).Result
+        (GitProcess.runAsync repo.Path [| "remote"; "add"; "slow"; server.Url |] CancellationToken.None).Result
 
     Assert.Equal(0, setRemote.ExitCode)
 
     let cli = GitCli() :> IGitOperations
     use cts = new CancellationTokenSource()
-    cts.CancelAfter(TimeSpan.FromMilliseconds 250.0)
+    cts.CancelAfter(TimeSpan.FromMilliseconds 500.0)
 
     let mutable cancelled = false
 
