@@ -63,7 +63,8 @@ public partial class DiffFileViewModel : ObservableObject
         // breaks compilation here until the badge mapping is updated.
         kind.Match<string>(
             onModified: () => "M",
-            onAdded:    () => "A",
-            onDeleted:  () => "D",
-            onRenamed:  _ => "R");
+            onAdded: () => "A",
+            onDeleted: () => "D",
+            onRenamed: _ => "R"
+        );
 }

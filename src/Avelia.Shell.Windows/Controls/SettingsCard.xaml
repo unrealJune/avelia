@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Avelia.Shell.Windows.Controls.SettingsCard"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+>
+    <!--
+        Settings card — leading Fluent icon, title + description stack, trailing
+        action slot. Matches .settings-card in the design's styles-app.css.
+        Brushes resolve via ThemeResource so the card tracks Light↔Dark.
+    -->
+    <Border
+        Background="{ThemeResource AveliaCardBackgroundBrush}"
+        BorderBrush="{ThemeResource AveliaSurfaceStrokeBrush}"
+        BorderThickness="1"
+        CornerRadius="{StaticResource AveliaCornerRadiusMedium}"
+        Padding="16,14"
+    >
+        <Grid ColumnSpacing="14" VerticalAlignment="Center">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="Auto" />
+            </Grid.ColumnDefinitions>
+
+            <FontIcon
+                x:Name="IconHost"
+                Grid.Column="0"
+                FontFamily="Segoe Fluent Icons"
+                FontSize="16"
+                Foreground="{ThemeResource AveliaTextSecondaryBrush}"
+                VerticalAlignment="Top"
+                Margin="0,2,0,0"
+                Glyph="{x:Bind Glyph, Mode=OneWay, FallbackValue=''}"
+            />
+
+            <StackPanel Grid.Column="1" Spacing="2">
+                <TextBlock
+                    Style="{StaticResource AveliaBodyStrongTextStyle}"
+                    Text="{x:Bind Title, Mode=OneWay, FallbackValue=''}"
+                />
+                <TextBlock
+                    Style="{StaticResource AveliaCaptionTextStyle}"
+                    Foreground="{ThemeResource AveliaTextSecondaryBrush}"
+                    TextWrapping="Wrap"
+                    Text="{x:Bind Description, Mode=OneWay, FallbackValue=''}"
+                />
+            </StackPanel>
+
+            <ContentPresenter
+                Grid.Column="2"
+                VerticalAlignment="Center"
+                Content="{x:Bind Action, Mode=OneWay, FallbackValue={x:Null}}"
+            />
+        </Grid>
+    </Border>
+</UserControl>

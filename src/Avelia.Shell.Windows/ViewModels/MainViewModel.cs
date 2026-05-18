@@ -30,7 +30,8 @@ public partial class MainViewModel : ObservableObject
     /// Builds a fresh stub service graph and delegates to the main ctor.
     /// Production callers pass the shared <see cref="AveliaServices"/> bundle.
     /// </summary>
-    public MainViewModel() : this(Composition.buildStubServices()) { }
+    public MainViewModel()
+        : this(Composition.buildStubServices()) { }
 
     public MainViewModel(AveliaServices services)
     {
@@ -113,9 +114,7 @@ public partial class MainViewModel : ObservableObject
         OpenTabs.RemoveAt(idx);
         if (wasActive)
         {
-            ActiveTab = OpenTabs.Count == 0
-                ? null
-                : OpenTabs[Math.Max(0, idx - 1)];
+            ActiveTab = OpenTabs.Count == 0 ? null : OpenTabs[Math.Max(0, idx - 1)];
         }
     }
 

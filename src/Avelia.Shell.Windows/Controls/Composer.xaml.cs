@@ -21,26 +21,26 @@ public sealed partial class Composer : UserControl
         InitializeComponent();
     }
 
-    public static readonly DependencyProperty TextProperty =
-        DependencyProperty.Register(
-            nameof(Text),
-            typeof(string),
-            typeof(Composer),
-            new PropertyMetadata(string.Empty));
+    public static readonly DependencyProperty TextProperty = DependencyProperty.Register(
+        nameof(Text),
+        typeof(string),
+        typeof(Composer),
+        new PropertyMetadata(string.Empty)
+    );
 
-    public static readonly DependencyProperty SendCommandProperty =
-        DependencyProperty.Register(
-            nameof(SendCommand),
-            typeof(ICommand),
-            typeof(Composer),
-            new PropertyMetadata(null));
+    public static readonly DependencyProperty SendCommandProperty = DependencyProperty.Register(
+        nameof(SendCommand),
+        typeof(ICommand),
+        typeof(Composer),
+        new PropertyMetadata(null)
+    );
 
-    public static readonly DependencyProperty ModelNameProperty =
-        DependencyProperty.Register(
-            nameof(ModelName),
-            typeof(string),
-            typeof(Composer),
-            new PropertyMetadata("Sonnet 4.5"));
+    public static readonly DependencyProperty ModelNameProperty = DependencyProperty.Register(
+        nameof(ModelName),
+        typeof(string),
+        typeof(Composer),
+        new PropertyMetadata("Sonnet 4.5")
+    );
 
     public string Text
     {

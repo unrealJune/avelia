@@ -16,12 +16,12 @@ public sealed partial class PrHeader : UserControl
         InitializeComponent();
     }
 
-    public static readonly DependencyProperty ViewModelProperty =
-        DependencyProperty.Register(
-            nameof(ViewModel),
-            typeof(PrPaneViewModel),
-            typeof(PrHeader),
-            new PropertyMetadata(null));
+    public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register(
+        nameof(ViewModel),
+        typeof(PrPaneViewModel),
+        typeof(PrHeader),
+        new PropertyMetadata(null)
+    );
 
     public PrPaneViewModel? ViewModel
     {

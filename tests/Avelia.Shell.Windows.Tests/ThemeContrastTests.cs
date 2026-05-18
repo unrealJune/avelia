@@ -39,28 +39,23 @@ public class ThemeContrastTests
         from pair in new[]
         {
             // ---- Primary body text on the canonical surfaces ----
-            ("AveliaTextPrimaryBrush",   "AveliaMicaBaseBrush",          WcagAaNormalText),
-            ("AveliaTextPrimaryBrush",   "AveliaCardBackgroundBrush",    WcagAaNormalText),
-
+            ("AveliaTextPrimaryBrush", "AveliaMicaBaseBrush", WcagAaNormalText),
+            ("AveliaTextPrimaryBrush", "AveliaCardBackgroundBrush", WcagAaNormalText),
             // ---- Secondary text — workspace names, captions ----
-            ("AveliaTextSecondaryBrush", "AveliaMicaBaseBrush",          WcagAaNormalText),
-            ("AveliaTextSecondaryBrush", "AveliaCardBackgroundBrush",    WcagAaNormalText),
-
+            ("AveliaTextSecondaryBrush", "AveliaMicaBaseBrush", WcagAaNormalText),
+            ("AveliaTextSecondaryBrush", "AveliaCardBackgroundBrush", WcagAaNormalText),
             // ---- Tertiary — counts, timestamps. Body-text-sized in places,
             //      so we still require AA-normal rather than the large-text
             //      relaxation. If a future redesign drops these to caption
             //      sizes only, switch the minimum to WcagAaLargeText. ----
-            ("AveliaTextTertiaryBrush",  "AveliaMicaBaseBrush",          WcagAaLargeText),
-            ("AveliaTextTertiaryBrush",  "AveliaCardBackgroundBrush",    WcagAaLargeText),
-
+            ("AveliaTextTertiaryBrush", "AveliaMicaBaseBrush", WcagAaLargeText),
+            ("AveliaTextTertiaryBrush", "AveliaCardBackgroundBrush", WcagAaLargeText),
             // ---- Inline code-ref accent — the bug the user reported ----
-            ("AveliaAccentTextBrush",    "AveliaMicaBaseBrush",          WcagAaNormalText),
-            ("AveliaAccentTextBrush",    "AveliaCardBackgroundBrush",    WcagAaNormalText),
-
+            ("AveliaAccentTextBrush", "AveliaMicaBaseBrush", WcagAaNormalText),
+            ("AveliaAccentTextBrush", "AveliaCardBackgroundBrush", WcagAaNormalText),
             // ---- Status text on tinted chip backgrounds ----
-            ("AveliaSuccessBrush",       "AveliaSuccessBgBrush",         WcagAaLargeText),
-            ("AveliaDangerBrush",        "AveliaDangerBgBrush",          WcagAaLargeText),
-
+            ("AveliaSuccessBrush", "AveliaSuccessBgBrush", WcagAaLargeText),
+            ("AveliaDangerBrush", "AveliaDangerBgBrush", WcagAaLargeText),
             // ---- Neutral chip text on the chip's own subtle fill ----
             ("AveliaTextSecondaryBrush", "AveliaSubtleFillSecondaryBrush", WcagAaNormalText),
         }
@@ -68,7 +63,12 @@ public class ThemeContrastTests
 
     [Theory]
     [MemberData(nameof(TextOnSurfacePairs))]
-    public void TextBrush_OnSurface_MeetsWcagAa(string theme, string fgKey, string bgKey, double minRatio)
+    public void TextBrush_OnSurface_MeetsWcagAa(
+        string theme,
+        string fgKey,
+        string bgKey,
+        double minRatio
+    )
     {
         var fg = Tokens.Value.Resolve(theme, fgKey);
         var bg = Tokens.Value.Resolve(theme, bgKey);
@@ -82,8 +82,9 @@ public class ThemeContrastTests
 
         Assert.True(
             ratio >= minRatio,
-            $"{theme}: '{fgKey}' on '{bgKey}' contrast = {ratio:0.00} < {minRatio:0.00} " +
-            $"(fg={fg.Hex}, bg={bg.Hex}, visibleFg={ToHex(visibleFg)}, visibleBg={ToHex(visibleBg)})");
+            $"{theme}: '{fgKey}' on '{bgKey}' contrast = {ratio:0.00} < {minRatio:0.00} "
+                + $"(fg={fg.Hex}, bg={bg.Hex}, visibleFg={ToHex(visibleFg)}, visibleBg={ToHex(visibleBg)})"
+        );
     }
 
     [Fact]
@@ -108,7 +109,8 @@ public class ThemeContrastTests
             var light = Tokens.Value.Resolve("Light", key);
             Assert.True(
                 !ColorsEqual(dark, light),
-                $"'{key}' has identical Light and Default values ({dark.Hex}) — theme inversion missing?");
+                $"'{key}' has identical Light and Default values ({dark.Hex}) — theme inversion missing?"
+            );
         }
     }
 
@@ -123,7 +125,8 @@ public class ThemeContrastTests
         var lightAccent = Tokens.Value.Resolve("Light", "AveliaAccentTextBrush");
         Assert.True(
             RelativeLuminance(darkAccent) > RelativeLuminance(lightAccent),
-            $"Dark accent ({darkAccent.Hex}) should be brighter than Light accent ({lightAccent.Hex}).");
+            $"Dark accent ({darkAccent.Hex}) should be brighter than Light accent ({lightAccent.Hex})."
+        );
     }
 
     // ------------------------------------------------------------------
@@ -141,7 +144,8 @@ public class ThemeContrastTests
             src.R * src.A + dst.R * (1 - src.A),
             src.G * src.A + dst.G * (1 - src.A),
             src.B * src.A + dst.B * (1 - src.A),
-            1.0);
+            1.0
+        );
 
     private static string ToHex(Rgba c) =>
         $"#{(int)Math.Round(c.R * 255):X2}{(int)Math.Round(c.G * 255):X2}{(int)Math.Round(c.B * 255):X2}";
@@ -163,10 +167,10 @@ public class ThemeContrastTests
     }
 
     private static bool ColorsEqual(Rgba a, Rgba b) =>
-        Math.Abs(a.R - b.R) < 1e-6 &&
-        Math.Abs(a.G - b.G) < 1e-6 &&
-        Math.Abs(a.B - b.B) < 1e-6 &&
-        Math.Abs(a.A - b.A) < 1e-6;
+        Math.Abs(a.R - b.R) < 1e-6
+        && Math.Abs(a.G - b.G) < 1e-6
+        && Math.Abs(a.B - b.B) < 1e-6
+        && Math.Abs(a.A - b.A) < 1e-6;
 
     // ------------------------------------------------------------------
     //  Tokens.xaml parsing
@@ -213,7 +217,9 @@ public class ThemeContrastTests
         }
         if (dir is null)
         {
-            throw new InvalidOperationException("Couldn't find repo root (Avelia.sln) above test bin directory.");
+            throw new InvalidOperationException(
+                "Couldn't find repo root (Avelia.sln) above test bin directory."
+            );
         }
         return Path.Combine(dir.FullName, "src", "Avelia.Shell.Windows", "Themes", "Tokens.xaml");
     }
@@ -225,7 +231,10 @@ public class ThemeContrastTests
             throw new FormatException($"Expected '#'-prefixed hex color, got '{hex}'.");
         }
         var s = hex[1..];
-        byte a, r, g, b;
+        byte a,
+            r,
+            g,
+            b;
         switch (s.Length)
         {
             case 6: // #RRGGBB
@@ -256,11 +265,15 @@ public class ThemeContrastTests
         {
             if (!Themes.TryGetValue(theme, out var dict))
             {
-                throw new KeyNotFoundException($"Theme dictionary '{theme}' not found in Tokens.xaml.");
+                throw new KeyNotFoundException(
+                    $"Theme dictionary '{theme}' not found in Tokens.xaml."
+                );
             }
             if (!dict.TryGetValue(brushKey, out var color))
             {
-                throw new KeyNotFoundException($"Brush '{brushKey}' not defined in theme '{theme}'.");
+                throw new KeyNotFoundException(
+                    $"Brush '{brushKey}' not defined in theme '{theme}'."
+                );
             }
             return color;
         }

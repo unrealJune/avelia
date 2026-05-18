@@ -36,12 +36,7 @@
             Text="{x:Bind Item.Branch, Mode=OneWay, FallbackValue=''}"
         />
 
-        <StackPanel
-            Grid.Column="2"
-            Orientation="Horizontal"
-            Spacing="4"
-            VerticalAlignment="Center"
-        >
+        <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
             <Border
                 Style="{StaticResource AveliaChipBorderStyle}"
                 Background="{ThemeResource AveliaSuccessBgBrush}"

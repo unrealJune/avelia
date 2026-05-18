@@ -15,12 +15,12 @@ public sealed partial class WorkspaceTreeItem : UserControl
         InitializeComponent();
     }
 
-    public static readonly DependencyProperty ItemProperty =
-        DependencyProperty.Register(
-            nameof(Item),
-            typeof(WorkspaceItemViewModel),
-            typeof(WorkspaceTreeItem),
-            new PropertyMetadata(null));
+    public static readonly DependencyProperty ItemProperty = DependencyProperty.Register(
+        nameof(Item),
+        typeof(WorkspaceItemViewModel),
+        typeof(WorkspaceTreeItem),
+        new PropertyMetadata(null)
+    );
 
     public WorkspaceItemViewModel? Item
     {

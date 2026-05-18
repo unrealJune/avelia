@@ -35,12 +35,13 @@ public abstract class MessageViewModel
     /// </summary>
     public static MessageViewModel FromEvent(MessageEvent ev) =>
         ev.Match<MessageViewModel>(
-            onUser:     UserMessageViewModel.From,
-            onAgent:    AgentMessageViewModel.From,
-            onError:    AgentErrorViewModel.From,
-            onTool:     ToolBatchViewModel.From,
-            onChange:   ChangeNoteViewModel.From,
-            onMarkdown: AgentMarkdownViewModel.From);
+            onUser: UserMessageViewModel.From,
+            onAgent: AgentMessageViewModel.From,
+            onError: AgentErrorViewModel.From,
+            onTool: ToolBatchViewModel.From,
+            onChange: ChangeNoteViewModel.From,
+            onMarkdown: AgentMarkdownViewModel.From
+        );
 }
 
 // ============================================================================
@@ -53,7 +54,12 @@ public abstract class MessageViewModel
 /// </summary>
 public sealed class UserMessageViewModel : MessageViewModel
 {
-    public UserMessageViewModel(Guid id, DateTimeOffset timestamp, string text, IReadOnlyList<string> refs)
+    public UserMessageViewModel(
+        Guid id,
+        DateTimeOffset timestamp,
+        string text,
+        IReadOnlyList<string> refs
+    )
         : base(id, timestamp)
     {
         Text = text;
@@ -106,13 +112,15 @@ public sealed class ToolBatchViewModel : MessageViewModel
         DateTimeOffset timestamp,
         int toolCount,
         int messageCount,
-        IReadOnlyList<string> toolKinds)
+        IReadOnlyList<string> toolKinds
+    )
         : base(id, timestamp)
     {
         ToolCount = toolCount;
         MessageCount = messageCount;
         ToolKinds = toolKinds;
-        Summary = $"{toolCount} tool{(toolCount == 1 ? "" : "s")}, {messageCount} message{(messageCount == 1 ? "" : "s")}";
+        Summary =
+            $"{toolCount} tool{(toolCount == 1 ? "" : "s")}, {messageCount} message{(messageCount == 1 ? "" : "s")}";
     }
 
     public int ToolCount { get; }
@@ -141,7 +149,8 @@ public sealed class ChangeNoteViewModel : MessageViewModel
         string folder,
         string fileName,
         int add,
-        int del)
+        int del
+    )
         : base(id, timestamp)
     {
         FilePath = filePath;
@@ -169,7 +178,8 @@ public sealed class ChangeNoteViewModel : MessageViewModel
             folder: m.File.Folder,
             fileName: m.File.FileName,
             add: m.Add,
-            del: m.Del);
+            del: m.Del
+        );
 }
 
 /// <summary>
@@ -183,7 +193,8 @@ public sealed class AgentMarkdownViewModel : MessageViewModel
         DateTimeOffset timestamp,
         string heading,
         string body,
-        IReadOnlyList<AgentMarkdownListItem> items)
+        IReadOnlyList<AgentMarkdownListItem> items
+    )
         : base(id, timestamp)
     {
         Heading = heading;
@@ -201,9 +212,7 @@ public sealed class AgentMarkdownViewModel : MessageViewModel
 
     internal static MessageViewModel From(AgentMarkdown m)
     {
-        var items = m.Items
-            .Select(i => new AgentMarkdownListItem(i.Bold, i.Detail))
-            .ToList();
+        var items = m.Items.Select(i => new AgentMarkdownListItem(i.Bold, i.Detail)).ToList();
         return new AgentMarkdownViewModel(m.Id.Value, m.Timestamp, m.Heading, m.Body, items);
     }
 }

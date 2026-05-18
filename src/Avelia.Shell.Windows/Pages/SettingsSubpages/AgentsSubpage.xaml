@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Avelia.Shell.Windows.Pages.SettingsSubpages.AgentsSubpage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Avelia.Shell.Windows.Controls"
+    xmlns:vm="using:Avelia.Shell.Windows.ViewModels"
+>
+    <ScrollViewer
+        Padding="4,4,4,16"
+        HorizontalScrollMode="Disabled"
+        HorizontalScrollBarVisibility="Disabled"
+        VerticalScrollBarVisibility="Auto"
+    >
+        <StackPanel Spacing="12">
+            <!-- Default model picker — one card with three radio cards. -->
+            <Border
+                Background="{ThemeResource AveliaCardBackgroundBrush}"
+                BorderBrush="{ThemeResource AveliaSurfaceStrokeBrush}"
+                BorderThickness="1"
+                CornerRadius="{StaticResource AveliaCornerRadiusMedium}"
+                Padding="16,14"
+            >
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock
+                            Style="{StaticResource AveliaBodyStrongTextStyle}"
+                            Text="Default model"
+                        />
+                        <TextBlock
+                            Style="{StaticResource AveliaCaptionTextStyle}"
+                            Foreground="{ThemeResource AveliaTextSecondaryBrush}"
+                            Text="Initial pick for new conversations. Override per-conversation in the composer."
+                            TextWrapping="Wrap"
+                        />
+                    </StackPanel>
+
+                    <ItemsControl
+                        x:Name="ModelList"
+                        AutomationProperties.AutomationId="AgentsModelList"
+                        ItemsSource="{x:Bind ViewModel.Models, Mode=OneWay}"
+                    >
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Spacing="8" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:AgentModelOption">
+                                <RadioButton
+                                    IsChecked="{x:Bind IsSelected, Mode=TwoWay}"
+                                    GroupName="DefaultModel"
+                                    HorizontalAlignment="Stretch"
+                                    HorizontalContentAlignment="Stretch"
+                                    Padding="8,4"
+                                >
+                                    <StackPanel Spacing="2">
+                                        <TextBlock
+                                            Style="{StaticResource AveliaBodyStrongTextStyle}"
+                                            Text="{x:Bind DisplayName, Mode=OneTime}"
+                                        />
+                                        <TextBlock
+                                            Style="{StaticResource AveliaCaptionTextStyle}"
+                                            Foreground="{ThemeResource AveliaTextSecondaryBrush}"
+                                            Text="{x:Bind Description, Mode=OneTime}"
+                                            TextWrapping="Wrap"
+                                        />
+                                    </StackPanel>
+                                </RadioButton>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <!-- Extended thinking toggle -->
+            <controls:SettingsCard
+                AutomationProperties.AutomationId="ExtendedThinkingCard"
+                Glyph="&#xEC4A;"
+                Title="Extended thinking"
+                Description="Lets the agent reason longer before responding. Slower but more deliberate."
+            >
+                <controls:SettingsCard.Action>
+                    <ToggleSwitch
+                        AutomationProperties.AutomationId="ExtendedThinkingToggle"
+                        IsOn="{x:Bind ViewModel.ExtendedThinking, Mode=TwoWay}"
+                        OnContent=""
+                        OffContent=""
+                    />
+                </controls:SettingsCard.Action>
+            </controls:SettingsCard>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

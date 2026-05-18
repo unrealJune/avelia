@@ -123,7 +123,9 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
 
         await PrPane.LoadAsync(id, ct).ConfigureAwait(true);
 
-        var result = await _services.Conversations.GetForWorkspaceAsync(id, ct).ConfigureAwait(true);
+        var result = await _services
+            .Conversations.GetForWorkspaceAsync(id, ct)
+            .ConfigureAwait(true);
         if (!result.IsSuccess)
         {
             Title = string.Empty;
@@ -144,7 +146,8 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
         var thread = new ChatThreadViewModel(
             title: "Main",
             icon: "",
-            messageCount: conversation.Messages.Length);
+            messageCount: conversation.Messages.Length
+        );
         Threads.Add(thread);
         ActiveThread = thread;
 
@@ -172,7 +175,8 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
 
     // -------- Commands --------
 
-    private bool CanSendMessage() => !string.IsNullOrWhiteSpace(ComposerText) && _conversationId is not null;
+    private bool CanSendMessage() =>
+        !string.IsNullOrWhiteSpace(ComposerText) && _conversationId is not null;
 
     [RelayCommand(CanExecute = nameof(CanSendMessage))]
     private async Task SendMessage(CancellationToken ct)
@@ -188,8 +192,8 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
         }
         // Clear composer optimistically; ObserveMessages echoes the new event.
         ComposerText = string.Empty;
-        await _services.Conversations
-            .PostUserMessageAsync(_conversationId, text, Array.Empty<string>(), ct)
+        await _services
+            .Conversations.PostUserMessageAsync(_conversationId, text, Array.Empty<string>(), ct)
             .ConfigureAwait(false);
     }
 
@@ -217,7 +221,11 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
     {
         try
         {
-            await foreach (var ev in _services.Conversations.ObserveMessages(conversationId, token).ConfigureAwait(false))
+            await foreach (
+                var ev in _services
+                    .Conversations.ObserveMessages(conversationId, token)
+                    .ConfigureAwait(false)
+            )
             {
                 if (token.IsCancellationRequested)
                 {
@@ -236,7 +244,9 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
             // Anything else — log so the unobserved-task GC finalizer
             // doesn't fail-fast the process. Real backends (Chunk 10)
             // will surface network / auth errors here.
-            System.Diagnostics.Debug.WriteLine($"[WorkspaceViewModel] ObserveMessages failed: {ex}");
+            System.Diagnostics.Debug.WriteLine(
+                $"[WorkspaceViewModel] ObserveMessages failed: {ex}"
+            );
         }
     }
 
@@ -245,7 +255,8 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
             sonnet45: () => "Sonnet 4.5",
             opus41: () => "Opus 4.1",
             haiku45: () => "Haiku 4.5",
-            custom: name => name);
+            custom: name => name
+        );
 
     private async Task StopObservingAsync()
     {

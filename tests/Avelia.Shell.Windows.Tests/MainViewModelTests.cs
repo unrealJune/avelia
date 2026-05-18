@@ -75,8 +75,8 @@ public class MainViewModelTests
         var initialCount = vm.OpenTabs.Count;
 
         // Find a workspace ID that's not in the open tabs yet.
-        var unopenedId = DesignData.workspaces
-            .First(w => vm.OpenTabs.All(t => !t.Id.Equals(w.Id)))
+        var unopenedId = DesignData
+            .workspaces.First(w => vm.OpenTabs.All(t => !t.Id.Equals(w.Id)))
             .Id;
 
         await vm.OpenWorkspaceCommand.ExecuteAsync(unopenedId);
@@ -93,8 +93,9 @@ public class MainViewModelTests
         await vm.InitializeAsync();
 
         // Open a second workspace so we have something to fall back to.
-        var secondWorkspace = DesignData.workspaces
-            .First(w => vm.OpenTabs.All(t => !t.Id.Equals(w.Id)));
+        var secondWorkspace = DesignData.workspaces.First(w =>
+            vm.OpenTabs.All(t => !t.Id.Equals(w.Id))
+        );
         await vm.OpenWorkspaceCommand.ExecuteAsync(secondWorkspace.Id);
 
         // Active is now the second tab (most recently opened).

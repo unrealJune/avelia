@@ -11,7 +11,11 @@
     -->
 
     <!-- Accent button — pure accent fill, on-accent text. Inherits sizing from AccentButtonStyle. -->
-    <Style x:Key="AveliaAccentButtonStyle" TargetType="Button" BasedOn="{StaticResource AccentButtonStyle}">
+    <Style
+        x:Key="AveliaAccentButtonStyle"
+        TargetType="Button"
+        BasedOn="{StaticResource AccentButtonStyle}"
+    >
         <Setter Property="Background" Value="{ThemeResource AveliaAccentDefaultBrush}" />
         <Setter Property="Foreground" Value="{ThemeResource AveliaTextOnAccentBrush}" />
         <Setter Property="BorderBrush" Value="{ThemeResource AveliaAccentSecondaryBrush}" />
@@ -34,7 +38,11 @@
     </Style>
 
     <!-- Icon button (32×32) -->
-    <Style x:Key="AveliaIconButtonStyle" TargetType="Button" BasedOn="{StaticResource AveliaSubtleButtonStyle}">
+    <Style
+        x:Key="AveliaIconButtonStyle"
+        TargetType="Button"
+        BasedOn="{StaticResource AveliaSubtleButtonStyle}"
+    >
         <Setter Property="Width" Value="32" />
         <Setter Property="Height" Value="32" />
         <Setter Property="Padding" Value="6" />
@@ -42,7 +50,11 @@
     </Style>
 
     <!-- Icon button small (26×26) -->
-    <Style x:Key="AveliaIconSmallButtonStyle" TargetType="Button" BasedOn="{StaticResource AveliaSubtleButtonStyle}">
+    <Style
+        x:Key="AveliaIconSmallButtonStyle"
+        TargetType="Button"
+        BasedOn="{StaticResource AveliaSubtleButtonStyle}"
+    >
         <Setter Property="Width" Value="26" />
         <Setter Property="Height" Value="26" />
         <Setter Property="Padding" Value="4" />
@@ -160,18 +172,21 @@
     </Style>
 
     <!-- Transcript — non-interactive rows, no tab stop, no focus visual. -->
-    <Style x:Key="AveliaTranscriptItemContainerStyle"
-           TargetType="ListViewItem"
-           BasedOn="{StaticResource AveliaPlainListItemContainerStyle}">
+    <Style
+        x:Key="AveliaTranscriptItemContainerStyle"
+        TargetType="ListViewItem"
+        BasedOn="{StaticResource AveliaPlainListItemContainerStyle}"
+    >
         <Setter Property="IsTabStop" Value="False" />
         <Setter Property="UseSystemFocusVisuals" Value="False" />
     </Style>
 
     <!-- File change list — interactive rows; keep tab stop + focus visual. -->
-    <Style x:Key="AveliaPlainInteractiveListItemContainerStyle"
-           TargetType="ListViewItem"
-           BasedOn="{StaticResource AveliaPlainListItemContainerStyle}">
+    <Style
+        x:Key="AveliaPlainInteractiveListItemContainerStyle"
+        TargetType="ListViewItem"
+        BasedOn="{StaticResource AveliaPlainListItemContainerStyle}"
+    >
         <Setter Property="UseSystemFocusVisuals" Value="True" />
     </Style>
-
 </ResourceDictionary>

@@ -17,7 +17,8 @@ public partial class WorkspaceTabViewModel : ObservableObject
         WorkspaceStatus status,
         int add,
         int del,
-        string repoName)
+        string repoName
+    )
     {
         Id = id;
         _branch = branch;
@@ -56,5 +57,6 @@ public partial class WorkspaceTabViewModel : ObservableObject
             status: w.Status,
             add: w.DiffAdd,
             del: w.DiffDel,
-            repoName: repoName);
+            repoName: repoName
+        );
 }

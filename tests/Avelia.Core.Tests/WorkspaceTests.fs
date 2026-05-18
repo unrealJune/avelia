@@ -31,14 +31,10 @@ let ``Archived workspace can be un-archived`` () =
     Assert.True(Workspace.canTransition WorkspaceStatus.Archived WorkspaceStatus.Active)
 
 [<Property(Arbitrary = [| typeof<Generators.Arbs> |])>]
-let ``Workspace.canTransition is reflexive`` (s: WorkspaceStatus) =
-    Workspace.canTransition s s
+let ``Workspace.canTransition is reflexive`` (s: WorkspaceStatus) = Workspace.canTransition s s
 
 [<Property(Arbitrary = [| typeof<Generators.Arbs> |])>]
-let ``Workspace.canTransition is total (every pair has a defined answer)``
-    (a: WorkspaceStatus)
-    (b: WorkspaceStatus)
-    =
+let ``Workspace.canTransition is total (every pair has a defined answer)`` (a: WorkspaceStatus) (b: WorkspaceStatus) =
     // Just call the function — totality means no exception, no unhandled case.
     let _ = Workspace.canTransition a b
     true

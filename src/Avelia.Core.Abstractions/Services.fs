@@ -41,12 +41,11 @@ type IWorkspaceService =
 
 type IConversationService =
     abstract GetForWorkspaceAsync: workspaceId: WorkspaceId * CancellationToken -> Task<OperationResult<Conversation>>
+
     abstract PostUserMessageAsync:
-        conversationId: ConversationId
-        * text: string
-        * refs: string array
-        * CancellationToken
-        -> Task<OperationResult<UserMessage>>
+        conversationId: ConversationId * text: string * refs: string array * CancellationToken ->
+            Task<OperationResult<UserMessage>>
+
     /// Stream of events appended to the conversation *after* the subscription
     /// starts. Pairs with <c>GetForWorkspaceAsync</c> for the initial snapshot.
     /// The enumerator completes when the cancellation token is signalled.
@@ -64,7 +63,9 @@ type IConversationService =
 type IDiffService =
     abstract GetWorkspaceDiffAsync: workspaceId: WorkspaceId * CancellationToken -> Task<IReadOnlyList<DiffFile>>
     abstract GetPullRequestDiffAsync: prId: PullRequestId * CancellationToken -> Task<IReadOnlyList<DiffFile>>
-    abstract GetHunksAsync: prId: PullRequestId * file: RelativePath * CancellationToken -> Task<IReadOnlyList<DiffHunk>>
+
+    abstract GetHunksAsync:
+        prId: PullRequestId * file: RelativePath * CancellationToken -> Task<IReadOnlyList<DiffHunk>>
 
 type IPullRequestService =
     abstract GetForWorkspaceAsync: workspaceId: WorkspaceId * CancellationToken -> Task<OperationResult<PullRequest>>
@@ -75,3 +76,43 @@ type IRunService =
 
 type IInboxService =
     abstract ListAsync: CancellationToken -> Task<IReadOnlyList<InboxItem>>
+
+// ----------------------------------------------------------------------------
+//  Appearance / settings
+//
+//  Theme proper lives shell-side (WinUI ElementTheme is platform state, not
+//  domain state), but every other preference the design exposes — accent,
+//  density, transparency, default model, open-with-right-panel — is plain data
+//  and lives behind a typed service so future persistence (Chunk 10) can drop
+//  in without touching the shell.
+// ----------------------------------------------------------------------------
+
+/// Snapshot of every appearance preference. Immutable; the shell rebuilds the
+/// record on each setter call. Distinct from theme proper (Light/Dark/System)
+/// which the shell-side <c>ThemeService</c> owns.
+type AppearanceSettings =
+    {
+        Accent: AccentChoice
+        Density: Density
+        /// Mica / Acrylic backdrop on the main window. When <c>false</c> the shell
+        /// falls back to the opaque surface brush.
+        Transparency: bool
+        /// When opening a workspace, also show the right pane (PR/Files/Terminal).
+        /// Mirrors the design's Settings → Appearance toggle.
+        OpenWithRightPanel: bool
+        /// User's chosen default agent model. The composer can still override
+        /// per-conversation; this is the initial selection.
+        DefaultModel: ModelChoice
+        /// Extended-thinking toggle in Settings → Agents.
+        ExtendedThinking: bool
+    }
+
+type ISettingsService =
+    /// Current snapshot. Cheap to call; the stub returns the in-memory record.
+    abstract GetAsync: CancellationToken -> Task<AppearanceSettings>
+    abstract SetAccentAsync: accent: AccentChoice * CancellationToken -> Task
+    abstract SetDensityAsync: density: Density * CancellationToken -> Task
+    abstract SetTransparencyAsync: enabled: bool * CancellationToken -> Task
+    abstract SetOpenWithRightPanelAsync: enabled: bool * CancellationToken -> Task
+    abstract SetDefaultModelAsync: model: ModelChoice * CancellationToken -> Task
+    abstract SetExtendedThinkingAsync: enabled: bool * CancellationToken -> Task

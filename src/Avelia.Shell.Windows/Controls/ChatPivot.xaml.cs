@@ -17,12 +17,12 @@ public sealed partial class ChatPivot : UserControl
         InitializeComponent();
     }
 
-    public static readonly DependencyProperty ThreadsProperty =
-        DependencyProperty.Register(
-            nameof(Threads),
-            typeof(IReadOnlyList<ChatThreadViewModel>),
-            typeof(ChatPivot),
-            new PropertyMetadata(null));
+    public static readonly DependencyProperty ThreadsProperty = DependencyProperty.Register(
+        nameof(Threads),
+        typeof(IReadOnlyList<ChatThreadViewModel>),
+        typeof(ChatPivot),
+        new PropertyMetadata(null)
+    );
 
     public IReadOnlyList<ChatThreadViewModel>? Threads
     {
@@ -30,12 +30,12 @@ public sealed partial class ChatPivot : UserControl
         set => SetValue(ThreadsProperty, value);
     }
 
-    public static readonly DependencyProperty ActiveThreadProperty =
-        DependencyProperty.Register(
-            nameof(ActiveThread),
-            typeof(ChatThreadViewModel),
-            typeof(ChatPivot),
-            new PropertyMetadata(null));
+    public static readonly DependencyProperty ActiveThreadProperty = DependencyProperty.Register(
+        nameof(ActiveThread),
+        typeof(ChatThreadViewModel),
+        typeof(ChatPivot),
+        new PropertyMetadata(null)
+    );
 
     public ChatThreadViewModel? ActiveThread
     {

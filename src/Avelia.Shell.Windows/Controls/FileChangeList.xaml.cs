@@ -18,12 +18,12 @@ public sealed partial class FileChangeList : UserControl
         InitializeComponent();
     }
 
-    public static readonly DependencyProperty FilesProperty =
-        DependencyProperty.Register(
-            nameof(Files),
-            typeof(IEnumerable<DiffFileViewModel>),
-            typeof(FileChangeList),
-            new PropertyMetadata(null));
+    public static readonly DependencyProperty FilesProperty = DependencyProperty.Register(
+        nameof(Files),
+        typeof(IEnumerable<DiffFileViewModel>),
+        typeof(FileChangeList),
+        new PropertyMetadata(null)
+    );
 
     public IEnumerable<DiffFileViewModel>? Files
     {

@@ -20,17 +20,33 @@ public sealed partial class Chip : UserControl
         InitializeComponent();
     }
 
-    public static readonly DependencyProperty TextProperty =
-        DependencyProperty.Register(nameof(Text), typeof(string), typeof(Chip), new PropertyMetadata(string.Empty));
+    public static readonly DependencyProperty TextProperty = DependencyProperty.Register(
+        nameof(Text),
+        typeof(string),
+        typeof(Chip),
+        new PropertyMetadata(string.Empty)
+    );
 
-    public static readonly DependencyProperty FillBrushProperty =
-        DependencyProperty.Register(nameof(FillBrush), typeof(Brush), typeof(Chip), new PropertyMetadata(null, OnFillBrushChanged));
+    public static readonly DependencyProperty FillBrushProperty = DependencyProperty.Register(
+        nameof(FillBrush),
+        typeof(Brush),
+        typeof(Chip),
+        new PropertyMetadata(null, OnFillBrushChanged)
+    );
 
-    public static readonly DependencyProperty StrokeBrushProperty =
-        DependencyProperty.Register(nameof(StrokeBrush), typeof(Brush), typeof(Chip), new PropertyMetadata(null, OnStrokeBrushChanged));
+    public static readonly DependencyProperty StrokeBrushProperty = DependencyProperty.Register(
+        nameof(StrokeBrush),
+        typeof(Brush),
+        typeof(Chip),
+        new PropertyMetadata(null, OnStrokeBrushChanged)
+    );
 
-    public static readonly DependencyProperty TextBrushProperty =
-        DependencyProperty.Register(nameof(TextBrush), typeof(Brush), typeof(Chip), new PropertyMetadata(null, OnTextBrushChanged));
+    public static readonly DependencyProperty TextBrushProperty = DependencyProperty.Register(
+        nameof(TextBrush),
+        typeof(Brush),
+        typeof(Chip),
+        new PropertyMetadata(null, OnTextBrushChanged)
+    );
 
     public string Text
     {
@@ -64,7 +80,10 @@ public sealed partial class Chip : UserControl
         }
     }
 
-    private static void OnStrokeBrushChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    private static void OnStrokeBrushChanged(
+        DependencyObject d,
+        DependencyPropertyChangedEventArgs e
+    )
     {
         if (d is Chip self && e.NewValue is Brush b)
         {

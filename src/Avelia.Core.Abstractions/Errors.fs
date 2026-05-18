@@ -61,11 +61,7 @@ type OperationResult<'T> =
 
     /// Pattern-match from C#: returns the result of <paramref name="onSuccess"/> or
     /// <paramref name="onError"/>.
-    member this.Match
-        (
-            onSuccess: System.Func<'T, 'TResult>,
-            onError: System.Func<AveliaError, 'TResult>
-        ) : 'TResult =
+    member this.Match(onSuccess: System.Func<'T, 'TResult>, onError: System.Func<AveliaError, 'TResult>) : 'TResult =
         match this with
         | Success v -> onSuccess.Invoke v
         | Failure e -> onError.Invoke e
@@ -88,7 +84,7 @@ module OperationResult =
 
     let map (f: 'T -> 'U) (op: OperationResult<'T>) : OperationResult<'U> =
         match op with
-        | Success v -> Success (f v)
+        | Success v -> Success(f v)
         | Failure e -> Failure e
 
     let bind (f: 'T -> OperationResult<'U>) (op: OperationResult<'T>) : OperationResult<'U> =

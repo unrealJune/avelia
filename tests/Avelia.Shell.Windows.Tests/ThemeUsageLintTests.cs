@@ -43,7 +43,8 @@ public class ThemeUsageLintTests
 
     private static readonly Regex HexAttrRegex = new(
         @"(?<attr>\w+)\s*=\s*""\s*(?<value>#[0-9A-Fa-f]{3,8})\s*""",
-        RegexOptions.Compiled);
+        RegexOptions.Compiled
+    );
 
     [Fact]
     public void NoHardcodedHexColors_OutsideTokens()
@@ -55,14 +56,25 @@ public class ThemeUsageLintTests
         foreach (var xaml in EnumerateXamlFiles(shellRoot))
         {
             // Tokens.xaml IS the place where literal hex colors live.
-            if (string.Equals(Path.GetFullPath(xaml), Path.GetFullPath(tokensPath), StringComparison.OrdinalIgnoreCase))
+            if (
+                string.Equals(
+                    Path.GetFullPath(xaml),
+                    Path.GetFullPath(tokensPath),
+                    StringComparison.OrdinalIgnoreCase
+                )
+            )
             {
                 continue;
             }
 
             var content = File.ReadAllText(xaml);
             // Strip XAML comments so commented-out swatches don't trip the lint.
-            var stripped = Regex.Replace(content, @"<!--.*?-->", string.Empty, RegexOptions.Singleline);
+            var stripped = Regex.Replace(
+                content,
+                @"<!--.*?-->",
+                string.Empty,
+                RegexOptions.Singleline
+            );
 
             foreach (Match m in HexAttrRegex.Matches(stripped))
             {
@@ -73,14 +85,19 @@ public class ThemeUsageLintTests
                 }
                 var value = m.Groups["value"].Value;
                 var lineNumber = LineOf(content, m.Index);
-                violations.Add($"{RelativePath(shellRoot, xaml)}:{lineNumber}  {attr}=\"{value}\" — use a brush from Tokens.xaml via {{ThemeResource ...}}.");
+                violations.Add(
+                    $"{RelativePath(shellRoot, xaml)}:{lineNumber}  {attr}=\"{value}\" — use a brush from Tokens.xaml via {{ThemeResource ...}}."
+                );
             }
         }
 
-        Assert.True(violations.Count == 0,
-            "Found hardcoded color literals in XAML — these bypass the theme dictionary " +
-            "and won't track Light/Dark toggles. Move them to Themes/Tokens.xaml and " +
-            "reference via {ThemeResource ...}:\n\n  " + string.Join("\n  ", violations));
+        Assert.True(
+            violations.Count == 0,
+            "Found hardcoded color literals in XAML — these bypass the theme dictionary "
+                + "and won't track Light/Dark toggles. Move them to Themes/Tokens.xaml and "
+                + "reference via {ThemeResource ...}:\n\n  "
+                + string.Join("\n  ", violations)
+        );
     }
 
     [Fact]
@@ -94,13 +111,19 @@ public class ThemeUsageLintTests
         var attrPattern = string.Join("|", ColorBearingAttributes);
         var pattern = new Regex(
             $@"(?<attr>{attrPattern})\s*=\s*""\s*\{{\s*StaticResource\s+(?<key>[A-Za-z0-9_]+)\s*\}}\s*""",
-            RegexOptions.Compiled);
+            RegexOptions.Compiled
+        );
 
         var violations = new List<string>();
         foreach (var xaml in EnumerateXamlFiles(shellRoot))
         {
             var content = File.ReadAllText(xaml);
-            var stripped = Regex.Replace(content, @"<!--.*?-->", string.Empty, RegexOptions.Singleline);
+            var stripped = Regex.Replace(
+                content,
+                @"<!--.*?-->",
+                string.Empty,
+                RegexOptions.Singleline
+            );
             foreach (Match m in pattern.Matches(stripped))
             {
                 var key = m.Groups["key"].Value;
@@ -112,14 +135,18 @@ public class ThemeUsageLintTests
                     continue;
                 }
                 var lineNumber = LineOf(content, m.Index);
-                violations.Add($"{RelativePath(shellRoot, xaml)}:{lineNumber}  {attr}=\"{{StaticResource {key}}}\" — use {{ThemeResource}} for theme-tracked brushes.");
+                violations.Add(
+                    $"{RelativePath(shellRoot, xaml)}:{lineNumber}  {attr}=\"{{StaticResource {key}}}\" — use {{ThemeResource}} for theme-tracked brushes."
+                );
             }
         }
 
-        Assert.True(violations.Count == 0,
-            "Found {StaticResource} bindings on color attributes — these freeze the brush " +
-            "at first paint and bypass theme tracking. Switch to {ThemeResource ...}:\n\n  " +
-            string.Join("\n  ", violations));
+        Assert.True(
+            violations.Count == 0,
+            "Found {StaticResource} bindings on color attributes — these freeze the brush "
+                + "at first paint and bypass theme tracking. Switch to {ThemeResource ...}:\n\n  "
+                + string.Join("\n  ", violations)
+        );
     }
 
     // ------------------------------------------------------------------
@@ -127,13 +154,22 @@ public class ThemeUsageLintTests
     // ------------------------------------------------------------------
 
     private static IEnumerable<string> EnumerateXamlFiles(string root) =>
-        Directory.EnumerateFiles(root, "*.xaml", SearchOption.AllDirectories)
-            .Where(p => !p.Contains($"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}",
-                                    StringComparison.OrdinalIgnoreCase)
-                       && !p.Contains($"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}",
-                                      StringComparison.OrdinalIgnoreCase)
-                       && !p.Contains($"{Path.DirectorySeparatorChar}AppX{Path.DirectorySeparatorChar}",
-                                      StringComparison.OrdinalIgnoreCase));
+        Directory
+            .EnumerateFiles(root, "*.xaml", SearchOption.AllDirectories)
+            .Where(p =>
+                !p.Contains(
+                    $"{Path.DirectorySeparatorChar}obj{Path.DirectorySeparatorChar}",
+                    StringComparison.OrdinalIgnoreCase
+                )
+                && !p.Contains(
+                    $"{Path.DirectorySeparatorChar}bin{Path.DirectorySeparatorChar}",
+                    StringComparison.OrdinalIgnoreCase
+                )
+                && !p.Contains(
+                    $"{Path.DirectorySeparatorChar}AppX{Path.DirectorySeparatorChar}",
+                    StringComparison.OrdinalIgnoreCase
+                )
+            );
 
     private static int LineOf(string content, int charIndex) =>
         content.Take(charIndex).Count(c => c == '\n') + 1;
@@ -150,7 +186,9 @@ public class ThemeUsageLintTests
         }
         if (dir is null)
         {
-            throw new InvalidOperationException("Couldn't find repo root above test bin directory.");
+            throw new InvalidOperationException(
+                "Couldn't find repo root above test bin directory."
+            );
         }
         return Path.Combine(dir.FullName, "src", "Avelia.Shell.Windows");
     }

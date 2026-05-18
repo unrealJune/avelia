@@ -7,9 +7,13 @@ open Avelia.Core.Abstractions
 let private uniqueOver n create =
     let seen = HashSet()
     let mutable collisions = 0
-    for _ in 1 .. n do
+
+    for _ in 1..n do
         let id = create ()
-        if not (seen.Add id) then collisions <- collisions + 1
+
+        if not (seen.Add id) then
+            collisions <- collisions + 1
+
     collisions
 
 [<Fact>]

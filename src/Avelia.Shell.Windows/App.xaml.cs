@@ -1,7 +1,7 @@
 using Avelia.Core;
 using Avelia.Shell.Windows.Services;
-using Microsoft.UI.Xaml;
 using global::Windows.UI.ViewManagement;
+using Microsoft.UI.Xaml;
 
 namespace Avelia.Shell.Windows;
 
