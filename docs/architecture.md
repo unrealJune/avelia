@@ -5,31 +5,39 @@ Avelia is a single-process Windows desktop application: an F# domain core with a
 ## Process model
 
 ```
-+---------------------------- avelia.exe ----------------------------+
-|                                                                    |
-|  +--------------------+              +---------------------------+ |
-|  |  WinUI 3 shell     |  commands -> |   F# core services        | |
-|  |  (Avelia.Shell.    |              |   (Avelia.Core,           | |
-|  |   Windows)         |  <- events   |    Avelia.Persistence,    | |
-|  |                    |              |    Avelia.Vcs.GitHub,     | |
-|  |  XAML + VMs        |              |    Avelia.Agent.ClaudeCode| |
-|  +--------------------+              +---------------------------+ |
-|                                                                    |
-+--------------------------------------------------------------------+
++---------------------------- avelia.exe -----------------------------+
+|                                                                     |
+|  +--------------------+               +----------------------------+|
+|  |  WinUI 3 shell     |  commands  -> |   F# core services         ||
+|  |  (Avelia.Shell.    |               |   (Avelia.Core,            ||
+|  |   Windows)         |  <- events    |    Avelia.Persistence,     ||
+|  |                    |               |    Avelia.Vcs.Git,         ||
+|  |  XAML + VMs        |               |    Avelia.Vcs.GitHub,      ||
+|  |  ConPTY +          |               |    Avelia.Agent.ClaudeCode,||
+|  |  xterm.js renderer |               |    Avelia.Agent.Copilot)   ||
+|  +--------------------+               +----------------------------+|
+|                                                                     |
++---------------------------------------------------------------------+
+        |                        |                       |
+        v                        v                       v
+    git.exe              Node sidecar             Copilot CLI server
+    (mutations)        (Claude Agent SDK)       (managed by .NET SDK)
 ```
 
-The shell never touches storage, git, or the agent directly. It speaks to typed service interfaces (`ITaskService`, `IVcsService`, etc.) exposed by the core. The core never references `Microsoft.UI.Xaml`.
+The shell never touches storage, git, or the agent directly. It speaks to typed service interfaces (`IRepositoryService`, `IWorkspaceService`, `IConversationService`, `IAgentSession`, `IGitOperations`, `IGitHubClient`, `ITerminalSession`, etc.) exposed by the core. The core never references `Microsoft.UI.Xaml`.
 
 ## Projects
 
-| Project                          | Lang | Purpose                                                    |
-| -------------------------------- | ---- | ---------------------------------------------------------- |
-| `src/Avelia.Core.Abstractions`   | F#   | Interfaces, DTOs, error types. No implementations.         |
-| `src/Avelia.Core`                | F#   | Domain types, state machines, orchestration.               |
-| `src/Avelia.Persistence`         | F#   | Storage adapter (SQLite by default).                       |
-| `src/Avelia.Vcs.GitHub`          | F#   | GitHub API + local git operations.                         |
-| `src/Avelia.Agent.ClaudeCode`    | F#   | Claude Code subprocess driver.                             |
-| `src/Avelia.Shell.Windows`       | C#   | WinUI 3 application, ViewModels, XAML.                     |
+| Project                          | Lang | Purpose                                                            |
+| -------------------------------- | ---- | ------------------------------------------------------------------ |
+| `src/Avelia.Core.Abstractions`   | F#   | Interfaces, DTOs, error types. No implementations.                 |
+| `src/Avelia.Core`                | F#   | Domain types, state machines, orchestration.                       |
+| `src/Avelia.Persistence`         | F#   | Storage adapter (SQLite by default).                               |
+| `src/Avelia.Vcs.Git`             | F#   | Local git operations (`git.exe` for mutations, LibGit2Sharp reads).|
+| `src/Avelia.Vcs.GitHub`          | F#   | GitHub API client + auth (Octokit.NET, Device Flow, credential store).|
+| `src/Avelia.Agent.ClaudeCode`    | F#   | Claude driver — bundled Node sidecar running `@anthropic-ai/claude-agent-sdk`. |
+| `src/Avelia.Agent.Copilot`       | F#   | Copilot driver — direct `GitHub.Copilot.SDK` NuGet reference.      |
+| `src/Avelia.Shell.Windows`       | C#   | WinUI 3 application, ViewModels, XAML, ConPTY + terminal renderer. |
 
 Tests mirror the source tree under `tests/`.
 
@@ -45,9 +53,14 @@ SQLite file under `%LOCALAPPDATA%/Avelia/avelia.db`. Storage is the source of tr
 
 ## Cross-process boundaries
 
-- **Claude Code** runs as a child process; we communicate via stdio + structured events.
-- **Git** runs as a subprocess via `git.exe`; we shell out, never link libgit2 directly.
-- **GitHub API** is plain HTTPS with PAT auth, no GitHub CLI dependency.
+- **Claude** runs through a bundled Node sidecar (`claude-host.mjs`) that uses `@anthropic-ai/claude-agent-sdk` and exposes it over JSON-RPC stdio. Node 20+ ships in the installer (`assets/runtime/node/`). The sidecar's underlying `claude` binary is auto-bundled by the SDK as an optional dep.
+- **Copilot** runs through the official `GitHub.Copilot.SDK` NuGet package (tracking `1.0.0-beta.4`); the SDK manages its own JSON-RPC subprocess to the Copilot CLI server.
+- **Interactive terminal mode** for both agents bypasses the SDK and hosts the underlying CLI (`claude` / `copilot`) directly in a ConPTY. Same on-disk session files in both modes, so users can switch fluidly.
+- **Git** is hybrid: `git.exe` subprocess for mutating ops (commit, push, worktree add — respects user's signing, hooks, LFS, includeIf); LibGit2Sharp 0.31 for read-only inspection (status polling, ahead/behind, log) where per-op process cost matters. Per-repo `AsyncLock` serializes mutations across worktrees.
+- **GitHub API** uses Octokit.NET 14 (REST) plus Octokit.GraphQL.NET (beta) for the dashboard's batched PR-list query. ETag caching middleware on the REST path.
+- **GitHub auth** is GitHub App + OAuth Device Flow primary, OAuth App + Device Flow as GHES fallback, PAT entry as enterprise fallback. Tokens live in Windows Credential Manager (DPAPI-backed) behind an `ICredentialStore` interface.
+
+See `docs/plans/backend.md` for the full backend implementation plan.
 
 ## Future plugin model
 
