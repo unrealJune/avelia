@@ -65,6 +65,19 @@ type InboxItemKind =
     | Success
     | Info
 
+    /// Visitor over the union — keeps C# off the F# DU's nested case types
+    /// and forces exhaustive handling at the call site. Same pattern as
+    /// <c>MessageEvent.Match</c> / <c>ModelChoice.Match</c>: adding a new
+    /// case here forces every C# consumer (e.g. the inbox row template
+    /// selector) to handle it instead of silently falling through.
+    member this.Match<'TResult>
+        (onWarning: System.Func<'TResult>, onSuccess: System.Func<'TResult>, onInfo: System.Func<'TResult>)
+        : 'TResult =
+        match this with
+        | Warning -> onWarning.Invoke()
+        | Success -> onSuccess.Invoke()
+        | Info -> onInfo.Invoke()
+
 /// UI density preset. Maps to padding / row-height multipliers in the shell.
 /// Mirrors the design's segmented control in Settings → Appearance.
 [<RequireQualifiedAccess>]
