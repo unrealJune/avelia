@@ -58,6 +58,19 @@ public class ThemeContrastTests
             ("AveliaDangerBrush", "AveliaDangerBgBrush", WcagAaLargeText),
             // ---- Neutral chip text on the chip's own subtle fill ----
             ("AveliaTextSecondaryBrush", "AveliaSubtleFillSecondaryBrush", WcagAaNormalText),
+            // ---- Chunk 6: PR review diff viewer pairings ----
+            //
+            // Line-number cell on add/del rows uses the "strong" diff tint as
+            // its background and secondary-text foreground. Large-text is the
+            // right floor — line numbers are 12px mono but rendered as compact
+            // labels; the relaxed contrast minimum mirrors the chip pairings
+            // above. Catches the case where a future redesign darkens the
+            // strong-tint enough to blend with the text.
+            ("AveliaTextSecondaryBrush", "AveliaDiffAddStrongBrush", WcagAaLargeText),
+            ("AveliaTextSecondaryBrush", "AveliaDiffDelStrongBrush", WcagAaLargeText),
+            // Hunk-header bar uses accent-text on a subtle fill. Same floor
+            // as the body code-ref accent above the diff viewer.
+            ("AveliaAccentTextBrush", "AveliaSubtleFillTertiaryBrush", WcagAaNormalText),
         }
         select new object[] { theme, pair.Item1, pair.Item2, pair.Item3 };
 

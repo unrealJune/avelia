@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Avelia.Shell.Windows.Controls.PrFileTree"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:Avelia.Shell.Windows.ViewModels"
+    xmlns:controls="using:Avelia.Shell.Windows.Controls"
+>
+    <UserControl.Resources>
+        <DataTemplate x:Key="PrFileRowTemplate" x:DataType="vm:DiffFileViewModel">
+            <!--
+                Two-layer row: an underlay Border owns the focus-tint fill so it
+                spans edge-to-edge, the inner Grid owns the padded content. Same
+                shape as Controls/FileChangeList for visual parity.
+            -->
+            <Grid>
+                <Border
+                    Background="{ThemeResource AveliaSubtleFillSecondaryBrush}"
+                    Visibility="{x:Bind IsFocused, Mode=OneWay, FallbackValue=Collapsed}"
+                />
+
+                <Grid Padding="12,7" ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- M / A / D / R kind badge -->
+                    <Border
+                        Grid.Column="0"
+                        Width="16"
+                        Height="16"
+                        CornerRadius="{StaticResource AveliaCornerRadiusSmall}"
+                        Background="{ThemeResource AveliaSubtleFillTertiaryBrush}"
+                        BorderBrush="{ThemeResource AveliaSurfaceStrokeBrush}"
+                        BorderThickness="1"
+                        VerticalAlignment="Center"
+                    >
+                        <TextBlock
+                            FontFamily="{StaticResource AveliaUiFontFamily}"
+                            FontSize="9"
+                            FontWeight="SemiBold"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Foreground="{ThemeResource AveliaTextSecondaryBrush}"
+                            Text="{x:Bind KindBadge, Mode=OneTime, FallbackValue=''}"
+                        />
+                    </Border>
+
+                    <!-- Folder + filename split, mono -->
+                    <StackPanel
+                        Grid.Column="1"
+                        Orientation="Horizontal"
+                        Spacing="0"
+                        VerticalAlignment="Center"
+                    >
+                        <TextBlock
+                            Style="{StaticResource AveliaMonoCaptionTextStyle}"
+                            Foreground="{ThemeResource AveliaTextTertiaryBrush}"
+                            Text="{x:Bind Folder, Mode=OneTime, FallbackValue=''}"
+                            TextTrimming="CharacterEllipsis"
+                        />
+                        <TextBlock
+                            Style="{StaticResource AveliaMonoCaptionTextStyle}"
+                            Foreground="{ThemeResource AveliaTextPrimaryBrush}"
+                            Text="{x:Bind FileName, Mode=OneTime, FallbackValue=''}"
+                            TextTrimming="CharacterEllipsis"
+                        />
+                    </StackPanel>
+
+                    <controls:Chip
+                        Grid.Column="2"
+                        Margin="0,0,4,0"
+                        VerticalAlignment="Center"
+                        FillBrush="{ThemeResource AveliaDiffAddBgBrush}"
+                        StrokeBrush="{ThemeResource AveliaDiffAddStrongBrush}"
+                        TextBrush="{ThemeResource AveliaSuccessBrush}"
+                        Text="{x:Bind AddDisplay, Mode=OneTime, FallbackValue=''}"
+                    />
+                    <controls:Chip
+                        Grid.Column="3"
+                        VerticalAlignment="Center"
+                        FillBrush="{ThemeResource AveliaDiffDelBgBrush}"
+                        StrokeBrush="{ThemeResource AveliaDiffDelStrongBrush}"
+                        TextBrush="{ThemeResource AveliaDangerBrush}"
+                        Text="{x:Bind DelDisplay, Mode=OneTime, FallbackValue=''}"
+                    />
+                </Grid>
+            </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <ListView
+        x:Name="FilesList"
+        AutomationProperties.AutomationId="PrFileTree"
+        AutomationProperties.Name="Pull request files"
+        ItemsSource="{x:Bind Files, Mode=OneWay}"
+        ItemTemplate="{StaticResource PrFileRowTemplate}"
+        ItemContainerStyle="{StaticResource AveliaPlainInteractiveListItemContainerStyle}"
+        IsItemClickEnabled="True"
+        ItemClick="OnFileItemClick"
+        SelectionMode="None"
+        Background="Transparent"
+        BorderThickness="0"
+        Padding="0,4,0,4"
+        HorizontalContentAlignment="Stretch"
+        ScrollViewer.HorizontalScrollMode="Disabled"
+        ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+        ScrollViewer.VerticalScrollBarVisibility="Auto"
+    />
+</UserControl>

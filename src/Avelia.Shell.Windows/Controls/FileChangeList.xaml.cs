@@ -33,9 +33,15 @@ public sealed partial class FileChangeList : UserControl
 
     private void OnFileItemClick(object sender, ItemClickEventArgs e)
     {
-        if (e.ClickedItem is DiffFileViewModel file && file.OpenCommand.CanExecute(null))
+        // OpenCommand is nullable (PR Review constructs rows without one);
+        // workspace right-pane rows always have it, but guard defensively.
+        if (
+            e.ClickedItem is DiffFileViewModel file
+            && file.OpenCommand is { } cmd
+            && cmd.CanExecute(null)
+        )
         {
-            file.OpenCommand.Execute(null);
+            cmd.Execute(null);
         }
     }
 }

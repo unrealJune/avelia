@@ -145,6 +145,10 @@ public class PrPaneViewModelTests
         vm.FileOpened += (_, path) => captured = path;
 
         var target = vm.Files.First();
+        // PrPaneViewModel constructs rows with a real onOpen callback, so the
+        // command is always non-null here — assert it as part of the test's
+        // pre-condition rather than null-bang silencing the compiler.
+        Assert.NotNull(target.OpenCommand);
         target.OpenCommand.Execute(null);
 
         Assert.NotNull(captured);
@@ -158,6 +162,7 @@ public class PrPaneViewModelTests
         await vm.LoadAsync(DesignData.archiveWorkspaceId);
 
         var second = vm.Files.Skip(1).First();
+        Assert.NotNull(second.OpenCommand);
         second.OpenCommand.Execute(null);
 
         Assert.True(second.IsFocused);

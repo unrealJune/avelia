@@ -31,6 +31,16 @@ public partial class PrPaneViewModel : ObservableObject
     private readonly AveliaServices _services;
     private PullRequestId? _prId;
 
+    /// <summary>
+    /// Lifecycle token for the current <see cref="LoadAsync"/> invocation. A
+    /// second call cancels and replaces the first so two in-flight loads can't
+    /// interleave their state mutations — same pattern as
+    /// <see cref="PrReviewViewModel"/>. Without this, fast workspace
+    /// renavigation could land the older load's <c>Files.Add</c> after the
+    /// newer load's <c>Files.Clear</c> and leave the pane mixing two workspaces.
+    /// </summary>
+    private CancellationTokenSource? _loadCts;
+
     public PrPaneViewModel(AveliaServices services)
     {
         _services = services;
@@ -146,68 +156,84 @@ public partial class PrPaneViewModel : ObservableObject
     /// </summary>
     public async Task LoadAsync(WorkspaceId workspaceId, CancellationToken ct = default)
     {
+        // Cancel any in-flight load and replace its CTS, then link the caller's
+        // token. Prevents interleaved state mutations if WorkspacePage's
+        // LoadAsync is invoked back-to-back (e.g. fast tab switches).
+        _loadCts?.Cancel();
+        _loadCts?.Dispose();
+        _loadCts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        var token = _loadCts.Token;
+
         Files.Clear();
         _prId = null;
         HasPullRequest = false;
         ErrorMessage = null;
 
-        var prResult = await _services
-            .PullRequests.GetForWorkspaceAsync(workspaceId, ct)
-            .ConfigureAwait(true);
-        if (prResult.IsSuccess)
+        try
         {
-            var pr = prResult.Value;
-            _prId = pr.Id;
-            HasPullRequest = true;
-            Number = pr.Number;
-            Title = pr.Title;
-            Branch = pr.Branch.Value;
-            Base = pr.Base.Value;
-            Status = pr.Status;
-            MergeReady = pr.MergeReady;
-            ChecksTotal = pr.Checks.Length;
-            var passed = 0;
-            for (var i = 0; i < pr.Checks.Length; i++)
+            var prResult = await _services
+                .PullRequests.GetForWorkspaceAsync(workspaceId, token)
+                .ConfigureAwait(true);
+            if (prResult.IsSuccess)
             {
-                if (pr.Checks[i].Status.IsPassed)
+                var pr = prResult.Value;
+                _prId = pr.Id;
+                HasPullRequest = true;
+                Number = pr.Number;
+                Title = pr.Title;
+                Branch = pr.Branch.Value;
+                Base = pr.Base.Value;
+                Status = pr.Status;
+                MergeReady = pr.MergeReady;
+                ChecksTotal = pr.Checks.Length;
+                var passed = 0;
+                for (var i = 0; i < pr.Checks.Length; i++)
                 {
-                    passed++;
+                    if (pr.Checks[i].Status.IsPassed)
+                    {
+                        passed++;
+                    }
                 }
+                ChecksPassed = passed;
             }
-            ChecksPassed = passed;
-        }
-        else
-        {
-            // NotFound for "no PR yet" is expected — don't surface as an
-            // error. Other failure shapes (network / auth) become error UI.
-            if (!prResult.Error.IsNotFound)
+            else
             {
-                ErrorMessage = FormatError(prResult.Error);
+                // NotFound for "no PR yet" is expected — don't surface as an
+                // error. Other failure shapes (network / auth) become error UI.
+                if (!prResult.Error.IsNotFound)
+                {
+                    ErrorMessage = FormatError(prResult.Error);
+                }
+                Number = 0;
+                Title = string.Empty;
+                Branch = string.Empty;
+                Base = string.Empty;
+                Status = PrStatus.Draft;
+                MergeReady = false;
+                ChecksTotal = 0;
+                ChecksPassed = 0;
             }
-            Number = 0;
-            Title = string.Empty;
-            Branch = string.Empty;
-            Base = string.Empty;
-            Status = PrStatus.Draft;
-            MergeReady = false;
-            ChecksTotal = 0;
-            ChecksPassed = 0;
-        }
 
-        var files = await _services
-            .Diffs.GetWorkspaceDiffAsync(workspaceId, ct)
-            .ConfigureAwait(true);
-        var totalAdd = 0;
-        var totalDel = 0;
-        foreach (var file in files)
-        {
-            Files.Add(new DiffFileViewModel(file, OnFileOpened));
-            totalAdd += file.Add;
-            totalDel += file.Del;
+            var files = await _services
+                .Diffs.GetWorkspaceDiffAsync(workspaceId, token)
+                .ConfigureAwait(true);
+            var totalAdd = 0;
+            var totalDel = 0;
+            foreach (var file in files)
+            {
+                Files.Add(new DiffFileViewModel(file, OnFileOpened));
+                totalAdd += file.Add;
+                totalDel += file.Del;
+            }
+            TotalAdd = totalAdd;
+            TotalDel = totalDel;
+            FileCount = files.Count;
         }
-        TotalAdd = totalAdd;
-        TotalDel = totalDel;
-        FileCount = files.Count;
+        catch (OperationCanceledException)
+        {
+            // Superseded by a later LoadAsync or the caller cancelled. The
+            // newer call has already reset observable state for its workspace.
+        }
     }
 
     private void OnFileOpened(RelativePath path)

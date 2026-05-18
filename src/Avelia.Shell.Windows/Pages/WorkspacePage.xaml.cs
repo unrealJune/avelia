@@ -5,6 +5,7 @@ using Avelia.Shell.Windows.Services;
 using Avelia.Shell.Windows.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 
 namespace Avelia.Shell.Windows.Pages;
@@ -45,6 +46,7 @@ public sealed partial class WorkspacePage : Page
         if (ViewModel is null)
         {
             ViewModel = new WorkspaceViewModel(args.Services, args.Dispatcher);
+            ViewModel.PrPane.FileOpened += OnPrPaneFileOpened;
             Bindings.Update();
         }
 
@@ -56,6 +58,22 @@ public sealed partial class WorkspacePage : Page
         {
             System.Diagnostics.Debug.WriteLine($"[WorkspacePage] LoadAsync failed: {ex}");
         }
+    }
+
+    /// <summary>
+    /// Bubble a file-row click in the right pane up to the Frame as a navigation
+    /// to <see cref="PrReviewPage"/> with the file pre-selected. Uses the page's
+    /// <c>Frame</c> directly (set by WinUI when the page is hosted) rather than
+    /// reaching into <c>MainWindow</c>; keeps navigation a local concern.
+    /// </summary>
+    private void OnPrPaneFileOpened(object? sender, RelativePath path)
+    {
+        if (_pendingArgs is null || Frame is null)
+        {
+            return;
+        }
+        var args = new PrReviewPageArgs(_pendingArgs.WorkspaceId, _pendingArgs.Services, path);
+        Frame.Navigate(typeof(PrReviewPage), args, new DrillInNavigationTransitionInfo());
     }
 
     protected override void OnNavigatedFrom(NavigationEventArgs e)
