@@ -8,6 +8,8 @@
         <PackageVersion Include="FSharp.Core" Version="9.0.300" />
         <!-- Local git inspection (read-only); shells out to git.exe for mutation. -->
         <PackageVersion Include="LibGit2Sharp" Version="0.31.0" />
+        <!-- Windows Credential Manager wrapper backing ICredentialStore. -->
+        <PackageVersion Include="Meziantou.Framework.Win32.CredentialManager" Version="2.0.0" />
         <!-- WinUI 3 / Windows App SDK -->
         <PackageVersion Include="Microsoft.Windows.SDK.BuildTools.WinApp" Version="0.3.1">
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

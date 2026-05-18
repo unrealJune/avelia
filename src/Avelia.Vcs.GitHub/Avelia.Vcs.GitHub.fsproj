@@ -6,10 +6,15 @@
 
   <ItemGroup>
     <Compile Include="GitHub.fs" />
+    <Compile Include="AuthTypes.fs" />
+    <Compile Include="CredentialStore.fs" />
+    <Compile Include="DeviceFlow.fs" />
+    <Compile Include="Auth.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="FSharp.Core" />
+    <PackageReference Include="Meziantou.Framework.Win32.CredentialManager" />
     <ProjectReference Include="..\Avelia.Core.Abstractions\Avelia.Core.Abstractions.fsproj" />
   </ItemGroup>
 

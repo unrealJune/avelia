@@ -9,6 +9,10 @@
 
   <ItemGroup>
     <Compile Include="GitHubTests.fs" />
+    <Compile Include="AccessTokenSerializationTests.fs" />
+    <Compile Include="DeviceFlowTests.fs" />
+    <Compile Include="AuthTests.fs" />
+    <Compile Include="CredentialStoreTests.fs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -17,6 +21,7 @@
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
     <PackageReference Include="FsUnit.xUnit" />
+    <PackageReference Include="FsCheck.Xunit" />
     <ProjectReference Include="..\..\src\Avelia.Vcs.GitHub\Avelia.Vcs.GitHub.fsproj" />
   </ItemGroup>
 
