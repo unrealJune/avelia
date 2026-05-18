@@ -35,7 +35,10 @@ type WorktreeStatus =
     {
         Branch: BranchName
         AheadBehind: AheadBehind
-        Files: WorkingTreeFileStatus array
+        /// File-by-file working tree status. Exposed as <c>IReadOnlyList</c>
+        /// (not <c>array</c>) so C# consumers can't mutate a cached snapshot;
+        /// matches the project convention for boundary-crossing collections.
+        Files: IReadOnlyList<WorkingTreeFileStatus>
         /// Derived: true when any <c>Files</c> entry is modified, staged,
         /// untracked, or conflicted. Exposed pre-computed so the shell's status
         /// dot doesn't reduce the array on every binding tick.
@@ -49,7 +52,7 @@ type CommitInfo =
       Subject: string }
 
 // ============================================================================
-//  Terminal — shape carried by ConPTY events and Resize calls
+//  Process exit — shape carried by terminal AND agent-session wait calls
 // ============================================================================
 
 /// Terminal dimensions in character cells. <c>Cols</c> and <c>Rows</c> are
@@ -57,13 +60,17 @@ type CommitInfo =
 /// boundary) because ConPTY ranges drift with Windows versions.
 type TerminalSize = { Cols: int; Rows: int }
 
-type TerminalExit =
+/// Outcome of waiting for a process-backed session to finish. Used by both
+/// <c>ITerminalSession.WaitForExitAsync</c> (ConPTY child) and
+/// <c>IAgentSession.WaitForExitAsync</c> (agent driver subprocess) so the
+/// shell can distinguish a clean exit from a forced one in both flows.
+type ProcessExit =
     {
         ExitCode: int
         /// True when the child exited on its own; false if killed by
-        /// <c>InterruptAsync</c>, process termination, or a host crash. The
-        /// shell renders these differently — a clean exit is informational
-        /// while a forced exit is a warning.
+        /// <c>InterruptAsync</c>, <c>DisposeAsync</c>, process termination, or
+        /// a host crash. The shell renders these differently — a clean exit
+        /// is informational while a forced exit is a warning.
         IsClean: bool
     }
 

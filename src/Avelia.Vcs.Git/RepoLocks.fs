@@ -21,7 +21,12 @@ open System.Threading.Tasks
 [<RequireQualifiedAccess>]
 module RepoLocks =
 
-    let private locks = ConcurrentDictionary<string, SemaphoreSlim>()
+    // Values are <c>Lazy</c>-wrapped so a racy <c>GetOrAdd</c> on the same
+    // key never constructs (and leaks — <c>SemaphoreSlim</c> is
+    // <c>IDisposable</c>) more than one semaphore: the factory may be invoked
+    // by multiple threads, but only one <c>Lazy.Value</c> is materialized.
+    let private locks =
+        ConcurrentDictionary<string, Lazy<SemaphoreSlim>>()
 
     /// Normalize a filesystem path for use as a dictionary key. Windows is
     /// case-insensitive; we lowercase to make
@@ -35,11 +40,14 @@ module RepoLocks =
 
         full.TrimEnd([| '\\'; '/' |]).ToLowerInvariant()
 
-    /// Get (or lazily create) the semaphore for the given key. Idempotent
-    /// across threads — <see cref="ConcurrentDictionary.GetOrAdd"/> guarantees
-    /// only one semaphore per key.
+    /// Get (or lazily create) the semaphore for the given key. Exactly one
+    /// <see cref="SemaphoreSlim"/> per key, even under concurrent first-touch
+    /// — the value is a <c>Lazy</c> so duplicate <c>GetOrAdd</c> factory
+    /// invocations never materialize a second semaphore.
     let getOrCreate (key: string) : SemaphoreSlim =
-        locks.GetOrAdd(key, fun _ -> new SemaphoreSlim(1, 1))
+        locks
+            .GetOrAdd(key, fun _ -> Lazy<SemaphoreSlim>(fun () -> new SemaphoreSlim(1, 1)))
+            .Value
 
     /// Acquire the lock identified by <paramref name="key"/>, run
     /// <paramref name="work"/>, then release. Cancellation surfaces from the

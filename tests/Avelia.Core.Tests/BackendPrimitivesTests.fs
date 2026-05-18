@@ -3,6 +3,7 @@ module Avelia.Core.Tests.BackendPrimitivesTests
 open System
 open Xunit
 open FsCheck
+open FsCheck.FSharp
 open FsCheck.Xunit
 open Avelia.Core.Abstractions
 
@@ -103,8 +104,134 @@ let ``Remote.TryCreate rejects invalid names`` (s: string) =
     | Error _ -> ()
     | Ok _ -> Assert.Fail $"Expected failure for input: {s}"
 
+// ----- Default-construction safety -----
+//
+// The struct DUs are `[<Struct>] private | Foo of string`, so a C# consumer
+// can write `default(T)` and obtain an instance whose underlying string is
+// null. The `.Value` getters normalize that to `""` — these tests pin that
+// guarantee in place so a future "simplification" can't strip it.
+
+[<Fact>]
+let ``default(BranchName).Value is empty string, not null`` () =
+    let b = Unchecked.defaultof<BranchName>
+    Assert.NotNull b.Value
+    Assert.Equal("", b.Value)
+
+[<Fact>]
+let ``default(CommitId).Value is empty string, not null`` () =
+    let c = Unchecked.defaultof<CommitId>
+    Assert.Equal("", c.Value)
+
+[<Fact>]
+let ``default(CommitMessage).Value is empty string, not null`` () =
+    let m = Unchecked.defaultof<CommitMessage>
+    Assert.Equal("", m.Value)
+
+[<Fact>]
+let ``default(Remote).Value is empty string, not null`` () =
+    let r = Unchecked.defaultof<Remote>
+    Assert.Equal("", r.Value)
+
+[<Fact>]
+let ``default(RepoPath).Value is empty string, not null`` () =
+    let p = Unchecked.defaultof<RepoPath>
+    Assert.Equal("", p.Value)
+
+[<Fact>]
+let ``default(RelativePath).Value is empty string, not null`` () =
+    let p = Unchecked.defaultof<RelativePath>
+    Assert.Equal("", p.Value)
+
+// ----- Leading-hyphen rejection (flag-injection defence in depth) -----
+
+[<Theory>]
+[<InlineData("-foo")>]
+[<InlineData("--exec=evil")>]
+let ``BranchName rejects leading hyphen`` (s: string) =
+    match BranchName.TryCreate s with
+    | Error _ -> ()
+    | Ok _ -> Assert.Fail $"Expected rejection for {s}"
+
+[<Theory>]
+[<InlineData("-c")>]
+[<InlineData("--upload-pack=cmd")>]
+let ``Remote rejects leading hyphen`` (s: string) =
+    match Remote.TryCreate s with
+    | Error _ -> ()
+    | Ok _ -> Assert.Fail $"Expected rejection for {s}"
+
+[<Theory>]
+[<InlineData("-bad/path")>]
+[<InlineData("--evil")>]
+let ``RepoPath rejects leading hyphen`` (s: string) =
+    match RepoPath.TryCreate s with
+    | Error _ -> ()
+    | Ok _ -> Assert.Fail $"Expected rejection for {s}"
+
+[<Theory>]
+[<InlineData("-rel/path")>]
+[<InlineData("--evil.txt")>]
+let ``RelativePath rejects leading hyphen`` (s: string) =
+    match RelativePath.TryCreate s with
+    | Error _ -> ()
+    | Ok _ -> Assert.Fail $"Expected rejection for {s}"
+
+// ----- Property tests with actual generators -----
+//
+// CLAUDE.md calls for PBT on every domain primitive. These properties hit
+// the parse / validate / round-trip surface with random inputs so a future
+// shape change has to be deliberate (the property breaks first).
+
+let private hexChars = "0123456789abcdef"
+
+let private genHex (len: int) =
+    Gen.elements hexChars |> Gen.arrayOfLength len |> Gen.map String
+
+/// SHA-1 (40 hex) and SHA-256 (64 hex) generators.
+type ShaGenerators =
+    static member ValidSha40() : Arbitrary<string> = Arb.fromGen (genHex 40)
+    static member ValidSha64() : Arbitrary<string> = Arb.fromGen (genHex 64)
+
+[<Property(Arbitrary = [| typeof<ShaGenerators> |])>]
+let ``CommitId accepts every 40-char hex string`` (sha: string) =
+    match CommitId.TryCreate sha with
+    | Ok c -> c.Value = sha.ToLowerInvariant()
+    | Error _ -> false
+
 [<Property>]
-let ``CommitId roundtrips through Value`` () =
-    let sha = String.replicate 40 "0"
+let ``CommitId rejects every string of length other than 40 or 64`` (s: NonEmptyString) =
+    let raw = s.Get
+
+    if raw.Length = 40 || raw.Length = 64 then
+        true // generator may produce a valid length; skip
+    else
+        match CommitId.TryCreate raw with
+        | Error _ -> true
+        | Ok _ -> false
+
+[<Property>]
+let ``CommitId roundtrips lowercase normalization`` () =
+    let sha = String.replicate 40 "F"
     let c = CommitId.Create sha
-    c.Value = sha
+    c.Value = String.replicate 40 "f"
+
+[<Property>]
+let ``CommitMessage accepts any non-whitespace string`` (s: NonEmptyString) =
+    let raw = s.Get
+
+    if String.IsNullOrWhiteSpace raw then
+        true // NonEmptyString doesn't filter whitespace-only; skip
+    else
+        match CommitMessage.TryCreate raw with
+        | Ok m -> m.Value = raw
+        | Error _ -> false
+
+[<Property>]
+let ``Remote rejects names with whitespace or separators`` () =
+    let invalidChars = [| " "; "\t"; "/"; ":"; "\\" |]
+
+    invalidChars
+    |> Array.forall (fun c ->
+        match Remote.TryCreate $"a{c}b" with
+        | Error _ -> true
+        | Ok _ -> false)

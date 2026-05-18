@@ -159,8 +159,8 @@ let ``BranchDelete removes a branch from the repo`` () =
     |> assertSuccess "BranchCreateAsync"
     |> ignore
 
-    cli.BranchDeleteAsync(repo.RepoPath, temp, ct).GetAwaiter().GetResult()
-    |> assertSuccess "BranchDeleteAsync"
+    cli.BranchDeleteAsync(repo.RepoPath, temp, true, ct).GetAwaiter().GetResult()
+    |> assertSuccess "BranchDeleteAsync (force)"
     |> ignore
 
     let listBranches =

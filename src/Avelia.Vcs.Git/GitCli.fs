@@ -215,14 +215,11 @@ type GitCli() =
                         | Error e -> Failure e
                 })
 
-        member _.BranchDeleteAsync(repo: RepoPath, branch: BranchName, ct: CancellationToken) =
+        member _.BranchDeleteAsync(repo: RepoPath, branch: BranchName, force: bool, ct: CancellationToken) =
             withRepoLockAsync repo ct (fun () ->
                 task {
-                    // `-D` (force) so we can drop branches that haven't been
-                    // merged upstream — the agent workspace flow regularly
-                    // archives unmerged work. Caller's responsibility to
-                    // confirm intent at the UI layer.
-                    let! r = runChecked repo.Value [ "branch"; "-D"; branch.Value ] ct
+                    let flag = if force then "-D" else "-d"
+                    let! r = runChecked repo.Value [ "branch"; flag; branch.Value ] ct
 
                     return
                         match r with

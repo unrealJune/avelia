@@ -26,10 +26,11 @@ type GitProcessResult =
 [<RequireQualifiedAccess>]
 module GitProcess =
 
-    /// Resolves the <c>git.exe</c> to invoke. Configurable for tests that need
-    /// to point at a stub binary; in production this defaults to the
-    /// PATH-resolved <c>git</c>.
-    let mutable Executable = "git"
+    /// Path to the <c>git</c> executable to invoke. Resolved off <c>PATH</c>.
+    /// Held as an immutable <c>let</c> rather than <c>mutable</c> so tests
+    /// can't race each other by reassigning it mid-run; if we ever need a
+    /// per-call override we'll add an explicit parameter to <c>runAsync</c>.
+    let Executable = "git"
 
     let private startInfo (cwd: string) (args: string seq) : ProcessStartInfo =
         let psi =
@@ -59,6 +60,13 @@ module GitProcess =
     /// and read both pipes to completion. Throws <see cref="OperationCanceledException"/>
     /// if <paramref name="ct"/> fires before the child exits — the process tree
     /// is killed first.
+    ///
+    /// <b>Output bounds.</b> Captured stdout/stderr live in unbounded
+    /// <c>StringBuilder</c>s; callers are responsible for limiting volume
+    /// (e.g. <c>git log -n 100</c> rather than an unbounded walk). Streaming
+    /// large outputs through this function will allocate proportionally and
+    /// can OOM the process — use a dedicated streaming variant for that
+    /// case if/when we need it.
     let runAsync (cwd: string) (args: string seq) (ct: CancellationToken) : Task<GitProcessResult> =
         task {
             use proc = new Process(StartInfo = startInfo cwd args)
