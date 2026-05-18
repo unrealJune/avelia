@@ -8,15 +8,12 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Generators.fs" />
-    <Compile Include="DomainTests.fs" />
-    <Compile Include="PrimitivesTests.fs" />
-    <Compile Include="BackendPrimitivesTests.fs" />
-    <Compile Include="BackendDomainTests.fs" />
-    <Compile Include="WorkspaceTests.fs" />
-    <Compile Include="ConversationTests.fs" />
-    <Compile Include="IdsTests.fs" />
-    <Compile Include="DesignDataTests.fs" />
+    <Compile Include="TempRepo.fs" />
+    <Compile Include="RepoLocksTests.fs" />
+    <Compile Include="StartupTests.fs" />
+    <Compile Include="GitCliTests.fs" />
+    <Compile Include="GitInspectorTests.fs" />
+    <Compile Include="GitInspectorParsingTests.fs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -24,10 +21,9 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
-    <PackageReference Include="FsCheck.Xunit" />
     <PackageReference Include="FsUnit.xUnit" />
-    <ProjectReference Include="..\..\src\Avelia.Core\Avelia.Core.fsproj" />
     <ProjectReference Include="..\..\src\Avelia.Core.Abstractions\Avelia.Core.Abstractions.fsproj" />
+    <ProjectReference Include="..\..\src\Avelia.Vcs.Git\Avelia.Vcs.Git.fsproj" />
   </ItemGroup>
 
 </Project>

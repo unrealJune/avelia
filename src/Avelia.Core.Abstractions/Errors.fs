@@ -11,6 +11,12 @@ type AveliaError =
     | Conflict of message: string
     | Network of message: string
     | Internal of message: string
+    /// Failure surfaced by an external SDK / subprocess (Anthropic SDK, Copilot
+    /// SDK, <c>git.exe</c>, ConPTY) that doesn't naturally collapse onto one of
+    /// the other cases. <c>source</c> identifies the producer
+    /// (<c>"claude"</c>, <c>"copilot"</c>, <c>"git"</c>, <c>"conpty"</c>);
+    /// <c>detail</c> is the producer's own message verbatim.
+    | External of source: string * detail: string
 
     /// Visitor over the union — gives C# consumers exhaustive dispatch
     /// (adding a new error case becomes a compile error at every Match site).
@@ -22,7 +28,8 @@ type AveliaError =
             onUnauthorized: System.Func<'TResult>,
             onConflict: System.Func<string, 'TResult>,
             onNetwork: System.Func<string, 'TResult>,
-            onInternal: System.Func<string, 'TResult>
+            onInternal: System.Func<string, 'TResult>,
+            onExternal: System.Func<string, string, 'TResult>
         ) : 'TResult =
         match this with
         | NotFound resource -> onNotFound.Invoke resource
@@ -31,6 +38,7 @@ type AveliaError =
         | Conflict msg -> onConflict.Invoke msg
         | Network msg -> onNetwork.Invoke msg
         | Internal msg -> onInternal.Invoke msg
+        | External(source, detail) -> onExternal.Invoke(source, detail)
 
 /// C#-friendly wrapper around <c>Result&lt;'T, AveliaError&gt;</c>.
 ///

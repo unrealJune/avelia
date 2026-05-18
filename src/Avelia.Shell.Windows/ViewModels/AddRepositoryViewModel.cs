@@ -236,7 +236,8 @@ public partial class AddRepositoryViewModel : ObservableObject
             onUnauthorized: () => "Not authorized.",
             onConflict: m => m,
             onNetwork: m => $"Network error: {m}",
-            onInternal: m => $"Internal error: {m}"
+            onInternal: m => $"Internal error: {m}",
+            onExternal: (source, detail) => $"{source}: {detail}"
         );
     }
 
