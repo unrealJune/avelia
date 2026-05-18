@@ -11,6 +11,7 @@
     <Compile Include="Ids.fs" />
     <Compile Include="Primitives.fs" />
     <Compile Include="DomainTypes.fs" />
+    <Compile Include="BackendDomain.fs" />
     <Compile Include="Services.fs" />
   </ItemGroup>
 

@@ -281,6 +281,7 @@ public partial class PrPaneViewModel : ObservableObject
             onUnauthorized: () => "You're not signed in.",
             onConflict: msg => msg,
             onNetwork: msg => $"Network error: {msg}",
-            onInternal: msg => $"Internal error: {msg}"
+            onInternal: msg => $"Internal error: {msg}",
+            onExternal: (source, detail) => $"{source}: {detail}"
         );
 }

@@ -110,3 +110,85 @@ type RelativePath =
         match RelativePath.TryCreate s with
         | Ok p -> p
         | Error msg -> raise (ArgumentException(msg, nameof s))
+
+/// Raw git commit SHA, lowercase hex. Wraps a string so a commit ID is never
+/// confused with an arbitrary identifier. Stored full-length (40 chars for
+/// SHA-1, 64 for SHA-256); display abbreviation is a renderer concern.
+[<Struct>]
+type CommitId =
+    private
+    | CommitId of string
+
+    member this.Value = let (CommitId s) = this in s
+    override this.ToString() = this.Value
+
+    static member private IsHexChar(c: char) =
+        (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f')
+
+    static member TryCreate(s: string) : Result<CommitId, string> =
+        if String.IsNullOrWhiteSpace s then
+            Error "Commit id cannot be null, empty, or whitespace."
+        else
+            let normalized = s.ToLowerInvariant()
+            // SHA-1 = 40 hex chars; SHA-256 (git 2.42+) = 64. Accept either.
+            if normalized.Length <> 40 && normalized.Length <> 64 then
+                Error "Commit id must be 40 (SHA-1) or 64 (SHA-256) hex characters."
+            elif not (normalized |> Seq.forall CommitId.IsHexChar) then
+                Error "Commit id must contain only hexadecimal characters."
+            else
+                Ok(CommitId normalized)
+
+    static member Create(s: string) : CommitId =
+        match CommitId.TryCreate s with
+        | Ok c -> c
+        | Error msg -> raise (ArgumentException(msg, nameof s))
+
+/// Plaintext commit message. Wrapped so a stray label or branch name can't
+/// stand in for a message at the boundary. Multi-line content is allowed; the
+/// only validation is non-empty.
+[<Struct>]
+type CommitMessage =
+    private
+    | CommitMessage of string
+
+    member this.Value = let (CommitMessage s) = this in s
+    override this.ToString() = this.Value
+
+    static member TryCreate(s: string) : Result<CommitMessage, string> =
+        if String.IsNullOrWhiteSpace s then
+            Error "Commit message cannot be null, empty, or whitespace."
+        else
+            Ok(CommitMessage s)
+
+    static member Create(s: string) : CommitMessage =
+        match CommitMessage.TryCreate s with
+        | Ok m -> m
+        | Error msg -> raise (ArgumentException(msg, nameof s))
+
+/// Name of a git remote (typically <c>origin</c>). Single-case DU so a remote
+/// can't be confused with a branch or arbitrary string. Same character rules
+/// as a refname's first component: no whitespace, no <c>:</c>, no <c>/</c>
+/// (a remote name is a single path segment).
+[<Struct>]
+type Remote =
+    private
+    | Remote of string
+
+    member this.Value = let (Remote s) = this in s
+    override this.ToString() = this.Value
+
+    static member TryCreate(s: string) : Result<Remote, string> =
+        if String.IsNullOrWhiteSpace s then
+            Error "Remote name cannot be null, empty, or whitespace."
+        elif s.IndexOfAny([| ' '; '\t'; '\n'; '/'; ':'; '\\' |]) >= 0 then
+            Error "Remote name contains an invalid character."
+        else
+            Ok(Remote s)
+
+    static member Create(s: string) : Remote =
+        match Remote.TryCreate s with
+        | Ok r -> r
+        | Error msg -> raise (ArgumentException(msg, nameof s))
+
+    /// The default git remote name. Convenience for the common case.
+    static member Origin: Remote = Remote "origin"

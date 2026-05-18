@@ -11,6 +11,8 @@
     <Compile Include="Generators.fs" />
     <Compile Include="DomainTests.fs" />
     <Compile Include="PrimitivesTests.fs" />
+    <Compile Include="BackendPrimitivesTests.fs" />
+    <Compile Include="BackendDomainTests.fs" />
     <Compile Include="WorkspaceTests.fs" />
     <Compile Include="ConversationTests.fs" />
     <Compile Include="IdsTests.fs" />
