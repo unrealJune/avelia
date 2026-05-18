@@ -99,5 +99,13 @@
             Include="..\..\src\Avelia.Shell.Windows\ViewModels\ProfileSubpageViewModel.cs"
             Link="ViewModels\ProfileSubpageViewModel.cs"
         />
+        <Compile
+            Include="..\..\src\Avelia.Shell.Windows\ViewModels\InboxItemViewModel.cs"
+            Link="ViewModels\InboxItemViewModel.cs"
+        />
+        <Compile
+            Include="..\..\src\Avelia.Shell.Windows\ViewModels\InboxViewModel.cs"
+            Link="ViewModels\InboxViewModel.cs"
+        />
     </ItemGroup>
 </Project>
