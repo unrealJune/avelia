@@ -12,6 +12,8 @@
     <Compile Include="RepoLocksTests.fs" />
     <Compile Include="StartupTests.fs" />
     <Compile Include="GitCliTests.fs" />
+    <Compile Include="GitInspectorTests.fs" />
+    <Compile Include="GitInspectorParsingTests.fs" />
   </ItemGroup>
 
   <ItemGroup>
