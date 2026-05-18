@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Avelia.Shell.Windows.Controls.InboxItemRowBody"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:Avelia.Shell.Windows.ViewModels"
+>
+    <!--
+        Shared body of an inbox row — title + description + time + chevron.
+        Per-kind row templates in InboxPage.xaml wrap their leading tile around
+        an instance of this control, so the layout below the tile lives in one
+        place. Brushes stay as inline {ThemeResource} references; consumers
+        provide the VM through the Item DP.
+    -->
+    <Grid ColumnSpacing="10" VerticalAlignment="Center">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="Auto" />
+            <ColumnDefinition Width="Auto" />
+        </Grid.ColumnDefinitions>
+
+        <StackPanel Grid.Column="0" Orientation="Vertical" Spacing="2" VerticalAlignment="Center">
+            <TextBlock
+                Style="{StaticResource AveliaBodyStrongTextStyle}"
+                Text="{x:Bind Item.Title, Mode=OneWay, FallbackValue=''}"
+                TextTrimming="CharacterEllipsis"
+            />
+            <TextBlock
+                Style="{StaticResource AveliaCaptionTextStyle}"
+                Foreground="{ThemeResource AveliaTextSecondaryBrush}"
+                Text="{x:Bind Item.Description, Mode=OneWay, FallbackValue=''}"
+                TextWrapping="Wrap"
+            />
+        </StackPanel>
+
+        <TextBlock
+            Grid.Column="1"
+            VerticalAlignment="Center"
+            Style="{StaticResource AveliaCaptionTextStyle}"
+            Foreground="{ThemeResource AveliaTextTertiaryBrush}"
+            Text="{x:Bind Item.TimeAgo, Mode=OneWay, FallbackValue=''}"
+        />
+
+        <FontIcon
+            Grid.Column="2"
+            Margin="6,0,0,0"
+            VerticalAlignment="Center"
+            FontFamily="Segoe Fluent Icons"
+            FontSize="11"
+            Glyph="&#xE76C;"
+            Foreground="{ThemeResource AveliaTextTertiaryBrush}"
+        />
+    </Grid>
+</UserControl>

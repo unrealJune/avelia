@@ -71,6 +71,15 @@ public class ThemeContrastTests
             // Hunk-header bar uses accent-text on a subtle fill. Same floor
             // as the body code-ref accent above the diff viewer.
             ("AveliaAccentTextBrush", "AveliaSubtleFillTertiaryBrush", WcagAaNormalText),
+            // ---- Chunk 7: inbox row tile glyph on tinted background ----
+            //
+            // Each tile is a 36×36 square with a 16px FontIcon — reads as a
+            // glyph rather than body text, so the large-text floor matches
+            // the success/danger chip pairings above. Catches a future
+            // redesign that darkens any of the *BgBrush tokens enough to
+            // blend with the glyph.
+            ("AveliaWarningBrush", "AveliaWarningBgBrush", WcagAaLargeText),
+            ("AveliaInfoBrush", "AveliaInfoBgBrush", WcagAaLargeText),
         }
         select new object[] { theme, pair.Item1, pair.Item2, pair.Item3 };
 

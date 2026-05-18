@@ -103,5 +103,13 @@
             Include="..\..\src\Avelia.Shell.Windows\ViewModels\AddRepositoryViewModel.cs"
             Link="ViewModels\AddRepositoryViewModel.cs"
         />
+        <Compile
+            Include="..\..\src\Avelia.Shell.Windows\ViewModels\InboxItemViewModel.cs"
+            Link="ViewModels\InboxItemViewModel.cs"
+        />
+        <Compile
+            Include="..\..\src\Avelia.Shell.Windows\ViewModels\InboxViewModel.cs"
+            Link="ViewModels\InboxViewModel.cs"
+        />
     </ItemGroup>
 </Project>

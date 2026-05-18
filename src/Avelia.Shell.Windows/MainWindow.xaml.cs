@@ -474,10 +474,7 @@ public sealed partial class MainWindow : Window
                 NavigateToActiveWorkspace();
                 break;
             case NavRailSection.Inbox:
-                ContentFrame.Navigate(
-                    typeof(PlaceholderPage),
-                    new PlaceholderPageArgs("Inbox", "Inbox notifications ship in Chunk 7.")
-                );
+                NavigateToInbox();
                 break;
             case NavRailSection.Pinned:
                 ContentFrame.Navigate(
@@ -517,5 +514,23 @@ public sealed partial class MainWindow : Window
             BackAction: () => RailNav.SelectedItem = HomeItem
         );
         ContentFrame.Navigate(typeof(SettingsPage), args, new DrillInNavigationTransitionInfo());
+    }
+
+    private void NavigateToInbox()
+    {
+        // The page publishes WorkspaceOpenRequested when a row with a non-empty
+        // linked workspace is clicked. We await OpenWorkspaceCommand so the
+        // workspace tab and ActiveTab are settled BEFORE flipping the rail —
+        // otherwise (with a real-backend's async I/O) the rail flip would fire
+        // NavigateToActiveWorkspace against the previous ActiveTab for a beat.
+        var args = new InboxPageArgs(
+            _services,
+            OnWorkspaceOpenRequested: async id =>
+            {
+                await ViewModel.OpenWorkspaceCommand.ExecuteAsync(id);
+                RailNav.SelectedItem = HomeItem;
+            }
+        );
+        ContentFrame.Navigate(typeof(InboxPage), args, new DrillInNavigationTransitionInfo());
     }
 }
