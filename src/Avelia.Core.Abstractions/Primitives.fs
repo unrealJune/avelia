@@ -29,7 +29,7 @@ type BranchName =
         elif s.IndexOfAny([| ' '; '\t'; '\n'; ':'; '?'; '['; '*'; '\\'; '~'; '^' |]) >= 0 then
             Error "Branch name contains an invalid character."
         else
-            Ok (BranchName s)
+            Ok(BranchName s)
 
     /// Throwing variant for code paths where the input is known to be valid
     /// (design data, hardcoded fixtures, etc.). Throws <see cref="System.ArgumentException"/>
@@ -62,7 +62,7 @@ type RepoPath =
         elif RepoPath.ContainsTraversal s then
             Error "Repository path cannot contain a '..' segment."
         else
-            Ok (RepoPath s)
+            Ok(RepoPath s)
 
     static member Create(s: string) : RepoPath =
         match RepoPath.TryCreate s with
@@ -104,7 +104,7 @@ type RelativePath =
         elif RelativePath.ContainsTraversal s then
             Error "Relative path cannot contain a '..' segment."
         else
-            Ok (RelativePath (s.Replace('\\', '/')))
+            Ok(RelativePath(s.Replace('\\', '/')))
 
     static member Create(s: string) : RelativePath =
         match RelativePath.TryCreate s with

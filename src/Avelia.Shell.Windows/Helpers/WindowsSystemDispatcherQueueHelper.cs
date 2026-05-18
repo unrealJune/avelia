@@ -22,7 +22,8 @@ internal sealed class WindowsSystemDispatcherQueueHelper
     [DllImport("CoreMessaging.dll")]
     private static extern int CreateDispatcherQueueController(
         DispatcherQueueOptions options,
-        [MarshalAs(UnmanagedType.IUnknown)] out object dispatcherQueueController);
+        [MarshalAs(UnmanagedType.IUnknown)] out object dispatcherQueueController
+    );
 
     private object? _dispatcherQueueController;
 
@@ -38,7 +39,7 @@ internal sealed class WindowsSystemDispatcherQueueHelper
         {
             DispatcherQueueOptions options;
             options.dwSize = Marshal.SizeOf(typeof(DispatcherQueueOptions));
-            options.threadType = 2;    // DQTYPE_THREAD_CURRENT
+            options.threadType = 2; // DQTYPE_THREAD_CURRENT
             options.apartmentType = 2; // DQTAT_COM_STA
 
             _ = CreateDispatcherQueueController(options, out _dispatcherQueueController);

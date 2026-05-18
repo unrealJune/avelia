@@ -22,8 +22,10 @@ namespace Avelia.Shell.Windows.Controls;
 /// </summary>
 public sealed class CodeRefBlock : UserControl
 {
-    private static readonly Regex CodeRefRegex =
-        new(@"(?<=^|\s)@([A-Za-z0-9_\-.]+\.[A-Za-z0-9]+)", RegexOptions.Compiled);
+    private static readonly Regex CodeRefRegex = new(
+        @"(?<=^|\s)@([A-Za-z0-9_\-.]+\.[A-Za-z0-9]+)",
+        RegexOptions.Compiled
+    );
 
     private const string AccentBrushKey = "AveliaAccentTextBrush";
     private const string MonoFontFamilyKey = "AveliaMonoFontFamily";
@@ -38,33 +40,33 @@ public sealed class CodeRefBlock : UserControl
         ActualThemeChanged += OnActualThemeChanged;
     }
 
-    public static readonly DependencyProperty SourceTextProperty =
-        DependencyProperty.Register(
-            nameof(SourceText),
-            typeof(string),
-            typeof(CodeRefBlock),
-            new PropertyMetadata(string.Empty, OnSourceTextChanged));
+    public static readonly DependencyProperty SourceTextProperty = DependencyProperty.Register(
+        nameof(SourceText),
+        typeof(string),
+        typeof(CodeRefBlock),
+        new PropertyMetadata(string.Empty, OnSourceTextChanged)
+    );
 
-    public static readonly DependencyProperty TextStyleProperty =
-        DependencyProperty.Register(
-            nameof(TextStyle),
-            typeof(Style),
-            typeof(CodeRefBlock),
-            new PropertyMetadata(null, OnTextStyleChanged));
+    public static readonly DependencyProperty TextStyleProperty = DependencyProperty.Register(
+        nameof(TextStyle),
+        typeof(Style),
+        typeof(CodeRefBlock),
+        new PropertyMetadata(null, OnTextStyleChanged)
+    );
 
-    public static readonly DependencyProperty TextWrappingProperty =
-        DependencyProperty.Register(
-            nameof(TextWrapping),
-            typeof(TextWrapping),
-            typeof(CodeRefBlock),
-            new PropertyMetadata(TextWrapping.Wrap, OnTextWrappingChanged));
+    public static readonly DependencyProperty TextWrappingProperty = DependencyProperty.Register(
+        nameof(TextWrapping),
+        typeof(TextWrapping),
+        typeof(CodeRefBlock),
+        new PropertyMetadata(TextWrapping.Wrap, OnTextWrappingChanged)
+    );
 
-    public static readonly DependencyProperty TextForegroundProperty =
-        DependencyProperty.Register(
-            nameof(TextForeground),
-            typeof(Brush),
-            typeof(CodeRefBlock),
-            new PropertyMetadata(null, OnTextForegroundChanged));
+    public static readonly DependencyProperty TextForegroundProperty = DependencyProperty.Register(
+        nameof(TextForeground),
+        typeof(Brush),
+        typeof(CodeRefBlock),
+        new PropertyMetadata(null, OnTextForegroundChanged)
+    );
 
     /// <summary>The raw text to render with code-refs highlighted.</summary>
     public string SourceText
@@ -93,7 +95,10 @@ public sealed class CodeRefBlock : UserControl
         set => SetValue(TextForegroundProperty, value);
     }
 
-    private static void OnSourceTextChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    private static void OnSourceTextChanged(
+        DependencyObject d,
+        DependencyPropertyChangedEventArgs e
+    )
     {
         if (d is CodeRefBlock self)
         {
@@ -109,7 +114,10 @@ public sealed class CodeRefBlock : UserControl
         }
     }
 
-    private static void OnTextWrappingChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    private static void OnTextWrappingChanged(
+        DependencyObject d,
+        DependencyPropertyChangedEventArgs e
+    )
     {
         if (d is CodeRefBlock self)
         {
@@ -117,7 +125,10 @@ public sealed class CodeRefBlock : UserControl
         }
     }
 
-    private static void OnTextForegroundChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    private static void OnTextForegroundChanged(
+        DependencyObject d,
+        DependencyPropertyChangedEventArgs e
+    )
     {
         if (d is CodeRefBlock self && e.NewValue is Brush b)
         {
@@ -144,9 +155,11 @@ public sealed class CodeRefBlock : UserControl
         var themeKey = ActualTheme == ElementTheme.Light ? "Light" : "Default";
         foreach (var merged in Application.Current.Resources.MergedDictionaries)
         {
-            if (merged.ThemeDictionaries.TryGetValue(themeKey, out var td)
+            if (
+                merged.ThemeDictionaries.TryGetValue(themeKey, out var td)
                 && td is ResourceDictionary themeDict
-                && themeDict.TryGetValue(key, out var v))
+                && themeDict.TryGetValue(key, out var v)
+            )
             {
                 return v;
             }

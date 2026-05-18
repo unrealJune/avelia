@@ -5,6 +5,7 @@ using Avelia.Shell.Windows.Services;
 using Avelia.Shell.Windows.ViewModels;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media.Animation;
 using Microsoft.UI.Xaml.Navigation;
 
 namespace Avelia.Shell.Windows.Pages;
@@ -45,6 +46,7 @@ public sealed partial class WorkspacePage : Page
         if (ViewModel is null)
         {
             ViewModel = new WorkspaceViewModel(args.Services, args.Dispatcher);
+            ViewModel.PrPane.FileOpened += OnPrPaneFileOpened;
             Bindings.Update();
         }
 
@@ -58,6 +60,22 @@ public sealed partial class WorkspacePage : Page
         }
     }
 
+    /// <summary>
+    /// Bubble a file-row click in the right pane up to the Frame as a navigation
+    /// to <see cref="PrReviewPage"/> with the file pre-selected. Uses the page's
+    /// <c>Frame</c> directly (set by WinUI when the page is hosted) rather than
+    /// reaching into <c>MainWindow</c>; keeps navigation a local concern.
+    /// </summary>
+    private void OnPrPaneFileOpened(object? sender, RelativePath path)
+    {
+        if (_pendingArgs is null || Frame is null)
+        {
+            return;
+        }
+        var args = new PrReviewPageArgs(_pendingArgs.WorkspaceId, _pendingArgs.Services, path);
+        Frame.Navigate(typeof(PrReviewPage), args, new DrillInNavigationTransitionInfo());
+    }
+
     protected override void OnNavigatedFrom(NavigationEventArgs e)
     {
         base.OnNavigatedFrom(e);
@@ -67,9 +85,16 @@ public sealed partial class WorkspacePage : Page
         ViewModel?.StopObserving();
     }
 
-    private void OnPrPaneTabSelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
+    private void OnPrPaneTabSelectionChanged(
+        SelectorBar sender,
+        SelectorBarSelectionChangedEventArgs args
+    )
     {
-        if (ViewModel is null || sender.SelectedItem is not SelectorBarItem item || item.Text is null)
+        if (
+            ViewModel is null
+            || sender.SelectedItem is not SelectorBarItem item
+            || item.Text is null
+        )
         {
             return;
         }
@@ -81,4 +106,5 @@ public sealed partial class WorkspacePage : Page
 public sealed record WorkspacePageArgs(
     WorkspaceId WorkspaceId,
     AveliaServices Services,
-    IUiDispatcher Dispatcher);
+    IUiDispatcher Dispatcher
+);

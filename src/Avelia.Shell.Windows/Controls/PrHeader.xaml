@@ -94,12 +94,7 @@
         </StackPanel>
 
         <!-- Stats row: N files · +ADD · -DEL · M/N checks -->
-        <StackPanel
-            Grid.Row="3"
-            Orientation="Horizontal"
-            Spacing="10"
-            VerticalAlignment="Center"
-        >
+        <StackPanel Grid.Row="3" Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
             <TextBlock
                 Style="{StaticResource AveliaCaptionTextStyle}"
                 Foreground="{ThemeResource AveliaTextSecondaryBrush}"

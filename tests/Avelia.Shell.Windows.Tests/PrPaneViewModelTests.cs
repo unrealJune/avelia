@@ -49,8 +49,7 @@ public class PrPaneViewModelTests
         var (vm, _) = MakeVm();
         await vm.LoadAsync(DesignData.archiveWorkspaceId);
 
-        var expectedPassed = DesignData.archivePullRequest.Checks
-            .Count(c => c.Status.IsPassed);
+        var expectedPassed = DesignData.archivePullRequest.Checks.Count(c => c.Status.IsPassed);
         Assert.Equal(DesignData.archivePullRequest.Checks.Length, vm.ChecksTotal);
         Assert.Equal(expectedPassed, vm.ChecksPassed);
         Assert.Equal($"{expectedPassed}/{vm.ChecksTotal} checks", vm.ChecksSummary);
@@ -146,6 +145,10 @@ public class PrPaneViewModelTests
         vm.FileOpened += (_, path) => captured = path;
 
         var target = vm.Files.First();
+        // PrPaneViewModel constructs rows with a real onOpen callback, so the
+        // command is always non-null here — assert it as part of the test's
+        // pre-condition rather than null-bang silencing the compiler.
+        Assert.NotNull(target.OpenCommand);
         target.OpenCommand.Execute(null);
 
         Assert.NotNull(captured);
@@ -159,6 +162,7 @@ public class PrPaneViewModelTests
         await vm.LoadAsync(DesignData.archiveWorkspaceId);
 
         var second = vm.Files.Skip(1).First();
+        Assert.NotNull(second.OpenCommand);
         second.OpenCommand.Execute(null);
 
         Assert.True(second.IsFocused);
@@ -172,7 +176,8 @@ public class DiffFileViewModelTests
     public void Constructor_SplitsPathIntoFolderAndFileName()
     {
         var file = DesignData.diffFiles.First(f =>
-            f.Path.Value == "src/ui/components/RepositoryDetailsDialog.tsx");
+            f.Path.Value == "src/ui/components/RepositoryDetailsDialog.tsx"
+        );
         var vm = new DiffFileViewModel(file, _ => { });
 
         Assert.Equal("src/ui/components/", vm.Folder);
@@ -207,7 +212,9 @@ public class TerminalPanelViewModelTests
     [Fact]
     public void Load_BuildsPromptLineFromWorkspaceBaseAndBranch()
     {
-        var workspace = DesignData.workspaces.First(w => w.Id.Equals(DesignData.archiveWorkspaceId));
+        var workspace = DesignData.workspaces.First(w =>
+            w.Id.Equals(DesignData.archiveWorkspaceId)
+        );
         var vm = new TerminalPanelViewModel();
         vm.Load(workspace);
 
@@ -239,7 +246,9 @@ public class TerminalPanelViewModelTests
     [Fact]
     public void Reset_ClearsBranchBaseAndPrompt()
     {
-        var workspace = DesignData.workspaces.First(w => w.Id.Equals(DesignData.archiveWorkspaceId));
+        var workspace = DesignData.workspaces.First(w =>
+            w.Id.Equals(DesignData.archiveWorkspaceId)
+        );
         var vm = new TerminalPanelViewModel();
         vm.Load(workspace);
 

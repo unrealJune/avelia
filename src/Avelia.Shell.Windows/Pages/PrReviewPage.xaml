@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="Avelia.Shell.Windows.Pages.PrReviewPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Avelia.Shell.Windows.Controls"
+    xmlns:vm="using:Avelia.Shell.Windows.ViewModels"
+>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- =========== Title bar: back + PR # + title + status + actions =========== -->
+        <Border
+            Grid.Row="0"
+            BorderBrush="{ThemeResource AveliaDividerStrokeBrush}"
+            BorderThickness="0,0,0,1"
+            Padding="16,12,16,12"
+        >
+            <Grid ColumnSpacing="10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <Button
+                    Grid.Column="0"
+                    x:Name="BackButton"
+                    AutomationProperties.AutomationId="PrReviewBackButton"
+                    AutomationProperties.Name="Back"
+                    Style="{StaticResource AveliaIconButtonStyle}"
+                    Click="OnBackClicked"
+                >
+                    <FontIcon FontFamily="Segoe Fluent Icons" FontSize="14" Glyph="&#xE76B;" />
+                </Button>
+
+                <TextBlock
+                    Grid.Column="1"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource AveliaBodyStrongTextStyle}"
+                    Foreground="{ThemeResource AveliaAccentTextBrush}"
+                    Text="{x:Bind ViewModel.NumberDisplay, Mode=OneWay, FallbackValue=''}"
+                />
+
+                <TextBlock
+                    Grid.Column="2"
+                    VerticalAlignment="Center"
+                    Style="{StaticResource AveliaBodyStrongTextStyle}"
+                    TextTrimming="CharacterEllipsis"
+                    Text="{x:Bind ViewModel.Title, Mode=OneWay, FallbackValue=''}"
+                />
+
+                <!-- Status pill -->
+                <Border
+                    Grid.Column="3"
+                    VerticalAlignment="Center"
+                    Padding="9,2"
+                    CornerRadius="{StaticResource AveliaCornerRadiusPill}"
+                    Background="{ThemeResource AveliaSubtleFillSecondaryBrush}"
+                    BorderBrush="{ThemeResource AveliaSurfaceStrokeBrush}"
+                    BorderThickness="1"
+                    Visibility="{x:Bind ViewModel.HasPullRequest, Mode=OneWay, FallbackValue=Collapsed}"
+                >
+                    <TextBlock
+                        FontFamily="{StaticResource AveliaUiFontFamily}"
+                        FontSize="11"
+                        FontWeight="SemiBold"
+                        Foreground="{ThemeResource AveliaTextSecondaryBrush}"
+                        Text="{x:Bind ViewModel.StatusLabel, Mode=OneWay, FallbackValue=''}"
+                    />
+                </Border>
+
+                <!--
+                    Compare / review-action / view-file affordances render but
+                    don't act yet — they wait on the VCS adapter that lands in
+                    Chunk 10. IsEnabled=False + a tooltip lets the user discover
+                    the button without leaving them clicking into a dead control.
+                -->
+                <Button
+                    Grid.Column="4"
+                    AutomationProperties.AutomationId="ComparePrButton"
+                    AutomationProperties.Name="Compare branches"
+                    Style="{StaticResource AveliaSubtleButtonStyle}"
+                    FontSize="13"
+                    Padding="10,4"
+                    IsEnabled="False"
+                    ToolTipService.ToolTip="Compare ships with the GitHub adapter."
+                    Visibility="{x:Bind ViewModel.HasPullRequest, Mode=OneWay, FallbackValue=Collapsed}"
+                >
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <FontIcon FontFamily="Segoe Fluent Icons" FontSize="11" Glyph="&#xE1D9;" />
+                        <TextBlock Text="Compare" />
+                    </StackPanel>
+                </Button>
+
+                <Button
+                    Grid.Column="5"
+                    AutomationProperties.AutomationId="MergePrButton"
+                    AutomationProperties.Name="Merge pull request"
+                    Style="{StaticResource AveliaMergeButtonStyle}"
+                    Command="{x:Bind ViewModel.MergeCommand, Mode=OneWay}"
+                    Visibility="{x:Bind ViewModel.HasPullRequest, Mode=OneWay, FallbackValue=Collapsed}"
+                >
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <FontIcon FontFamily="Segoe Fluent Icons" FontSize="12" Glyph="&#xE8AB;" />
+                        <TextBlock Text="Merge" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </Border>
+
+        <!-- =========== Body: file tree (280) + diff viewer (*) =========== -->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="280" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Border
+                Grid.Column="0"
+                Background="{ThemeResource AveliaCardBackgroundBrush}"
+                BorderBrush="{ThemeResource AveliaDividerStrokeBrush}"
+                BorderThickness="0,0,1,0"
+            >
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <TextBlock
+                        Grid.Row="0"
+                        Margin="14,12,12,6"
+                        Style="{StaticResource AveliaSectionLabelTextStyle}"
+                        Text="FILES CHANGED"
+                    />
+
+                    <controls:PrFileTree
+                        Grid.Row="1"
+                        x:Name="FileTree"
+                        AutomationProperties.AutomationId="PrFileTreeControl"
+                        Files="{x:Bind ViewModel.Files, Mode=OneWay}"
+                        FileSelected="OnFileSelected"
+                    />
+                </Grid>
+            </Border>
+
+            <controls:UnifiedDiffViewer
+                Grid.Column="1"
+                AutomationProperties.AutomationId="UnifiedDiffViewer"
+                ViewModel="{x:Bind ViewModel, Mode=OneWay}"
+            />
+        </Grid>
+
+        <!-- =========== Footer: Request changes / Comment / Approve =========== -->
+        <Border
+            Grid.Row="2"
+            BorderBrush="{ThemeResource AveliaDividerStrokeBrush}"
+            BorderThickness="0,1,0,0"
+            Padding="16,10,16,10"
+        >
+            <StackPanel Orientation="Horizontal" Spacing="8" HorizontalAlignment="Right">
+                <!--
+                    Review action buttons are disabled until the GitHub adapter
+                    (Chunk 10) wires Approve / RequestChanges / Comment to the
+                    real API. The styling stays so the design is real; the
+                    ToolTip names the dependency so a user clicking can tell the
+                    affordance is intentional, not broken.
+                -->
+                <Button
+                    AutomationProperties.AutomationId="RequestChangesButton"
+                    AutomationProperties.Name="Request changes"
+                    Style="{StaticResource AveliaSubtleButtonStyle}"
+                    FontSize="13"
+                    Padding="12,5"
+                    IsEnabled="False"
+                    ToolTipService.ToolTip="Review actions ship with the GitHub adapter."
+                >
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <FontIcon FontFamily="Segoe Fluent Icons" FontSize="11" Glyph="&#xE711;" />
+                        <TextBlock Text="Request changes" />
+                    </StackPanel>
+                </Button>
+                <Button
+                    AutomationProperties.AutomationId="CommentButton"
+                    AutomationProperties.Name="Comment"
+                    Style="{StaticResource AveliaSubtleButtonStyle}"
+                    FontSize="13"
+                    Padding="12,5"
+                    IsEnabled="False"
+                    ToolTipService.ToolTip="Review actions ship with the GitHub adapter."
+                >
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <FontIcon FontFamily="Segoe Fluent Icons" FontSize="11" Glyph="&#xE8BD;" />
+                        <TextBlock Text="Comment" />
+                    </StackPanel>
+                </Button>
+                <Button
+                    AutomationProperties.AutomationId="ApproveButton"
+                    AutomationProperties.Name="Approve"
+                    Style="{StaticResource AveliaAccentButtonStyle}"
+                    FontSize="13"
+                    IsEnabled="False"
+                    ToolTipService.ToolTip="Review actions ship with the GitHub adapter."
+                >
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <FontIcon FontFamily="Segoe Fluent Icons" FontSize="11" Glyph="&#xE73E;" />
+                        <TextBlock Text="Approve" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Page>

@@ -19,17 +19,16 @@ public sealed class WorkspaceStatusToBrushConverter : IValueConverter
         }
 
         var key =
-            status.IsReady    ? "AveliaSuccessBrush" :
-            status.IsConflict ? "AveliaWarningBrush" :
-            status.IsOpen     ? "AveliaInfoBrush" :
-            status.IsActive   ? "AveliaAccentDefaultBrush" :
-                                "AveliaTextTertiaryBrush"; // Draft, Archived fall through
+            status.IsReady ? "AveliaSuccessBrush"
+            : status.IsConflict ? "AveliaWarningBrush"
+            : status.IsOpen ? "AveliaInfoBrush"
+            : status.IsActive ? "AveliaAccentDefaultBrush"
+            : "AveliaTextTertiaryBrush"; // Draft, Archived fall through
         return ResolveBrush(key);
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, string language) =>
         throw new NotSupportedException("WorkspaceStatusToBrushConverter is one-way.");
 
-    private static Brush ResolveBrush(string key) =>
-        (Brush)Application.Current.Resources[key];
+    private static Brush ResolveBrush(string key) => (Brush)Application.Current.Resources[key];
 }

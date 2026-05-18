@@ -16,7 +16,8 @@ public partial class WorkspaceItemViewModel : ObservableObject
         string branch,
         WorkspaceStatus status,
         int add,
-        int del)
+        int del
+    )
     {
         Id = id;
         _branch = branch;

@@ -18,7 +18,15 @@ namespace Avelia.Shell.Windows.ViewModels;
 /// </summary>
 public partial class DiffFileViewModel : ObservableObject
 {
-    public DiffFileViewModel(DiffFile file, Action<RelativePath> onOpen)
+    /// <summary>
+    /// Construct a row VM. <paramref name="onOpen"/> is optional: pass
+    /// <c>null</c> when the parent surface routes clicks through its own
+    /// container (e.g. <c>PrFileTree</c> uses <c>ListView.ItemClick</c> and
+    /// has no use for the row's command). When null, <see cref="OpenCommand"/>
+    /// is also null and binding to it is a no-op — leaving a no-op delegate
+    /// would silently swallow command invocations from future callers.
+    /// </summary>
+    public DiffFileViewModel(DiffFile file, Action<RelativePath>? onOpen)
     {
         Path = file.Path;
         Folder = file.Path.Folder;
@@ -28,10 +36,12 @@ public partial class DiffFileViewModel : ObservableObject
         Kind = file.Kind;
         KindBadge = KindToBadge(file.Kind);
         _isFocused = file.IsFocused;
-        AddDisplay = "+" + file.Add.ToString(CultureInfo.InvariantCulture);
-        DelDisplay = "-" + file.Del.ToString(CultureInfo.InvariantCulture);
+        AddDisplay =
+            file.Add == 0 ? string.Empty : "+" + file.Add.ToString(CultureInfo.InvariantCulture);
+        DelDisplay =
+            file.Del == 0 ? string.Empty : "-" + file.Del.ToString(CultureInfo.InvariantCulture);
 
-        OpenCommand = new RelayCommand(() => onOpen(Path));
+        OpenCommand = onOpen is null ? null : new RelayCommand(() => onOpen(Path));
     }
 
     public RelativePath Path { get; }
@@ -56,14 +66,20 @@ public partial class DiffFileViewModel : ObservableObject
     [ObservableProperty]
     private bool _isFocused;
 
-    public ICommand OpenCommand { get; }
+    /// <summary>
+    /// Null when the row VM was constructed without an <c>onOpen</c> callback
+    /// (PR Review file tree path). XAML <c>{x:Bind OpenCommand}</c> safely
+    /// no-ops on null commands.
+    /// </summary>
+    public ICommand? OpenCommand { get; }
 
     private static string KindToBadge(DiffKind kind) =>
         // F# Match enforces exhaustiveness — adding a new DiffKind case
         // breaks compilation here until the badge mapping is updated.
         kind.Match<string>(
             onModified: () => "M",
-            onAdded:    () => "A",
-            onDeleted:  () => "D",
-            onRenamed:  _ => "R");
+            onAdded: () => "A",
+            onDeleted: () => "D",
+            onRenamed: _ => "R"
+        );
 }

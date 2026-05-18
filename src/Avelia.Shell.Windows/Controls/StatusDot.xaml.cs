@@ -15,12 +15,12 @@ public sealed partial class StatusDot : UserControl
         InitializeComponent();
     }
 
-    public static readonly DependencyProperty StatusProperty =
-        DependencyProperty.Register(
-            nameof(Status),
-            typeof(WorkspaceStatus),
-            typeof(StatusDot),
-            new PropertyMetadata(WorkspaceStatus.Draft));
+    public static readonly DependencyProperty StatusProperty = DependencyProperty.Register(
+        nameof(Status),
+        typeof(WorkspaceStatus),
+        typeof(StatusDot),
+        new PropertyMetadata(WorkspaceStatus.Draft)
+    );
 
     public WorkspaceStatus Status
     {

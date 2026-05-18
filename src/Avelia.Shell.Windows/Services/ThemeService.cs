@@ -64,7 +64,10 @@ public sealed class ThemeService
         {
             if (string.IsNullOrWhiteSpace(value))
             {
-                throw new ArgumentException("Accent hex must be a non-empty color string.", nameof(value));
+                throw new ArgumentException(
+                    "Accent hex must be a non-empty color string.",
+                    nameof(value)
+                );
             }
             if (string.Equals(_accentHex, value, StringComparison.OrdinalIgnoreCase))
             {

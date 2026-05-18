@@ -41,12 +41,11 @@ type IWorkspaceService =
 
 type IConversationService =
     abstract GetForWorkspaceAsync: workspaceId: WorkspaceId * CancellationToken -> Task<OperationResult<Conversation>>
+
     abstract PostUserMessageAsync:
-        conversationId: ConversationId
-        * text: string
-        * refs: string array
-        * CancellationToken
-        -> Task<OperationResult<UserMessage>>
+        conversationId: ConversationId * text: string * refs: string array * CancellationToken ->
+            Task<OperationResult<UserMessage>>
+
     /// Stream of events appended to the conversation *after* the subscription
     /// starts. Pairs with <c>GetForWorkspaceAsync</c> for the initial snapshot.
     /// The enumerator completes when the cancellation token is signalled.
@@ -64,7 +63,9 @@ type IConversationService =
 type IDiffService =
     abstract GetWorkspaceDiffAsync: workspaceId: WorkspaceId * CancellationToken -> Task<IReadOnlyList<DiffFile>>
     abstract GetPullRequestDiffAsync: prId: PullRequestId * CancellationToken -> Task<IReadOnlyList<DiffFile>>
-    abstract GetHunksAsync: prId: PullRequestId * file: RelativePath * CancellationToken -> Task<IReadOnlyList<DiffHunk>>
+
+    abstract GetHunksAsync:
+        prId: PullRequestId * file: RelativePath * CancellationToken -> Task<IReadOnlyList<DiffHunk>>
 
 type IPullRequestService =
     abstract GetForWorkspaceAsync: workspaceId: WorkspaceId * CancellationToken -> Task<OperationResult<PullRequest>>

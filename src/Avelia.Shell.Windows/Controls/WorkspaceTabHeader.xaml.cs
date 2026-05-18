@@ -15,12 +15,12 @@ public sealed partial class WorkspaceTabHeader : UserControl
         InitializeComponent();
     }
 
-    public static readonly DependencyProperty TabProperty =
-        DependencyProperty.Register(
-            nameof(Tab),
-            typeof(WorkspaceTabViewModel),
-            typeof(WorkspaceTabHeader),
-            new PropertyMetadata(null));
+    public static readonly DependencyProperty TabProperty = DependencyProperty.Register(
+        nameof(Tab),
+        typeof(WorkspaceTabViewModel),
+        typeof(WorkspaceTabHeader),
+        new PropertyMetadata(null)
+    );
 
     public WorkspaceTabViewModel? Tab
     {

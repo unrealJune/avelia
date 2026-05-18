@@ -14,12 +14,12 @@ public sealed partial class ModelBadge : UserControl
         InitializeComponent();
     }
 
-    public static readonly DependencyProperty ModelNameProperty =
-        DependencyProperty.Register(
-            nameof(ModelName),
-            typeof(string),
-            typeof(ModelBadge),
-            new PropertyMetadata("Sonnet 4.5"));
+    public static readonly DependencyProperty ModelNameProperty = DependencyProperty.Register(
+        nameof(ModelName),
+        typeof(string),
+        typeof(ModelBadge),
+        new PropertyMetadata("Sonnet 4.5")
+    );
 
     public string ModelName
     {

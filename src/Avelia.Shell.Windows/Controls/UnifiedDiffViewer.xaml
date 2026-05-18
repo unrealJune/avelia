@@ -1,0 +1,349 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Avelia.Shell.Windows.Controls.UnifiedDiffViewer"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:vm="using:Avelia.Shell.Windows.ViewModels"
+    xmlns:controls="using:Avelia.Shell.Windows.Controls"
+>
+    <UserControl.Resources>
+        <!--
+            Three diff-line templates. The selector below dispatches per
+            DiffLineViewModel.Kind. Keeping the three shapes as separate
+            templates lets each one declare its brushes via {ThemeResource}
+            so the per-row backgrounds re-resolve on theme switch — code
+            resolution would freeze (see ThemeUsageLintTests).
+
+            Row visual tree is intentionally shallow (Border + Grid + three
+            TextBlocks) because diffs can have hundreds of lines.
+        -->
+        <DataTemplate x:Key="DiffLineContextTemplate" x:DataType="vm:DiffLineViewModel">
+            <Grid ColumnSpacing="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="60" />
+                    <ColumnDefinition Width="18" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <TextBlock
+                    Grid.Column="0"
+                    Padding="0,1,10,1"
+                    HorizontalAlignment="Right"
+                    VerticalAlignment="Center"
+                    FontFamily="{StaticResource AveliaMonoFontFamily}"
+                    FontSize="12"
+                    LineHeight="18"
+                    Foreground="{ThemeResource AveliaTextTertiaryBrush}"
+                    Text="{x:Bind LineNumberDisplay, Mode=OneTime}"
+                />
+                <TextBlock
+                    Grid.Column="1"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    FontFamily="{StaticResource AveliaMonoFontFamily}"
+                    FontSize="12"
+                    LineHeight="18"
+                    Foreground="{ThemeResource AveliaTextTertiaryBrush}"
+                    Text="{x:Bind Sign, Mode=OneTime}"
+                />
+                <TextBlock
+                    Grid.Column="2"
+                    Padding="6,1,12,1"
+                    VerticalAlignment="Center"
+                    FontFamily="{StaticResource AveliaMonoFontFamily}"
+                    FontSize="12"
+                    LineHeight="18"
+                    Foreground="{ThemeResource AveliaTextPrimaryBrush}"
+                    TextWrapping="NoWrap"
+                    Text="{x:Bind Text, Mode=OneTime}"
+                />
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="DiffLineAdditionTemplate" x:DataType="vm:DiffLineViewModel">
+            <Grid Background="{ThemeResource AveliaDiffAddBgBrush}" ColumnSpacing="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="60" />
+                    <ColumnDefinition Width="18" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Background="{ThemeResource AveliaDiffAddStrongBrush}">
+                    <TextBlock
+                        Padding="0,1,10,1"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        FontFamily="{StaticResource AveliaMonoFontFamily}"
+                        FontSize="12"
+                        LineHeight="18"
+                        Foreground="{ThemeResource AveliaTextSecondaryBrush}"
+                        Text="{x:Bind LineNumberDisplay, Mode=OneTime}"
+                    />
+                </Border>
+                <TextBlock
+                    Grid.Column="1"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    FontFamily="{StaticResource AveliaMonoFontFamily}"
+                    FontSize="12"
+                    LineHeight="18"
+                    FontWeight="SemiBold"
+                    Foreground="{ThemeResource AveliaSuccessBrush}"
+                    Text="{x:Bind Sign, Mode=OneTime}"
+                />
+                <TextBlock
+                    Grid.Column="2"
+                    Padding="6,1,12,1"
+                    VerticalAlignment="Center"
+                    FontFamily="{StaticResource AveliaMonoFontFamily}"
+                    FontSize="12"
+                    LineHeight="18"
+                    Foreground="{ThemeResource AveliaTextPrimaryBrush}"
+                    TextWrapping="NoWrap"
+                    Text="{x:Bind Text, Mode=OneTime}"
+                />
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="DiffLineDeletionTemplate" x:DataType="vm:DiffLineViewModel">
+            <Grid Background="{ThemeResource AveliaDiffDelBgBrush}" ColumnSpacing="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="60" />
+                    <ColumnDefinition Width="18" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Border Grid.Column="0" Background="{ThemeResource AveliaDiffDelStrongBrush}">
+                    <TextBlock
+                        Padding="0,1,10,1"
+                        HorizontalAlignment="Right"
+                        VerticalAlignment="Center"
+                        FontFamily="{StaticResource AveliaMonoFontFamily}"
+                        FontSize="12"
+                        LineHeight="18"
+                        Foreground="{ThemeResource AveliaTextSecondaryBrush}"
+                        Text="{x:Bind LineNumberDisplay, Mode=OneTime}"
+                    />
+                </Border>
+                <TextBlock
+                    Grid.Column="1"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    FontFamily="{StaticResource AveliaMonoFontFamily}"
+                    FontSize="12"
+                    LineHeight="18"
+                    FontWeight="SemiBold"
+                    Foreground="{ThemeResource AveliaDangerBrush}"
+                    Text="{x:Bind Sign, Mode=OneTime}"
+                />
+                <TextBlock
+                    Grid.Column="2"
+                    Padding="6,1,12,1"
+                    VerticalAlignment="Center"
+                    FontFamily="{StaticResource AveliaMonoFontFamily}"
+                    FontSize="12"
+                    LineHeight="18"
+                    Foreground="{ThemeResource AveliaTextPrimaryBrush}"
+                    TextWrapping="NoWrap"
+                    Text="{x:Bind Text, Mode=OneTime}"
+                />
+            </Grid>
+        </DataTemplate>
+
+        <controls:DiffLineTemplateSelector
+            x:Key="DiffLineSelector"
+            ContextTemplate="{StaticResource DiffLineContextTemplate}"
+            AdditionTemplate="{StaticResource DiffLineAdditionTemplate}"
+            DeletionTemplate="{StaticResource DiffLineDeletionTemplate}"
+        />
+
+        <!-- Per-hunk template: accent-text header on a subtle fill, then a
+             non-virtualized ItemsControl of lines (hunks are short — ~20 lines
+             — but a single file can have many hunks; the outer scroll lives at
+             the hunk-list level, which is virtualized). -->
+        <DataTemplate x:Key="HunkTemplate" x:DataType="vm:DiffHunkViewModel">
+            <StackPanel Margin="0,0,0,12">
+                <Border
+                    Background="{ThemeResource AveliaSubtleFillTertiaryBrush}"
+                    BorderBrush="{ThemeResource AveliaDividerStrokeBrush}"
+                    BorderThickness="0,1,0,1"
+                    Padding="14,4,12,4"
+                >
+                    <TextBlock
+                        FontFamily="{StaticResource AveliaMonoFontFamily}"
+                        FontSize="12"
+                        LineHeight="18"
+                        Foreground="{ThemeResource AveliaAccentTextBrush}"
+                        Text="{x:Bind Header, Mode=OneTime, FallbackValue=''}"
+                    />
+                </Border>
+                <ItemsControl
+                    ItemsSource="{x:Bind Lines, Mode=OneTime}"
+                    ItemTemplateSelector="{StaticResource DiffLineSelector}"
+                />
+            </StackPanel>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Header card: mono file path + +N/-N chips + Unified/Split selector + View file -->
+        <Border
+            Grid.Row="0"
+            Margin="20,16,20,8"
+            Background="{ThemeResource AveliaCardBackgroundBrush}"
+            BorderBrush="{ThemeResource AveliaSurfaceStrokeBrush}"
+            BorderThickness="1"
+            CornerRadius="{StaticResource AveliaCornerRadiusMedium}"
+            Padding="14,10,12,10"
+            Visibility="{x:Bind ViewModel.HasSelectedFile, Mode=OneWay, FallbackValue=Collapsed}"
+        >
+            <Grid ColumnSpacing="12">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+
+                <StackPanel
+                    Grid.Column="0"
+                    Orientation="Horizontal"
+                    Spacing="0"
+                    VerticalAlignment="Center"
+                >
+                    <TextBlock
+                        Style="{StaticResource AveliaMonoCaptionTextStyle}"
+                        Foreground="{ThemeResource AveliaTextTertiaryBrush}"
+                        Text="{x:Bind ViewModel.SelectedFolder, Mode=OneWay, FallbackValue=''}"
+                        TextTrimming="CharacterEllipsis"
+                    />
+                    <TextBlock
+                        Style="{StaticResource AveliaMonoCaptionTextStyle}"
+                        Foreground="{ThemeResource AveliaTextPrimaryBrush}"
+                        FontWeight="SemiBold"
+                        Text="{x:Bind ViewModel.SelectedFileName, Mode=OneWay, FallbackValue=''}"
+                        TextTrimming="CharacterEllipsis"
+                    />
+                </StackPanel>
+
+                <StackPanel
+                    Grid.Column="1"
+                    Orientation="Horizontal"
+                    Spacing="6"
+                    VerticalAlignment="Center"
+                >
+                    <controls:Chip
+                        FillBrush="{ThemeResource AveliaDiffAddBgBrush}"
+                        StrokeBrush="{ThemeResource AveliaDiffAddStrongBrush}"
+                        TextBrush="{ThemeResource AveliaSuccessBrush}"
+                        Text="{x:Bind ViewModel.SelectedAddDisplay, Mode=OneWay, FallbackValue=''}"
+                    />
+                    <controls:Chip
+                        FillBrush="{ThemeResource AveliaDiffDelBgBrush}"
+                        StrokeBrush="{ThemeResource AveliaDiffDelStrongBrush}"
+                        TextBrush="{ThemeResource AveliaDangerBrush}"
+                        Text="{x:Bind ViewModel.SelectedDelDisplay, Mode=OneWay, FallbackValue=''}"
+                    />
+                </StackPanel>
+
+                <StackPanel
+                    Grid.Column="2"
+                    Orientation="Horizontal"
+                    Spacing="8"
+                    VerticalAlignment="Center"
+                >
+                    <!--
+                        Split view + view-file are design affordances pending
+                        backend work: Split needs a side-by-side renderer; View
+                        file needs the VCS adapter to fetch the post-change
+                        blob. Both stay visible (the design is real) but
+                        disabled with a tooltip so users don't click into dead
+                        UI. The Split SelectorBar item itself can't be
+                        IsEnabled-bound (SelectorBarItem has no IsEnabled), so
+                        the handler ignores selections to it.
+                    -->
+                    <SelectorBar
+                        AutomationProperties.AutomationId="DiffViewModeSelector"
+                        AutomationProperties.Name="Diff view mode"
+                        SelectionChanged="OnViewModeSelectionChanged"
+                    >
+                        <SelectorBarItem
+                            AutomationProperties.AutomationId="DiffUnifiedItem"
+                            Text="Unified"
+                            IsSelected="True"
+                        />
+                        <SelectorBarItem
+                            x:Name="SplitSelectorItem"
+                            AutomationProperties.AutomationId="DiffSplitItem"
+                            Text="Split"
+                            IsEnabled="False"
+                            ToolTipService.ToolTip="Side-by-side view ships in a later release."
+                        />
+                    </SelectorBar>
+                    <Button
+                        AutomationProperties.AutomationId="ViewFileButton"
+                        AutomationProperties.Name="View file"
+                        Style="{StaticResource AveliaSubtleButtonStyle}"
+                        FontSize="13"
+                        Padding="10,4"
+                        IsEnabled="False"
+                        ToolTipService.ToolTip="Opens the file at the post-change revision (needs the VCS adapter)."
+                    >
+                        <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                            <FontIcon
+                                FontFamily="Segoe Fluent Icons"
+                                FontSize="11"
+                                Glyph="&#xE8A7;"
+                            />
+                            <TextBlock Text="View file" />
+                        </StackPanel>
+                    </Button>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- Checks InfoBar. Severity is driven from VM.ChecksSeverityName; the
+             page mirrors the name onto the InfoBar.Severity DP because direct
+             enum binding from C# state isn't ergonomic in x:Bind. -->
+        <!--
+            IsOpen tracks ShowChecksInfoBar (HasPullRequest AND ChecksTotal > 0)
+            rather than HasPullRequest alone — otherwise the bar opens with the
+            XAML-default "Success" severity before LoadAsync populates check
+            counters, flashing green even for PRs with failing checks.
+        -->
+        <InfoBar
+            x:Name="ChecksInfoBar"
+            Grid.Row="1"
+            Margin="20,0,20,8"
+            AutomationProperties.AutomationId="DiffChecksInfoBar"
+            IsClosable="False"
+            IsOpen="{x:Bind ViewModel.ShowChecksInfoBar, Mode=OneWay, FallbackValue=False}"
+            Message="{x:Bind ViewModel.ChecksMessage, Mode=OneWay, FallbackValue=''}"
+            Severity="Success"
+        />
+
+        <!-- Hunks list: virtualizing ListView so files with many hunks scroll
+             cleanly. Container style strips selection/hover chrome — the rows
+             are non-interactive read-only diff lines. -->
+        <ListView
+            Grid.Row="2"
+            x:Name="HunksList"
+            AutomationProperties.AutomationId="DiffHunksList"
+            AutomationProperties.Name="Diff hunks"
+            ItemsSource="{x:Bind ViewModel.Hunks, Mode=OneWay}"
+            ItemTemplate="{StaticResource HunkTemplate}"
+            ItemContainerStyle="{StaticResource AveliaTranscriptItemContainerStyle}"
+            SelectionMode="None"
+            IsItemClickEnabled="False"
+            Background="Transparent"
+            BorderThickness="0"
+            Padding="0,0,0,16"
+            HorizontalContentAlignment="Stretch"
+            ScrollViewer.HorizontalScrollMode="Auto"
+            ScrollViewer.HorizontalScrollBarVisibility="Auto"
+            ScrollViewer.VerticalScrollBarVisibility="Auto"
+        />
+    </Grid>
+</UserControl>

@@ -337,8 +337,15 @@
                     AutomationProperties.Name="Changes or files"
                     SelectionChanged="OnPrPaneTabSelectionChanged"
                 >
-                    <SelectorBarItem AutomationProperties.AutomationId="PrPaneChangesTab" Text="Changes" IsSelected="True" />
-                    <SelectorBarItem AutomationProperties.AutomationId="PrPaneFilesTab" Text="Files" />
+                    <SelectorBarItem
+                        AutomationProperties.AutomationId="PrPaneChangesTab"
+                        Text="Changes"
+                        IsSelected="True"
+                    />
+                    <SelectorBarItem
+                        AutomationProperties.AutomationId="PrPaneFilesTab"
+                        Text="Files"
+                    />
                 </SelectorBar>
             </Border>
 

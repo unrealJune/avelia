@@ -1,41 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
 <UserControl
-    x:Class="Avelia.Shell.Windows.Controls.FileChangeList"
+    x:Class="Avelia.Shell.Windows.Controls.PrFileTree"
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:vm="using:Avelia.Shell.Windows.ViewModels"
     xmlns:controls="using:Avelia.Shell.Windows.Controls"
 >
     <UserControl.Resources>
-        <DataTemplate x:Key="FileRowTemplate" x:DataType="vm:DiffFileViewModel">
+        <DataTemplate x:Key="PrFileRowTemplate" x:DataType="vm:DiffFileViewModel">
             <!--
-                Outer Grid owns the focus tint (fills the row edge-to-edge);
-                inner Grid owns the padded content. Two-layer split avoids
-                the negative-margin trick (which couples to the inner
-                Padding) — if a future tweak changes Padding, the underlay
-                still spans correctly.
+                Two-layer row: an underlay Border owns the focus-tint fill so it
+                spans edge-to-edge, the inner Grid owns the padded content. Same
+                shape as Controls/FileChangeList for visual parity.
             -->
             <Grid>
-                <!-- Focused-row tint underlay -->
                 <Border
                     Background="{ThemeResource AveliaSubtleFillSecondaryBrush}"
                     Visibility="{x:Bind IsFocused, Mode=OneWay, FallbackValue=Collapsed}"
                 />
 
-                <Grid Padding="14,8" ColumnSpacing="10">
+                <Grid Padding="12,7" ColumnSpacing="8">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="*" />
                         <ColumnDefinition Width="Auto" />
                         <ColumnDefinition Width="Auto" />
-                        <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                    <!-- M / A / D / R badge -->
+                    <!-- M / A / D / R kind badge -->
                     <Border
                         Grid.Column="0"
-                        Width="18"
-                        Height="18"
+                        Width="16"
+                        Height="16"
                         CornerRadius="{StaticResource AveliaCornerRadiusSmall}"
                         Background="{ThemeResource AveliaSubtleFillTertiaryBrush}"
                         BorderBrush="{ThemeResource AveliaSurfaceStrokeBrush}"
@@ -44,7 +40,7 @@
                     >
                         <TextBlock
                             FontFamily="{StaticResource AveliaUiFontFamily}"
-                            FontSize="10"
+                            FontSize="9"
                             FontWeight="SemiBold"
                             HorizontalAlignment="Center"
                             VerticalAlignment="Center"
@@ -53,7 +49,7 @@
                         />
                     </Border>
 
-                    <!-- Folder + filename (single mono run, two TextBlocks) -->
+                    <!-- Folder + filename split, mono -->
                     <StackPanel
                         Grid.Column="1"
                         Orientation="Horizontal"
@@ -85,21 +81,11 @@
                     />
                     <controls:Chip
                         Grid.Column="3"
-                        Margin="0,0,4,0"
                         VerticalAlignment="Center"
                         FillBrush="{ThemeResource AveliaDiffDelBgBrush}"
                         StrokeBrush="{ThemeResource AveliaDiffDelStrongBrush}"
                         TextBrush="{ThemeResource AveliaDangerBrush}"
                         Text="{x:Bind DelDisplay, Mode=OneTime, FallbackValue=''}"
-                    />
-
-                    <FontIcon
-                        Grid.Column="4"
-                        FontFamily="Segoe Fluent Icons"
-                        FontSize="10"
-                        Glyph="&#xE76C;"
-                        Foreground="{ThemeResource AveliaTextTertiaryBrush}"
-                        VerticalAlignment="Center"
                     />
                 </Grid>
             </Grid>
@@ -108,17 +94,17 @@
 
     <ListView
         x:Name="FilesList"
-        AutomationProperties.AutomationId="PrFileList"
-        AutomationProperties.Name="Pull request file list"
+        AutomationProperties.AutomationId="PrFileTree"
+        AutomationProperties.Name="Pull request files"
         ItemsSource="{x:Bind Files, Mode=OneWay}"
-        ItemTemplate="{StaticResource FileRowTemplate}"
+        ItemTemplate="{StaticResource PrFileRowTemplate}"
         ItemContainerStyle="{StaticResource AveliaPlainInteractiveListItemContainerStyle}"
         IsItemClickEnabled="True"
         ItemClick="OnFileItemClick"
         SelectionMode="None"
         Background="Transparent"
         BorderThickness="0"
-        Padding="0"
+        Padding="0,4,0,4"
         HorizontalContentAlignment="Stretch"
         ScrollViewer.HorizontalScrollMode="Disabled"
         ScrollViewer.HorizontalScrollBarVisibility="Disabled"

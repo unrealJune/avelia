@@ -58,10 +58,6 @@
 
         <!-- 3px underline. Width hugs the strip; the active accent slice will
              move in Chunk 3.5 once multi-thread lands. -->
-        <Rectangle
-            Grid.Row="1"
-            Height="2"
-            Fill="{ThemeResource AveliaDividerStrokeBrush}"
-        />
+        <Rectangle Grid.Row="1" Height="2" Fill="{ThemeResource AveliaDividerStrokeBrush}" />
     </Grid>
 </UserControl>
