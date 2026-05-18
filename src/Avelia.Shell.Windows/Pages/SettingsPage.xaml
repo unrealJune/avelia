@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Page
+    x:Class="Avelia.Shell.Windows.Pages.SettingsPage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Avelia.Shell.Windows.Controls"
+    xmlns:conv="using:Avelia.Shell.Windows.Converters"
+    xmlns:pages="using:Avelia.Shell.Windows.Pages"
+    xmlns:subpages="using:Avelia.Shell.Windows.Pages.SettingsSubpages"
+    xmlns:vm="using:Avelia.Shell.Windows.ViewModels"
+>
+    <Page.Resources>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+
+        <!--
+            Side-nav row: icon + label, with a left accent bar visible only when
+            the row is selected. IsActive is mutated by SettingsViewModel when
+            ActiveSection changes; the bar's accent fill is a ThemeResource so
+            the framework tracks Light↔Dark and the runtime accent-color swap.
+        -->
+        <DataTemplate x:Key="SectionItemTemplate" x:DataType="vm:SettingsSectionItem">
+            <Button
+                AutomationProperties.AutomationId="SettingsSectionItem"
+                Click="OnSectionItemClick"
+                HorizontalAlignment="Stretch"
+                HorizontalContentAlignment="Stretch"
+                Padding="0"
+                Background="Transparent"
+                BorderBrush="Transparent"
+                BorderThickness="0"
+                Tag="{x:Bind Section, Mode=OneTime}"
+            >
+                <Grid Padding="14,8" ColumnSpacing="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="3" />
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border
+                        Grid.Column="0"
+                        Width="3"
+                        CornerRadius="2"
+                        HorizontalAlignment="Left"
+                        Background="{ThemeResource AveliaAccentDefaultBrush}"
+                        Visibility="{x:Bind IsActive, Mode=OneWay, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}"
+                    />
+                    <FontIcon
+                        Grid.Column="1"
+                        FontFamily="Segoe Fluent Icons"
+                        FontSize="14"
+                        Foreground="{ThemeResource AveliaTextSecondaryBrush}"
+                        Glyph="{x:Bind Glyph, Mode=OneTime, FallbackValue=''}"
+                        VerticalAlignment="Center"
+                    />
+                    <TextBlock
+                        Grid.Column="2"
+                        Style="{StaticResource AveliaBodyTextStyle}"
+                        Text="{x:Bind Label, Mode=OneTime, FallbackValue=''}"
+                        VerticalAlignment="Center"
+                    />
+                </Grid>
+            </Button>
+        </DataTemplate>
+    </Page.Resources>
+
+    <Grid Padding="0">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+
+        <!-- Header: back chevron + page title -->
+        <Grid Grid.Row="0" Padding="20,16,20,8" ColumnSpacing="12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <Button
+                Grid.Column="0"
+                x:Name="BackButton"
+                AutomationProperties.Name="Back"
+                Style="{StaticResource AveliaIconButtonStyle}"
+                Click="OnBackClick"
+            >
+                <FontIcon FontFamily="Segoe Fluent Icons" FontSize="14" Glyph="&#xE72B;" />
+            </Button>
+            <TextBlock
+                Grid.Column="1"
+                Style="{StaticResource AveliaSubtitleTextStyle}"
+                Text="Settings"
+                VerticalAlignment="Center"
+            />
+        </Grid>
+
+        <!-- Body: side nav + content area -->
+        <Grid Grid.Row="1" Padding="20,0,20,20" ColumnSpacing="20">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="220" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <!-- Side nav -->
+            <Border
+                Grid.Column="0"
+                Background="{ThemeResource AveliaCardBackgroundBrush}"
+                BorderBrush="{ThemeResource AveliaSurfaceStrokeBrush}"
+                BorderThickness="1"
+                CornerRadius="{StaticResource AveliaCornerRadiusMedium}"
+                Padding="6,8"
+            >
+                <ItemsRepeater
+                    x:Name="SectionList"
+                    AutomationProperties.AutomationId="SettingsSectionList"
+                    ItemsSource="{x:Bind ViewModel.Sections, Mode=OneWay}"
+                    ItemTemplate="{StaticResource SectionItemTemplate}"
+                />
+            </Border>
+
+            <!-- Content -->
+            <Border
+                Grid.Column="1"
+                x:Name="ContentHost"
+                AutomationProperties.AutomationId="SettingsContent"
+            />
+        </Grid>
+    </Grid>
+</Page>

@@ -14,7 +14,8 @@ type AveliaServices =
       Diffs: IDiffService
       PullRequests: IPullRequestService
       Runs: IRunService
-      Inbox: IInboxService }
+      Inbox: IInboxService
+      Settings: ISettingsService }
 
 module Composition =
 
@@ -62,4 +63,5 @@ module Composition =
           Diffs = StubDiffService(workspaceFiles, prFiles, prHunks) :> IDiffService
           PullRequests = StubPullRequestService(prsByWorkspace, prById) :> IPullRequestService
           Runs = StubRunService() :> IRunService
-          Inbox = StubInboxService(DesignData.inboxItems) :> IInboxService }
+          Inbox = StubInboxService(DesignData.inboxItems) :> IInboxService
+          Settings = StubSettingsService(DesignData.defaultAppearance) :> ISettingsService }

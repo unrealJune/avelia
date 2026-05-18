@@ -323,6 +323,19 @@ module DesignData =
                  Description = "82% — 3% below target"
                  Count = "82%" } |] }
 
+    // ----- Appearance -----
+
+    /// Initial appearance preferences for a freshly-installed app — Sky Blue
+    /// accent, Comfortable density, transparency on, Sonnet 4.5 default model.
+    /// Mirrors the defaults shown in the Settings → Appearance design.
+    let defaultAppearance: AppearanceSettings =
+        { Accent = AccentChoice.SkyBlue
+          Density = Density.Comfortable
+          Transparency = true
+          OpenWithRightPanel = true
+          DefaultModel = Sonnet45
+          ExtendedThinking = false }
+
     // ----- Inbox -----
 
     let inboxItems: IReadOnlyList<InboxItem> =

@@ -280,3 +280,61 @@ type StubInboxService(initial: seq<InboxItem>) =
         member _.ListAsync(ct) =
             ct.ThrowIfCancellationRequested()
             Task.FromResult(asReadOnly store)
+
+// ============================================================================
+//  Stub: Appearance / settings
+//
+//  Holds a single AppearanceSettings record in memory. Each setter clones the
+//  record with the new field and returns Task.CompletedTask. Real persistence
+//  (Chunk 10) will swap this for a SQLite-backed implementation; the shell
+//  binding doesn't need to change.
+// ============================================================================
+
+type StubSettingsService(initial: AppearanceSettings) =
+    let gate = obj ()
+    let mutable current = initial
+
+    interface ISettingsService with
+        member _.GetAsync(ct) =
+            ct.ThrowIfCancellationRequested()
+            Task.FromResult current
+
+        member _.SetAccentAsync(accent, ct) =
+            ct.ThrowIfCancellationRequested()
+            lock gate (fun () -> current <- { current with Accent = accent })
+            Task.CompletedTask
+
+        member _.SetDensityAsync(density, ct) =
+            ct.ThrowIfCancellationRequested()
+            lock gate (fun () -> current <- { current with Density = density })
+            Task.CompletedTask
+
+        member _.SetTransparencyAsync(enabled, ct) =
+            ct.ThrowIfCancellationRequested()
+            lock gate (fun () -> current <- { current with Transparency = enabled })
+            Task.CompletedTask
+
+        member _.SetOpenWithRightPanelAsync(enabled, ct) =
+            ct.ThrowIfCancellationRequested()
+
+            lock gate (fun () ->
+                current <-
+                    { current with
+                        OpenWithRightPanel = enabled })
+
+            Task.CompletedTask
+
+        member _.SetDefaultModelAsync(model, ct) =
+            ct.ThrowIfCancellationRequested()
+            lock gate (fun () -> current <- { current with DefaultModel = model })
+            Task.CompletedTask
+
+        member _.SetExtendedThinkingAsync(enabled, ct) =
+            ct.ThrowIfCancellationRequested()
+
+            lock gate (fun () ->
+                current <-
+                    { current with
+                        ExtendedThinking = enabled })
+
+            Task.CompletedTask

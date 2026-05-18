@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Avelia.Shell.Windows.Pages.SettingsSubpages.AppearanceSubpage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Avelia.Shell.Windows.Controls"
+    xmlns:conv="using:Avelia.Shell.Windows.Converters"
+    xmlns:vm="using:Avelia.Shell.Windows.ViewModels"
+>
+    <UserControl.Resources>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+        <conv:AccentChoiceToBrushConverter x:Key="AccentChoiceToBrush" />
+    </UserControl.Resources>
+    <ScrollViewer
+        Padding="4,4,4,16"
+        HorizontalScrollMode="Disabled"
+        HorizontalScrollBarVisibility="Disabled"
+        VerticalScrollBarVisibility="Auto"
+    >
+        <StackPanel Spacing="12">
+            <!-- Theme -->
+            <controls:SettingsCard
+                AutomationProperties.AutomationId="ThemeCard"
+                Glyph="&#xE793;"
+                Title="Theme"
+                Description="Light, Dark, or follow the system."
+            >
+                <controls:SettingsCard.Action>
+                    <SelectorBar
+                        x:Name="ThemeBar"
+                        AutomationProperties.AutomationId="ThemeSelector"
+                        SelectionChanged="OnThemeSelectionChanged"
+                    >
+                        <SelectorBarItem x:Name="ThemeLight" Text="Light" Tag="Light" />
+                        <SelectorBarItem x:Name="ThemeDark" Text="Dark" Tag="Dark" />
+                        <SelectorBarItem x:Name="ThemeSystem" Text="System" Tag="System" />
+                    </SelectorBar>
+                </controls:SettingsCard.Action>
+            </controls:SettingsCard>
+
+            <!-- Accent -->
+            <controls:SettingsCard
+                AutomationProperties.AutomationId="AccentCard"
+                Glyph="&#xE790;"
+                Title="Accent color"
+                Description="Color used for links, highlights, and the active rail indicator."
+            >
+                <controls:SettingsCard.Action>
+                    <ItemsControl
+                        AutomationProperties.AutomationId="AccentSwatchList"
+                        ItemsSource="{x:Bind ViewModel.AccentSwatches, Mode=OneWay}"
+                    >
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal" Spacing="8" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="vm:AccentSwatchItem">
+                                <Button
+                                    Click="OnAccentClick"
+                                    Tag="{x:Bind Choice, Mode=OneTime}"
+                                    Background="Transparent"
+                                    BorderThickness="0"
+                                    Padding="2"
+                                    CornerRadius="999"
+                                >
+                                    <Grid Width="28" Height="28">
+                                        <Ellipse
+                                            Width="22"
+                                            Height="22"
+                                            HorizontalAlignment="Center"
+                                            VerticalAlignment="Center"
+                                            Fill="{x:Bind Choice, Mode=OneTime, Converter={StaticResource AccentChoiceToBrush}}"
+                                        />
+                                        <Ellipse
+                                            Width="28"
+                                            Height="28"
+                                            Stroke="{ThemeResource AveliaTextPrimaryBrush}"
+                                            StrokeThickness="2"
+                                            Visibility="{x:Bind IsSelected, Mode=OneWay, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}"
+                                        />
+                                    </Grid>
+                                </Button>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </controls:SettingsCard.Action>
+            </controls:SettingsCard>
+
+            <!-- Density -->
+            <controls:SettingsCard
+                AutomationProperties.AutomationId="DensityCard"
+                Glyph="&#xE8A9;"
+                Title="Density"
+                Description="Compact shrinks list rows and chat padding."
+            >
+                <controls:SettingsCard.Action>
+                    <SelectorBar
+                        x:Name="DensityBar"
+                        AutomationProperties.AutomationId="DensitySelector"
+                        SelectionChanged="OnDensitySelectionChanged"
+                    >
+                        <SelectorBarItem x:Name="DensityCompact" Text="Compact" Tag="Compact" />
+                        <SelectorBarItem
+                            x:Name="DensityComfortable"
+                            Text="Comfortable"
+                            Tag="Comfortable"
+                        />
+                    </SelectorBar>
+                </controls:SettingsCard.Action>
+            </controls:SettingsCard>
+
+            <!-- Transparency -->
+            <controls:SettingsCard
+                AutomationProperties.AutomationId="TransparencyCard"
+                Glyph="&#xE890;"
+                Title="Transparency"
+                Description="Mica backdrop on the main window. Disable for a fully opaque surface."
+            >
+                <controls:SettingsCard.Action>
+                    <ToggleSwitch
+                        x:Name="TransparencyToggle"
+                        AutomationProperties.AutomationId="TransparencyToggle"
+                        IsOn="{x:Bind ViewModel.Transparency, Mode=TwoWay}"
+                        OnContent=""
+                        OffContent=""
+                    />
+                </controls:SettingsCard.Action>
+            </controls:SettingsCard>
+
+            <!-- Open with right panel -->
+            <controls:SettingsCard
+                AutomationProperties.AutomationId="OpenWithRightPanelCard"
+                Glyph="&#xE740;"
+                Title="Open with right panel"
+                Description="Show the PR / Files / Terminal pane when opening a workspace."
+            >
+                <controls:SettingsCard.Action>
+                    <ToggleSwitch
+                        x:Name="RightPanelToggle"
+                        AutomationProperties.AutomationId="RightPanelToggle"
+                        IsOn="{x:Bind ViewModel.OpenWithRightPanel, Mode=TwoWay}"
+                        OnContent=""
+                        OffContent=""
+                    />
+                </controls:SettingsCard.Action>
+            </controls:SettingsCard>
+        </StackPanel>
+    </ScrollViewer>
+</UserControl>

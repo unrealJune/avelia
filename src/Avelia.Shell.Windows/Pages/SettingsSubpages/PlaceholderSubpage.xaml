@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Avelia.Shell.Windows.Pages.SettingsSubpages.PlaceholderSubpage"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+>
+    <Border
+        Background="{ThemeResource AveliaCardBackgroundBrush}"
+        BorderBrush="{ThemeResource AveliaSurfaceStrokeBrush}"
+        BorderThickness="1"
+        CornerRadius="{StaticResource AveliaCornerRadiusMedium}"
+        Padding="20,18"
+        VerticalAlignment="Top"
+    >
+        <StackPanel Spacing="6">
+            <TextBlock
+                x:Name="TitleText"
+                Style="{StaticResource AveliaBodyStrongTextStyle}"
+                AutomationProperties.AutomationId="PlaceholderSubpageTitle"
+                Text=""
+            />
+            <TextBlock
+                Style="{StaticResource AveliaBodyTextStyle}"
+                Foreground="{ThemeResource AveliaTextSecondaryBrush}"
+                Text="This section is on the roadmap. Wiring lands once persistence does."
+                TextWrapping="Wrap"
+            />
+        </StackPanel>
+    </Border>
+</UserControl>

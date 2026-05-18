@@ -62,6 +62,8 @@ public sealed partial class MainWindow : Window
 
         ApplyTheme(_themeService.EffectiveTheme);
         _themeService.ThemeChanged += OnThemeChanged;
+        _themeService.AccentChanged += OnAccentChanged;
+        ApplyAccent(_themeService.AccentHex);
 
         // Keep the rail tree in sync with ViewModel.RepoGroups.
         ViewModel.RepoGroups.CollectionChanged += OnRepoGroupsChanged;
@@ -102,6 +104,7 @@ public sealed partial class MainWindow : Window
     private void OnClosed(object sender, WindowEventArgs args)
     {
         _themeService.ThemeChanged -= OnThemeChanged;
+        _themeService.AccentChanged -= OnAccentChanged;
         ViewModel.RepoGroups.CollectionChanged -= OnRepoGroupsChanged;
         ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
     }
@@ -179,6 +182,32 @@ public sealed partial class MainWindow : Window
             AppTheme.Dark => ElementTheme.Dark,
             _ => ElementTheme.Default,
         };
+    }
+
+    private void OnAccentChanged(object? sender, string hex) => ApplyAccent(hex);
+
+    /// <summary>
+    /// Push the user's chosen accent into every theme dictionary at runtime.
+    /// All variants get the same color — the picker is one swatch, not a
+    /// per-theme palette. The walk goes through <c>MergedDictionaries</c>
+    /// because <c>Tokens.xaml</c> is itself merged-in; a lookup against the
+    /// root resources or <c>Application.Current.Resources.ThemeDictionaries</c>
+    /// would miss the key. Fresh SolidColorBrush per dictionary so theme-flip
+    /// repaints land on the correct instance.
+    /// </summary>
+    private static void ApplyAccent(string hex)
+    {
+        if (!HexColor.TryParse(hex, out var color))
+        {
+            return;
+        }
+        foreach (var dict in ThemeResources.EnumerateThemeDictionaries())
+        {
+            if (dict.ContainsKey("AveliaAccentDefaultBrush"))
+            {
+                dict["AveliaAccentDefaultBrush"] = new SolidColorBrush(color);
+            }
+        }
     }
 
     private void TrySetSystemBackdrop()
@@ -417,11 +446,21 @@ public sealed partial class MainWindow : Window
                 );
                 break;
             case NavRailSection.Settings:
-                ContentFrame.Navigate(
-                    typeof(PlaceholderPage),
-                    new PlaceholderPageArgs("Settings", "The Settings page ships in Chunk 5.")
-                );
+                NavigateToSettings();
                 break;
         }
+    }
+
+    private void NavigateToSettings()
+    {
+        var args = new SettingsPageArgs(
+            _services,
+            _themeService,
+            // Single source of truth: change the rail selection. Its
+            // SelectionChanged handler runs NavigateSectionCommand + frame nav,
+            // so we don't have to invoke either explicitly here.
+            BackAction: () => RailNav.SelectedItem = HomeItem
+        );
+        ContentFrame.Navigate(typeof(SettingsPage), args, new DrillInNavigationTransitionInfo());
     }
 }

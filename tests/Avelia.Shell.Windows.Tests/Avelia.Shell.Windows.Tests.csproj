@@ -83,5 +83,21 @@
             Include="..\..\src\Avelia.Shell.Windows\ViewModels\PrReviewViewModel.cs"
             Link="ViewModels\PrReviewViewModel.cs"
         />
+        <Compile
+            Include="..\..\src\Avelia.Shell.Windows\ViewModels\SettingsViewModel.cs"
+            Link="ViewModels\SettingsViewModel.cs"
+        />
+        <Compile
+            Include="..\..\src\Avelia.Shell.Windows\ViewModels\AppearanceSubpageViewModel.cs"
+            Link="ViewModels\AppearanceSubpageViewModel.cs"
+        />
+        <Compile
+            Include="..\..\src\Avelia.Shell.Windows\ViewModels\AgentsSubpageViewModel.cs"
+            Link="ViewModels\AgentsSubpageViewModel.cs"
+        />
+        <Compile
+            Include="..\..\src\Avelia.Shell.Windows\ViewModels\ProfileSubpageViewModel.cs"
+            Link="ViewModels\ProfileSubpageViewModel.cs"
+        />
     </ItemGroup>
 </Project>

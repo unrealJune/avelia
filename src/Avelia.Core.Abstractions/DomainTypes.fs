@@ -65,6 +65,69 @@ type InboxItemKind =
     | Success
     | Info
 
+/// UI density preset. Maps to padding / row-height multipliers in the shell.
+/// Mirrors the design's segmented control in Settings → Appearance.
+[<RequireQualifiedAccess>]
+type Density =
+    | Compact
+    | Comfortable
+
+/// One of the six accent colors the user can pick in Settings → Appearance.
+/// Each carries its CSS-style hex (the shell turns this into a brush). New
+/// accents are additive — bumping this DU forces every consumer (theme service,
+/// swatch picker) to handle the new case.
+[<RequireQualifiedAccess>]
+type AccentChoice =
+    | SkyBlue
+    | Violet
+    | Magenta
+    | Yellow
+    | Orange
+    | Sage
+
+    /// Default CSS-style hex for the accent in dark mode. The shell keeps a
+    /// Light-mode variant in its theme dictionary; the accent picker mutates
+    /// the runtime ThemeResource value, so both palettes stay in sync.
+    member this.Hex: string =
+        match this with
+        | SkyBlue -> "#4CC2FF"
+        | Violet -> "#A78BFA"
+        | Magenta -> "#F472B6"
+        | Yellow -> "#FACC15"
+        | Orange -> "#FB923C"
+        | Sage -> "#6CCB5F"
+
+    /// Visitor over the union — the C# binding point. Same pattern as
+    /// <c>OperationResult.Match</c> / <c>ModelChoice.Match</c> so C# never
+    /// touches the F# DU internals.
+    member this.Match<'TResult>
+        (
+            skyBlue: System.Func<'TResult>,
+            violet: System.Func<'TResult>,
+            magenta: System.Func<'TResult>,
+            yellow: System.Func<'TResult>,
+            orange: System.Func<'TResult>,
+            sage: System.Func<'TResult>
+        ) : 'TResult =
+        match this with
+        | SkyBlue -> skyBlue.Invoke()
+        | Violet -> violet.Invoke()
+        | Magenta -> magenta.Invoke()
+        | Yellow -> yellow.Invoke()
+        | Orange -> orange.Invoke()
+        | Sage -> sage.Invoke()
+
+    /// All six accents in display order (matches the swatch row in the
+    /// Appearance subpage). Exposed as a static member so C# bindings don't
+    /// have to deal with F#'s module-suffix naming.
+    static member All: AccentChoice array =
+        [| AccentChoice.SkyBlue
+           AccentChoice.Violet
+           AccentChoice.Magenta
+           AccentChoice.Yellow
+           AccentChoice.Orange
+           AccentChoice.Sage |]
+
 /// Kind of file change in a diff.
 type DiffKind =
     | Modified

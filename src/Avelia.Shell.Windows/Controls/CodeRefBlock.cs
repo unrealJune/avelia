@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Avelia.Shell.Windows.Helpers;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
@@ -142,33 +143,6 @@ public sealed class CodeRefBlock : UserControl
         Rebuild();
     }
 
-    /// <summary>
-    /// Resolve a resource keyed for the host's current <see cref="FrameworkElement.ActualTheme"/>.
-    /// Walks <see cref="Application.Current"/>'s merged dictionaries because our
-    /// theme tokens live in <c>Tokens.xaml</c>, which is a merged dictionary
-    /// holding <c>ThemeDictionaries</c>. Plain <c>Application.Current.Resources[key]</c>
-    /// would resolve against <see cref="Application.RequestedTheme"/> only — set
-    /// at startup, never updated, so it freezes the brush on the original theme.
-    /// </summary>
-    private object? ResolveThemed(string key)
-    {
-        var themeKey = ActualTheme == ElementTheme.Light ? "Light" : "Default";
-        foreach (var merged in Application.Current.Resources.MergedDictionaries)
-        {
-            if (
-                merged.ThemeDictionaries.TryGetValue(themeKey, out var td)
-                && td is ResourceDictionary themeDict
-                && themeDict.TryGetValue(key, out var v)
-            )
-            {
-                return v;
-            }
-        }
-        // Fallback to the top-level dictionary (theme-independent resources
-        // like AveliaMonoFontFamily live here).
-        return Application.Current.Resources.TryGetValue(key, out var top) ? top : null;
-    }
-
     private void Rebuild()
     {
         _text.Inlines.Clear();
@@ -178,8 +152,8 @@ public sealed class CodeRefBlock : UserControl
             return;
         }
 
-        var mono = ResolveThemed(MonoFontFamilyKey) as FontFamily;
-        var accent = ResolveThemed(AccentBrushKey) as Brush;
+        var mono = ThemeResources.Resolve(this, MonoFontFamilyKey) as FontFamily;
+        var accent = ThemeResources.Resolve(this, AccentBrushKey) as Brush;
 
         var idx = 0;
         foreach (Match match in CodeRefRegex.Matches(src))
