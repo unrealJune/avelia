@@ -5,6 +5,7 @@ using System.Diagnostics;
 using Avelia.Core;
 using Avelia.Core.Abstractions;
 using Avelia.Shell.Windows.Controls;
+using Avelia.Shell.Windows.Dialogs;
 using Avelia.Shell.Windows.Helpers;
 using Avelia.Shell.Windows.Pages;
 using Avelia.Shell.Windows.Services;
@@ -72,6 +73,7 @@ public sealed partial class MainWindow : Window
         // keeps the VM free of Microsoft.UI.Xaml types (which would prevent
         // it from compiling in the net10.0 test project).
         ViewModel.PropertyChanged += OnViewModelPropertyChanged;
+        ViewModel.OpenAddRepoDialogRequested += OnOpenAddRepoDialogRequested;
         ApplyRailDisplayMode();
 
         RailNav.SelectedItem = HomeItem;
@@ -107,6 +109,41 @@ public sealed partial class MainWindow : Window
         _themeService.AccentChanged -= OnAccentChanged;
         ViewModel.RepoGroups.CollectionChanged -= OnRepoGroupsChanged;
         ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
+        ViewModel.OpenAddRepoDialogRequested -= OnOpenAddRepoDialogRequested;
+    }
+
+    // -------- Add repository dialog --------
+
+    /// <summary>
+    /// Build and show the AddRepositoryDialog. The dialog owns its VM
+    /// lifetime; we just subscribe to <c>RepositoryAdded</c> so the rail tree
+    /// picks up the new entry. Fire-and-forget is safe here — exceptions are
+    /// logged and the dialog handles its own error UI.
+    /// </summary>
+    private async void OnOpenAddRepoDialogRequested(object? sender, EventArgs e)
+    {
+        try
+        {
+            var dialog = new AddRepositoryDialog(_services, this);
+            dialog.RepositoryAdded += OnRepositoryAddedFromDialog;
+            try
+            {
+                await dialog.ShowAsync();
+            }
+            finally
+            {
+                dialog.RepositoryAdded -= OnRepositoryAddedFromDialog;
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[MainWindow] AddRepositoryDialog failed: {ex}");
+        }
+    }
+
+    private void OnRepositoryAddedFromDialog(object? sender, Repository repo)
+    {
+        ViewModel.AppendRepository(repo);
     }
 
     private void OnViewModelPropertyChanged(
@@ -269,6 +306,24 @@ public sealed partial class MainWindow : Window
                 NavigateToSection(section);
                 return;
             }
+        }
+    }
+
+    /// <summary>
+    /// Catches invokes on rail items whose <c>SelectsOnInvoked</c> is false —
+    /// today, just the "Add repository" entry. SelectionChanged ignores them
+    /// because the selection never moves; routing through ItemInvoked keeps
+    /// the rail's existing one-handler-per-section convention intact.
+    /// </summary>
+    private void OnRailItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
+    {
+        if (
+            args.InvokedItemContainer is NavigationViewItem item
+            && item.Tag is string tag
+            && tag == "AddRepo"
+        )
+        {
+            ViewModel.OpenAddRepoDialogCommand.Execute(null);
         }
     }
 

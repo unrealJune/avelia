@@ -1,0 +1,243 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ContentDialog
+    x:Class="Avelia.Shell.Windows.Dialogs.AddRepositoryDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:controls="using:Avelia.Shell.Windows.Controls"
+    xmlns:vm="using:Avelia.Shell.Windows.ViewModels"
+    xmlns:conv="using:Avelia.Shell.Windows.Converters"
+    Title="Add repository"
+    PrimaryButtonText="Add"
+    CloseButtonText="Cancel"
+    DefaultButton="Primary"
+    IsPrimaryButtonEnabled="False"
+    PrimaryButtonClick="OnPrimaryButtonClick"
+    AutomationProperties.AutomationId="AddRepositoryDialog"
+>
+    <ContentDialog.Resources>
+        <!--
+            ContentDialog ships its own default content max width; override so
+            the recent-repos list isn't squeezed. 540 mirrors the design's
+            modal width (screens.jsx :: addRepoModal).
+        -->
+        <x:Double x:Key="ContentDialogMaxWidth">540</x:Double>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+    </ContentDialog.Resources>
+
+    <!--
+        MinWidth so the inner grid can grow to ContentDialogMaxWidth (540)
+        when the host gives it the room — Width="500" hard-pinned it to 500
+        and the extra 40px was never used.
+    -->
+    <Grid MinWidth="500" RowSpacing="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <!-- Tab selector -->
+        <SelectorBar
+            Grid.Row="0"
+            x:Name="TabSelector"
+            AutomationProperties.AutomationId="AddRepoTabSelector"
+            SelectionChanged="OnTabSelectionChanged"
+        >
+            <SelectorBarItem
+                x:Name="LocalFolderTab"
+                AutomationProperties.AutomationId="AddRepoLocalFolderTab"
+                Text="Local folder"
+                Tag="LocalFolder"
+                IsSelected="True"
+            />
+            <SelectorBarItem
+                x:Name="GitUrlTab"
+                AutomationProperties.AutomationId="AddRepoGitUrlTab"
+                Text="Git URL"
+                Tag="GitUrl"
+            />
+            <SelectorBarItem
+                x:Name="GitHubTab"
+                AutomationProperties.AutomationId="AddRepoGitHubTab"
+                Text="Clone from GitHub"
+                Tag="GitHub"
+            />
+        </SelectorBar>
+
+        <!-- Tab body — exactly one of the three panels is visible -->
+        <Grid Grid.Row="1" x:Name="TabContent">
+            <!-- ===================== Local folder ===================== -->
+            <StackPanel x:Name="LocalFolderPanel" Spacing="12" Visibility="Visible">
+                <TextBlock Style="{StaticResource AveliaCaptionTextStyle}" Text="Folder path" />
+                <Grid ColumnSpacing="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+                    <TextBox
+                        Grid.Column="0"
+                        x:Name="LocalPathBox"
+                        AutomationProperties.AutomationId="LocalPathBox"
+                        PlaceholderText="C:\path\to\repository"
+                        Text="{x:Bind ViewModel.LocalPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                    />
+                    <Button
+                        Grid.Column="1"
+                        x:Name="BrowseButton"
+                        AutomationProperties.AutomationId="BrowseButton"
+                        Style="{StaticResource AveliaSubtleButtonStyle}"
+                        Click="OnBrowseClick"
+                    >
+                        <StackPanel Orientation="Horizontal" Spacing="8">
+                            <FontIcon
+                                FontFamily="Segoe Fluent Icons"
+                                FontSize="14"
+                                Glyph="&#xE8DA;"
+                            />
+                            <TextBlock Text="Browse" />
+                        </StackPanel>
+                    </Button>
+                </Grid>
+
+                <TextBlock
+                    x:Name="LocalPathErrorText"
+                    Style="{StaticResource AveliaCaptionTextStyle}"
+                    Foreground="{ThemeResource AveliaDangerBrush}"
+                    Text="{x:Bind ViewModel.LocalPathError, Mode=OneWay, FallbackValue=''}"
+                    Visibility="{x:Bind ViewModel.HasLocalPathError, Mode=OneWay, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}"
+                />
+
+                <!-- Recent repos -->
+                <TextBlock
+                    Style="{StaticResource AveliaSectionLabelTextStyle}"
+                    Margin="0,8,0,0"
+                    Text="RECENT REPOSITORIES"
+                />
+                <Border
+                    Background="{ThemeResource AveliaCardBackgroundBrush}"
+                    BorderBrush="{ThemeResource AveliaSurfaceStrokeBrush}"
+                    BorderThickness="1"
+                    CornerRadius="{StaticResource AveliaCornerRadiusMedium}"
+                    Padding="0"
+                >
+                    <ListView
+                        x:Name="RecentList"
+                        AutomationProperties.AutomationId="RecentReposList"
+                        ItemsSource="{x:Bind ViewModel.RecentRepos, Mode=OneWay}"
+                        ItemContainerStyle="{StaticResource AveliaPlainInteractiveListItemContainerStyle}"
+                        MaxHeight="180"
+                        SelectionMode="None"
+                        IsItemClickEnabled="True"
+                        ItemClick="OnRecentRepoClick"
+                    >
+                        <ListView.ItemTemplate>
+                            <DataTemplate x:DataType="vm:RecentRepoItem">
+                                <controls:RecentRepoRow Item="{x:Bind}" />
+                            </DataTemplate>
+                        </ListView.ItemTemplate>
+                    </ListView>
+                </Border>
+            </StackPanel>
+
+            <!-- ===================== Git URL ===================== -->
+            <StackPanel x:Name="GitUrlPanel" Spacing="12" Visibility="Collapsed">
+                <TextBlock Style="{StaticResource AveliaCaptionTextStyle}" Text="Repository URL" />
+                <TextBox
+                    x:Name="GitUrlBox"
+                    AutomationProperties.AutomationId="GitUrlBox"
+                    PlaceholderText="git@github.com:owner/repo.git  or  https://github.com/owner/repo.git"
+                    Text="{x:Bind ViewModel.GitUrl, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                />
+
+                <InfoBar
+                    x:Name="SshHintBar"
+                    AutomationProperties.AutomationId="SshHintBar"
+                    IsOpen="{x:Bind ViewModel.IsSshUrl, Mode=OneWay}"
+                    IsClosable="False"
+                    Severity="Informational"
+                    Title="SSH URL detected"
+                    Message="Make sure ssh-agent is running and your key is registered before cloning."
+                />
+
+                <TextBlock
+                    Style="{StaticResource AveliaCaptionTextStyle}"
+                    Margin="0,8,0,0"
+                    Text="Clone destination"
+                />
+                <TextBox
+                    x:Name="CloneToBox"
+                    AutomationProperties.AutomationId="CloneToBox"
+                    PlaceholderText="C:\work\new-repo"
+                    Text="{x:Bind ViewModel.CloneToPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                />
+            </StackPanel>
+
+            <!-- ===================== Clone from GitHub ===================== -->
+            <StackPanel x:Name="GitHubPanel" Spacing="12" Visibility="Collapsed">
+                <TextBlock Style="{StaticResource AveliaCaptionTextStyle}" Text="Search GitHub" />
+                <AutoSuggestBox
+                    x:Name="GitHubSearchBox"
+                    AutomationProperties.AutomationId="GitHubSearchBox"
+                    PlaceholderText="owner/name or keywords"
+                    QueryIcon="Find"
+                    Text="{x:Bind ViewModel.GitHubQuery, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                />
+
+                <Border
+                    Background="{ThemeResource AveliaCardBackgroundBrush}"
+                    BorderBrush="{ThemeResource AveliaSurfaceStrokeBrush}"
+                    BorderThickness="1"
+                    CornerRadius="{StaticResource AveliaCornerRadiusMedium}"
+                    MinHeight="120"
+                    Padding="0"
+                >
+                    <Grid>
+                        <!-- Empty-state hint until the VCS adapter ships (Chunk 10). -->
+                        <StackPanel
+                            x:Name="GitHubEmptyState"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Spacing="8"
+                            Padding="24"
+                        >
+                            <FontIcon
+                                FontFamily="Segoe Fluent Icons"
+                                FontSize="20"
+                                Foreground="{ThemeResource AveliaTextTertiaryBrush}"
+                                Glyph="&#xE721;"
+                                HorizontalAlignment="Center"
+                            />
+                            <TextBlock
+                                Style="{StaticResource AveliaCaptionTextStyle}"
+                                HorizontalAlignment="Center"
+                                TextAlignment="Center"
+                                TextWrapping="Wrap"
+                                Text="GitHub search ships with the VCS adapter."
+                            />
+                        </StackPanel>
+                    </Grid>
+                </Border>
+            </StackPanel>
+        </Grid>
+
+        <!-- Error banner — shown for whichever tab is active when AddAsync fails -->
+        <InfoBar
+            Grid.Row="2"
+            x:Name="ErrorBar"
+            AutomationProperties.AutomationId="AddRepoErrorBar"
+            IsOpen="{x:Bind ViewModel.HasError, Mode=OneWay}"
+            IsClosable="True"
+            Severity="Error"
+            Title="Could not add repository"
+            Message="{x:Bind ViewModel.ErrorMessage, Mode=OneWay, FallbackValue=''}"
+        />
+
+        <!-- Trailing hint -->
+        <TextBlock
+            Grid.Row="3"
+            Style="{StaticResource AveliaCaptionTextStyle}"
+            Text="Adding a folder registers it with Avelia — no files are moved."
+        />
+    </Grid>
+</ContentDialog>
