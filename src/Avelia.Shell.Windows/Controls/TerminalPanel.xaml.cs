@@ -26,12 +26,12 @@ public sealed partial class TerminalPanel : UserControl
         InitializeComponent();
     }
 
-    public static readonly DependencyProperty ViewModelProperty =
-        DependencyProperty.Register(
-            nameof(ViewModel),
-            typeof(TerminalPanelViewModel),
-            typeof(TerminalPanel),
-            new PropertyMetadata(null));
+    public static readonly DependencyProperty ViewModelProperty = DependencyProperty.Register(
+        nameof(ViewModel),
+        typeof(TerminalPanelViewModel),
+        typeof(TerminalPanel),
+        new PropertyMetadata(null)
+    );
 
     public TerminalPanelViewModel? ViewModel
     {
@@ -70,9 +70,16 @@ public sealed partial class TerminalPanel : UserControl
         _cursorBlinkStoryboard = null;
     }
 
-    private void OnTabSelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
+    private void OnTabSelectionChanged(
+        SelectorBar sender,
+        SelectorBarSelectionChangedEventArgs args
+    )
     {
-        if (ViewModel is null || sender.SelectedItem is not SelectorBarItem item || item.Text is null)
+        if (
+            ViewModel is null
+            || sender.SelectedItem is not SelectorBarItem item
+            || item.Text is null
+        )
         {
             return;
         }

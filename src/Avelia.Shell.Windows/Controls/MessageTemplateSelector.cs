@@ -24,16 +24,17 @@ public sealed class MessageTemplateSelector : DataTemplateSelector
 
     public DataTemplate? AgentMarkdownTemplate { get; set; }
 
-    protected override DataTemplate? SelectTemplateCore(object item) => item switch
-    {
-        UserMessageViewModel => UserTemplate,
-        AgentMessageViewModel => AgentTemplate,
-        AgentErrorViewModel => AgentErrorTemplate,
-        ToolBatchViewModel => ToolBatchTemplate,
-        ChangeNoteViewModel => ChangeNoteTemplate,
-        AgentMarkdownViewModel => AgentMarkdownTemplate,
-        _ => null,
-    };
+    protected override DataTemplate? SelectTemplateCore(object item) =>
+        item switch
+        {
+            UserMessageViewModel => UserTemplate,
+            AgentMessageViewModel => AgentTemplate,
+            AgentErrorViewModel => AgentErrorTemplate,
+            ToolBatchViewModel => ToolBatchTemplate,
+            ChangeNoteViewModel => ChangeNoteTemplate,
+            AgentMarkdownViewModel => AgentMarkdownTemplate,
+            _ => null,
+        };
 
     protected override DataTemplate? SelectTemplateCore(object item, DependencyObject container) =>
         SelectTemplateCore(item);

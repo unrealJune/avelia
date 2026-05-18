@@ -10,13 +10,15 @@
         Cascadia Code ships with Windows 11 and is the same font the design
         uses for branch names, paths, and diff lines.
     -->
-    <FontFamily x:Key="AveliaUiFontFamily">Segoe UI Variable Display, Segoe UI Variable, Segoe UI</FontFamily>
+    <FontFamily x:Key="AveliaUiFontFamily"
+        >Segoe UI Variable Display, Segoe UI Variable, Segoe UI</FontFamily
+    >
     <FontFamily x:Key="AveliaMonoFontFamily">Cascadia Code, Cascadia Mono, Consolas</FontFamily>
 
     <!-- Caption — 12 / 16 / 400 -->
     <Style x:Key="AveliaCaptionTextStyle" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource AveliaUiFontFamily}" />
-        <Setter Property="FontSize"   Value="12" />
+        <Setter Property="FontSize" Value="12" />
         <Setter Property="LineHeight" Value="16" />
         <Setter Property="FontWeight" Value="Normal" />
         <Setter Property="Foreground" Value="{ThemeResource AveliaTextSecondaryBrush}" />
@@ -25,21 +27,25 @@
     <!-- Body — 14 / 20 / 400 -->
     <Style x:Key="AveliaBodyTextStyle" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource AveliaUiFontFamily}" />
-        <Setter Property="FontSize"   Value="14" />
+        <Setter Property="FontSize" Value="14" />
         <Setter Property="LineHeight" Value="20" />
         <Setter Property="FontWeight" Value="Normal" />
         <Setter Property="Foreground" Value="{ThemeResource AveliaTextPrimaryBrush}" />
     </Style>
 
     <!-- BodyStrong — 14 / 20 / 600 -->
-    <Style x:Key="AveliaBodyStrongTextStyle" TargetType="TextBlock" BasedOn="{StaticResource AveliaBodyTextStyle}">
+    <Style
+        x:Key="AveliaBodyStrongTextStyle"
+        TargetType="TextBlock"
+        BasedOn="{StaticResource AveliaBodyTextStyle}"
+    >
         <Setter Property="FontWeight" Value="SemiBold" />
     </Style>
 
     <!-- BodyLarge — 18 / 24 / 400 -->
     <Style x:Key="AveliaBodyLargeTextStyle" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource AveliaUiFontFamily}" />
-        <Setter Property="FontSize"   Value="18" />
+        <Setter Property="FontSize" Value="18" />
         <Setter Property="LineHeight" Value="24" />
         <Setter Property="FontWeight" Value="Normal" />
         <Setter Property="Foreground" Value="{ThemeResource AveliaTextPrimaryBrush}" />
@@ -48,7 +54,7 @@
     <!-- Subtitle — 20 / 28 / 600 -->
     <Style x:Key="AveliaSubtitleTextStyle" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource AveliaUiFontFamily}" />
-        <Setter Property="FontSize"   Value="20" />
+        <Setter Property="FontSize" Value="20" />
         <Setter Property="LineHeight" Value="28" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Foreground" Value="{ThemeResource AveliaTextPrimaryBrush}" />
@@ -57,7 +63,7 @@
     <!-- Title — 28 / 36 / 600 -->
     <Style x:Key="AveliaTitleTextStyle" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource AveliaUiFontFamily}" />
-        <Setter Property="FontSize"   Value="28" />
+        <Setter Property="FontSize" Value="28" />
         <Setter Property="LineHeight" Value="36" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Foreground" Value="{ThemeResource AveliaTextPrimaryBrush}" />
@@ -66,7 +72,7 @@
     <!-- TitleLarge — 40 / 52 / 600 -->
     <Style x:Key="AveliaTitleLargeTextStyle" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource AveliaUiFontFamily}" />
-        <Setter Property="FontSize"   Value="40" />
+        <Setter Property="FontSize" Value="40" />
         <Setter Property="LineHeight" Value="52" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Foreground" Value="{ThemeResource AveliaTextPrimaryBrush}" />
@@ -75,19 +81,26 @@
     <!-- Display — 68 / 92 / 600 -->
     <Style x:Key="AveliaDisplayTextStyle" TargetType="TextBlock">
         <Setter Property="FontFamily" Value="{StaticResource AveliaUiFontFamily}" />
-        <Setter Property="FontSize"   Value="68" />
+        <Setter Property="FontSize" Value="68" />
         <Setter Property="LineHeight" Value="92" />
         <Setter Property="FontWeight" Value="SemiBold" />
         <Setter Property="Foreground" Value="{ThemeResource AveliaTextPrimaryBrush}" />
     </Style>
 
     <!-- Mono variants for branch names, code refs, paths -->
-    <Style x:Key="AveliaMonoBodyTextStyle" TargetType="TextBlock" BasedOn="{StaticResource AveliaBodyTextStyle}">
+    <Style
+        x:Key="AveliaMonoBodyTextStyle"
+        TargetType="TextBlock"
+        BasedOn="{StaticResource AveliaBodyTextStyle}"
+    >
         <Setter Property="FontFamily" Value="{StaticResource AveliaMonoFontFamily}" />
     </Style>
 
-    <Style x:Key="AveliaMonoCaptionTextStyle" TargetType="TextBlock" BasedOn="{StaticResource AveliaCaptionTextStyle}">
+    <Style
+        x:Key="AveliaMonoCaptionTextStyle"
+        TargetType="TextBlock"
+        BasedOn="{StaticResource AveliaCaptionTextStyle}"
+    >
         <Setter Property="FontFamily" Value="{StaticResource AveliaMonoFontFamily}" />
     </Style>
-
 </ResourceDictionary>

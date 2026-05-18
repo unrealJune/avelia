@@ -67,9 +67,16 @@ public sealed partial class WorkspacePage : Page
         ViewModel?.StopObserving();
     }
 
-    private void OnPrPaneTabSelectionChanged(SelectorBar sender, SelectorBarSelectionChangedEventArgs args)
+    private void OnPrPaneTabSelectionChanged(
+        SelectorBar sender,
+        SelectorBarSelectionChangedEventArgs args
+    )
     {
-        if (ViewModel is null || sender.SelectedItem is not SelectorBarItem item || item.Text is null)
+        if (
+            ViewModel is null
+            || sender.SelectedItem is not SelectorBarItem item
+            || item.Text is null
+        )
         {
             return;
         }
@@ -81,4 +88,5 @@ public sealed partial class WorkspacePage : Page
 public sealed record WorkspacePageArgs(
     WorkspaceId WorkspaceId,
     AveliaServices Services,
-    IUiDispatcher Dispatcher);
+    IUiDispatcher Dispatcher
+);

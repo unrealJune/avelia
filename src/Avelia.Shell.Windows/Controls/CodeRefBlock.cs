@@ -1,4 +1,5 @@
 using System.Text.RegularExpressions;
+using Avelia.Shell.Windows.Helpers;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Documents;
@@ -22,8 +23,10 @@ namespace Avelia.Shell.Windows.Controls;
 /// </summary>
 public sealed class CodeRefBlock : UserControl
 {
-    private static readonly Regex CodeRefRegex =
-        new(@"(?<=^|\s)@([A-Za-z0-9_\-.]+\.[A-Za-z0-9]+)", RegexOptions.Compiled);
+    private static readonly Regex CodeRefRegex = new(
+        @"(?<=^|\s)@([A-Za-z0-9_\-.]+\.[A-Za-z0-9]+)",
+        RegexOptions.Compiled
+    );
 
     private const string AccentBrushKey = "AveliaAccentTextBrush";
     private const string MonoFontFamilyKey = "AveliaMonoFontFamily";
@@ -38,33 +41,33 @@ public sealed class CodeRefBlock : UserControl
         ActualThemeChanged += OnActualThemeChanged;
     }
 
-    public static readonly DependencyProperty SourceTextProperty =
-        DependencyProperty.Register(
-            nameof(SourceText),
-            typeof(string),
-            typeof(CodeRefBlock),
-            new PropertyMetadata(string.Empty, OnSourceTextChanged));
+    public static readonly DependencyProperty SourceTextProperty = DependencyProperty.Register(
+        nameof(SourceText),
+        typeof(string),
+        typeof(CodeRefBlock),
+        new PropertyMetadata(string.Empty, OnSourceTextChanged)
+    );
 
-    public static readonly DependencyProperty TextStyleProperty =
-        DependencyProperty.Register(
-            nameof(TextStyle),
-            typeof(Style),
-            typeof(CodeRefBlock),
-            new PropertyMetadata(null, OnTextStyleChanged));
+    public static readonly DependencyProperty TextStyleProperty = DependencyProperty.Register(
+        nameof(TextStyle),
+        typeof(Style),
+        typeof(CodeRefBlock),
+        new PropertyMetadata(null, OnTextStyleChanged)
+    );
 
-    public static readonly DependencyProperty TextWrappingProperty =
-        DependencyProperty.Register(
-            nameof(TextWrapping),
-            typeof(TextWrapping),
-            typeof(CodeRefBlock),
-            new PropertyMetadata(TextWrapping.Wrap, OnTextWrappingChanged));
+    public static readonly DependencyProperty TextWrappingProperty = DependencyProperty.Register(
+        nameof(TextWrapping),
+        typeof(TextWrapping),
+        typeof(CodeRefBlock),
+        new PropertyMetadata(TextWrapping.Wrap, OnTextWrappingChanged)
+    );
 
-    public static readonly DependencyProperty TextForegroundProperty =
-        DependencyProperty.Register(
-            nameof(TextForeground),
-            typeof(Brush),
-            typeof(CodeRefBlock),
-            new PropertyMetadata(null, OnTextForegroundChanged));
+    public static readonly DependencyProperty TextForegroundProperty = DependencyProperty.Register(
+        nameof(TextForeground),
+        typeof(Brush),
+        typeof(CodeRefBlock),
+        new PropertyMetadata(null, OnTextForegroundChanged)
+    );
 
     /// <summary>The raw text to render with code-refs highlighted.</summary>
     public string SourceText
@@ -93,7 +96,10 @@ public sealed class CodeRefBlock : UserControl
         set => SetValue(TextForegroundProperty, value);
     }
 
-    private static void OnSourceTextChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    private static void OnSourceTextChanged(
+        DependencyObject d,
+        DependencyPropertyChangedEventArgs e
+    )
     {
         if (d is CodeRefBlock self)
         {
@@ -109,7 +115,10 @@ public sealed class CodeRefBlock : UserControl
         }
     }
 
-    private static void OnTextWrappingChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    private static void OnTextWrappingChanged(
+        DependencyObject d,
+        DependencyPropertyChangedEventArgs e
+    )
     {
         if (d is CodeRefBlock self)
         {
@@ -117,7 +126,10 @@ public sealed class CodeRefBlock : UserControl
         }
     }
 
-    private static void OnTextForegroundChanged(DependencyObject d, DependencyPropertyChangedEventArgs e)
+    private static void OnTextForegroundChanged(
+        DependencyObject d,
+        DependencyPropertyChangedEventArgs e
+    )
     {
         if (d is CodeRefBlock self && e.NewValue is Brush b)
         {
@@ -131,31 +143,6 @@ public sealed class CodeRefBlock : UserControl
         Rebuild();
     }
 
-    /// <summary>
-    /// Resolve a resource keyed for the host's current <see cref="FrameworkElement.ActualTheme"/>.
-    /// Walks <see cref="Application.Current"/>'s merged dictionaries because our
-    /// theme tokens live in <c>Tokens.xaml</c>, which is a merged dictionary
-    /// holding <c>ThemeDictionaries</c>. Plain <c>Application.Current.Resources[key]</c>
-    /// would resolve against <see cref="Application.RequestedTheme"/> only — set
-    /// at startup, never updated, so it freezes the brush on the original theme.
-    /// </summary>
-    private object? ResolveThemed(string key)
-    {
-        var themeKey = ActualTheme == ElementTheme.Light ? "Light" : "Default";
-        foreach (var merged in Application.Current.Resources.MergedDictionaries)
-        {
-            if (merged.ThemeDictionaries.TryGetValue(themeKey, out var td)
-                && td is ResourceDictionary themeDict
-                && themeDict.TryGetValue(key, out var v))
-            {
-                return v;
-            }
-        }
-        // Fallback to the top-level dictionary (theme-independent resources
-        // like AveliaMonoFontFamily live here).
-        return Application.Current.Resources.TryGetValue(key, out var top) ? top : null;
-    }
-
     private void Rebuild()
     {
         _text.Inlines.Clear();
@@ -165,8 +152,8 @@ public sealed class CodeRefBlock : UserControl
             return;
         }
 
-        var mono = ResolveThemed(MonoFontFamilyKey) as FontFamily;
-        var accent = ResolveThemed(AccentBrushKey) as Brush;
+        var mono = ThemeResources.Resolve(this, MonoFontFamilyKey) as FontFamily;
+        var accent = ThemeResources.Resolve(this, AccentBrushKey) as Brush;
 
         var idx = 0;
         foreach (Match match in CodeRefRegex.Matches(src))

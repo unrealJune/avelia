@@ -40,15 +40,27 @@ let ``BranchName.TryCreate rejects metacharacters`` (s: string) =
 
 [<Fact>]
 let ``BranchName.TryCreate rejects leading slash`` () =
-    Assert.True(match BranchName.TryCreate "/leading" with Error _ -> true | _ -> false)
+    Assert.True(
+        match BranchName.TryCreate "/leading" with
+        | Error _ -> true
+        | _ -> false
+    )
 
 [<Fact>]
 let ``BranchName.TryCreate rejects trailing slash`` () =
-    Assert.True(match BranchName.TryCreate "trailing/" with Error _ -> true | _ -> false)
+    Assert.True(
+        match BranchName.TryCreate "trailing/" with
+        | Error _ -> true
+        | _ -> false
+    )
 
 [<Fact>]
 let ``BranchName.TryCreate rejects double-dot`` () =
-    Assert.True(match BranchName.TryCreate "weird..segment" with Error _ -> true | _ -> false)
+    Assert.True(
+        match BranchName.TryCreate "weird..segment" with
+        | Error _ -> true
+        | _ -> false
+    )
 
 [<Fact>]
 let ``BranchName.Create throws on invalid input`` () =
@@ -64,7 +76,11 @@ let ``BranchName.Value round-trips`` () =
 
 [<Fact>]
 let ``RepoPath rejects parent-traversal`` () =
-    Assert.True(match RepoPath.TryCreate "C:/work/../etc" with Error _ -> true | _ -> false)
+    Assert.True(
+        match RepoPath.TryCreate "C:/work/../etc" with
+        | Error _ -> true
+        | _ -> false
+    )
 
 [<Fact>]
 let ``RepoPath accepts absolute path`` () =
@@ -76,7 +92,11 @@ let ``RepoPath accepts absolute path`` () =
 
 [<Fact>]
 let ``RelativePath rejects leading slash`` () =
-    Assert.True(match RelativePath.TryCreate "/abs/path" with Error _ -> true | _ -> false)
+    Assert.True(
+        match RelativePath.TryCreate "/abs/path" with
+        | Error _ -> true
+        | _ -> false
+    )
 
 [<Fact>]
 let ``RelativePath normalizes backslashes`` () =
@@ -97,4 +117,8 @@ let ``RelativePath top-level file has empty folder`` () =
 
 [<Fact>]
 let ``RelativePath rejects traversal`` () =
-    Assert.True(match RelativePath.TryCreate "src/../etc/passwd" with Error _ -> true | _ -> false)
+    Assert.True(
+        match RelativePath.TryCreate "src/../etc/passwd" with
+        | Error _ -> true
+        | _ -> false
+    )

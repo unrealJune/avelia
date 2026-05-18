@@ -62,6 +62,8 @@ public sealed partial class MainWindow : Window
 
         ApplyTheme(_themeService.EffectiveTheme);
         _themeService.ThemeChanged += OnThemeChanged;
+        _themeService.AccentChanged += OnAccentChanged;
+        ApplyAccent(_themeService.AccentHex);
 
         // Keep the rail tree in sync with ViewModel.RepoGroups.
         ViewModel.RepoGroups.CollectionChanged += OnRepoGroupsChanged;
@@ -102,11 +104,15 @@ public sealed partial class MainWindow : Window
     private void OnClosed(object sender, WindowEventArgs args)
     {
         _themeService.ThemeChanged -= OnThemeChanged;
+        _themeService.AccentChanged -= OnAccentChanged;
         ViewModel.RepoGroups.CollectionChanged -= OnRepoGroupsChanged;
         ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
     }
 
-    private void OnViewModelPropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    private void OnViewModelPropertyChanged(
+        object? sender,
+        System.ComponentModel.PropertyChangedEventArgs e
+    )
     {
         if (e.PropertyName == nameof(MainViewModel.IsRailExpanded))
         {
@@ -134,10 +140,13 @@ public sealed partial class MainWindow : Window
         var active = ViewModel.ActiveTab;
         if (active is null)
         {
-            ContentFrame.Navigate(typeof(PlaceholderPage),
+            ContentFrame.Navigate(
+                typeof(PlaceholderPage),
                 new PlaceholderPageArgs(
                     "No workspace open",
-                    "Open a workspace from the rail to start a session."));
+                    "Open a workspace from the rail to start a session."
+                )
+            );
             return;
         }
 
@@ -173,6 +182,32 @@ public sealed partial class MainWindow : Window
             AppTheme.Dark => ElementTheme.Dark,
             _ => ElementTheme.Default,
         };
+    }
+
+    private void OnAccentChanged(object? sender, string hex) => ApplyAccent(hex);
+
+    /// <summary>
+    /// Push the user's chosen accent into every theme dictionary at runtime.
+    /// All variants get the same color — the picker is one swatch, not a
+    /// per-theme palette. The walk goes through <c>MergedDictionaries</c>
+    /// because <c>Tokens.xaml</c> is itself merged-in; a lookup against the
+    /// root resources or <c>Application.Current.Resources.ThemeDictionaries</c>
+    /// would miss the key. Fresh SolidColorBrush per dictionary so theme-flip
+    /// repaints land on the correct instance.
+    /// </summary>
+    private static void ApplyAccent(string hex)
+    {
+        if (!HexColor.TryParse(hex, out var color))
+        {
+            return;
+        }
+        foreach (var dict in ThemeResources.EnumerateThemeDictionaries())
+        {
+            if (dict.ContainsKey("AveliaAccentDefaultBrush"))
+            {
+                dict["AveliaAccentDefaultBrush"] = new SolidColorBrush(color);
+            }
+        }
     }
 
     private void TrySetSystemBackdrop()
@@ -212,7 +247,10 @@ public sealed partial class MainWindow : Window
 
     // -------- NavigationView events --------
 
-    private void OnRailSelectionChanged(NavigationView sender, NavigationViewSelectionChangedEventArgs args)
+    private void OnRailSelectionChanged(
+        NavigationView sender,
+        NavigationViewSelectionChangedEventArgs args
+    )
     {
         if (args.SelectedItem is NavigationViewItem item)
         {
@@ -222,8 +260,10 @@ public sealed partial class MainWindow : Window
                 return;
             }
 
-            if (item.Tag is string sectionTag &&
-                Enum.TryParse<NavRailSection>(sectionTag, out var section))
+            if (
+                item.Tag is string sectionTag
+                && Enum.TryParse<NavRailSection>(sectionTag, out var section)
+            )
             {
                 ViewModel.NavigateSectionCommand.Execute(section);
                 NavigateToSection(section);
@@ -288,8 +328,11 @@ public sealed partial class MainWindow : Window
         var insertIndex = -1;
         for (var i = 0; i < RailNav.MenuItems.Count; i++)
         {
-            if (RailNav.MenuItems[i] is NavigationViewItemHeader h &&
-                h.Content is string s && s == "Repositories")
+            if (
+                RailNav.MenuItems[i] is NavigationViewItemHeader h
+                && h.Content is string s
+                && s == "Repositories"
+            )
             {
                 insertIndex = i + 1;
                 break;
@@ -314,12 +357,10 @@ public sealed partial class MainWindow : Window
     /// </summary>
     private NavigationViewItem BuildRepoNavItem(RepoGroupViewModel group)
     {
-        var content = new Grid
-        {
-            ColumnSpacing = 8,
-            VerticalAlignment = VerticalAlignment.Center,
-        };
-        content.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
+        var content = new Grid { ColumnSpacing = 8, VerticalAlignment = VerticalAlignment.Center };
+        content.ColumnDefinitions.Add(
+            new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
+        );
         content.ColumnDefinitions.Add(new ColumnDefinition { Width = GridLength.Auto });
 
         // Foreground brushes are routed through Styles holding ThemeResource
@@ -337,7 +378,9 @@ public sealed partial class MainWindow : Window
         {
             var countText = new TextBlock
             {
-                Text = group.Workspaces.Count.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                Text = group.Workspaces.Count.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture
+                ),
                 Style = (Style)Application.Current.Resources["AveliaRepoGroupCountStyle"],
             };
             Grid.SetColumn(countText, 1);
@@ -376,25 +419,48 @@ public sealed partial class MainWindow : Window
                 NavigateToActiveWorkspace();
                 break;
             case NavRailSection.Inbox:
-                ContentFrame.Navigate(typeof(PlaceholderPage),
-                    new PlaceholderPageArgs("Inbox", "Inbox notifications ship in Chunk 7."));
+                ContentFrame.Navigate(
+                    typeof(PlaceholderPage),
+                    new PlaceholderPageArgs("Inbox", "Inbox notifications ship in Chunk 7.")
+                );
                 break;
             case NavRailSection.Pinned:
-                ContentFrame.Navigate(typeof(PlaceholderPage),
-                    new PlaceholderPageArgs("Pinned", "Pinned workspaces ship in a later chunk."));
+                ContentFrame.Navigate(
+                    typeof(PlaceholderPage),
+                    new PlaceholderPageArgs("Pinned", "Pinned workspaces ship in a later chunk.")
+                );
                 break;
             case NavRailSection.History:
-                ContentFrame.Navigate(typeof(PlaceholderPage),
-                    new PlaceholderPageArgs("History", "Recently closed workspaces ship in a later chunk."));
+                ContentFrame.Navigate(
+                    typeof(PlaceholderPage),
+                    new PlaceholderPageArgs(
+                        "History",
+                        "Recently closed workspaces ship in a later chunk."
+                    )
+                );
                 break;
             case NavRailSection.Archive:
-                ContentFrame.Navigate(typeof(PlaceholderPage),
-                    new PlaceholderPageArgs("Archive", "Archived workspaces ship in a later chunk."));
+                ContentFrame.Navigate(
+                    typeof(PlaceholderPage),
+                    new PlaceholderPageArgs("Archive", "Archived workspaces ship in a later chunk.")
+                );
                 break;
             case NavRailSection.Settings:
-                ContentFrame.Navigate(typeof(PlaceholderPage),
-                    new PlaceholderPageArgs("Settings", "The Settings page ships in Chunk 5."));
+                NavigateToSettings();
                 break;
         }
+    }
+
+    private void NavigateToSettings()
+    {
+        var args = new SettingsPageArgs(
+            _services,
+            _themeService,
+            // Single source of truth: change the rail selection. Its
+            // SelectionChanged handler runs NavigateSectionCommand + frame nav,
+            // so we don't have to invoke either explicitly here.
+            BackAction: () => RailNav.SelectedItem = HomeItem
+        );
+        ContentFrame.Navigate(typeof(SettingsPage), args, new DrillInNavigationTransitionInfo());
     }
 }

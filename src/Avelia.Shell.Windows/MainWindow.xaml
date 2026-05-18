@@ -188,10 +188,7 @@
                 </NavigationViewItem>
             </NavigationView.FooterMenuItems>
 
-            <Frame
-                x:Name="ContentFrame"
-                AutomationProperties.AutomationId="ContentFrame"
-            />
+            <Frame x:Name="ContentFrame" AutomationProperties.AutomationId="ContentFrame" />
         </NavigationView>
     </Grid>
 </Window>

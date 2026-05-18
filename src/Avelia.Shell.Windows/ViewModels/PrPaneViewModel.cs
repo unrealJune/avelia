@@ -86,27 +86,22 @@ public partial class PrPaneViewModel : ObservableObject
     private int _checksPassed;
 
     /// <summary>Display string for the +N chip: "+312". Empty when there are no changes.</summary>
-    public string TotalAddDisplay => TotalAdd == 0
-        ? string.Empty
-        : "+" + TotalAdd.ToString(CultureInfo.InvariantCulture);
+    public string TotalAddDisplay =>
+        TotalAdd == 0 ? string.Empty : "+" + TotalAdd.ToString(CultureInfo.InvariantCulture);
 
     /// <summary>Display string for the -N chip: "-332". Empty when there are no deletions.</summary>
-    public string TotalDelDisplay => TotalDel == 0
-        ? string.Empty
-        : "-" + TotalDel.ToString(CultureInfo.InvariantCulture);
+    public string TotalDelDisplay =>
+        TotalDel == 0 ? string.Empty : "-" + TotalDel.ToString(CultureInfo.InvariantCulture);
 
     /// <summary>"6 / 6 checks" — formatted for the stats row.</summary>
-    public string ChecksSummary =>
-        $"{ChecksPassed}/{ChecksTotal} checks";
+    public string ChecksSummary => $"{ChecksPassed}/{ChecksTotal} checks";
 
     /// <summary>"#1432" link text. Empty when no PR.</summary>
-    public string NumberDisplay => HasPullRequest
-        ? "#" + Number.ToString(CultureInfo.InvariantCulture)
-        : string.Empty;
+    public string NumberDisplay =>
+        HasPullRequest ? "#" + Number.ToString(CultureInfo.InvariantCulture) : string.Empty;
 
     /// <summary>"10 files" stats label.</summary>
-    public string FileCountDisplay =>
-        FileCount == 1 ? "1 file" : $"{FileCount} files";
+    public string FileCountDisplay => FileCount == 1 ? "1 file" : $"{FileCount} files";
 
     // -------- Error surface --------
 
@@ -156,7 +151,9 @@ public partial class PrPaneViewModel : ObservableObject
         HasPullRequest = false;
         ErrorMessage = null;
 
-        var prResult = await _services.PullRequests.GetForWorkspaceAsync(workspaceId, ct).ConfigureAwait(true);
+        var prResult = await _services
+            .PullRequests.GetForWorkspaceAsync(workspaceId, ct)
+            .ConfigureAwait(true);
         if (prResult.IsSuccess)
         {
             var pr = prResult.Value;
@@ -197,7 +194,9 @@ public partial class PrPaneViewModel : ObservableObject
             ChecksPassed = 0;
         }
 
-        var files = await _services.Diffs.GetWorkspaceDiffAsync(workspaceId, ct).ConfigureAwait(true);
+        var files = await _services
+            .Diffs.GetWorkspaceDiffAsync(workspaceId, ct)
+            .ConfigureAwait(true);
         var totalAdd = 0;
         var totalDel = 0;
         foreach (var file in files)
@@ -251,10 +250,11 @@ public partial class PrPaneViewModel : ObservableObject
 
     private static string FormatError(AveliaError error) =>
         error.Match<string>(
-            onNotFound:     resource => $"Not found: {resource}",
-            onValidation:   msg => msg,
+            onNotFound: resource => $"Not found: {resource}",
+            onValidation: msg => msg,
             onUnauthorized: () => "You're not signed in.",
-            onConflict:     msg => msg,
-            onNetwork:      msg => $"Network error: {msg}",
-            onInternal:     msg => $"Internal error: {msg}");
+            onConflict: msg => msg,
+            onNetwork: msg => $"Network error: {msg}",
+            onInternal: msg => $"Internal error: {msg}"
+        );
 }

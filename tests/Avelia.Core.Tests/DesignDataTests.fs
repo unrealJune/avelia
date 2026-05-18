@@ -20,6 +20,7 @@ let ``Archive workspace is Ready`` () =
     let ws =
         DesignData.workspaces
         |> Seq.find (fun w -> w.Id = DesignData.archiveWorkspaceId)
+
     Assert.Equal(WorkspaceStatus.Ready, ws.Status)
 
 [<Fact>]
@@ -28,9 +29,7 @@ let ``Conversation transcript has 8 events`` () =
 
 [<Fact>]
 let ``Conversation LastSequence equals event count`` () =
-    Assert.Equal(
-        DesignData.archiveConversation.Messages.Length,
-        DesignData.archiveConversation.LastSequence)
+    Assert.Equal(DesignData.archiveConversation.Messages.Length, DesignData.archiveConversation.LastSequence)
 
 [<Fact>]
 let ``Diff file list has 10 entries`` () =
@@ -38,7 +37,9 @@ let ``Diff file list has 10 entries`` () =
 
 [<Fact>]
 let ``Exactly one diff file is focused`` () =
-    let focused = DesignData.diffFiles |> Seq.filter (fun f -> f.IsFocused) |> Seq.length
+    let focused =
+        DesignData.diffFiles |> Seq.filter (fun f -> f.IsFocused) |> Seq.length
+
     Assert.Equal(1, focused)
 
 [<Fact>]

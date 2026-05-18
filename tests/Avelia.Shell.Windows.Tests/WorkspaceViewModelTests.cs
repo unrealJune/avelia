@@ -92,8 +92,9 @@ public class WorkspaceViewModelTests
         Assert.Equal(DesignData.diffFiles.Count, vm.PrPane.Files.Count);
 
         // Terminal panel reflects the active workspace's branch + base.
-        var workspace = DesignData.workspaces
-            .First(w => w.Id.Equals(DesignData.archiveWorkspaceId));
+        var workspace = DesignData.workspaces.First(w =>
+            w.Id.Equals(DesignData.archiveWorkspaceId)
+        );
         Assert.Equal(workspace.Branch.Value, vm.Terminal.Branch);
         Assert.Equal(workspace.Base.Value, vm.Terminal.Base);
     }

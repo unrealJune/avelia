@@ -16,12 +16,18 @@ public sealed class WorkspaceStatusToLabelConverter : IValueConverter
         {
             return "";
         }
-        if (status.IsReady) return "Ready to merge";
-        if (status.IsConflict) return "Merge conflicts";
-        if (status.IsArchived) return "Archived";
-        if (status.IsDraft) return "Draft";
-        if (status.IsActive) return "Active";
-        if (status.IsOpen) return "Open";
+        if (status.IsReady)
+            return "Ready to merge";
+        if (status.IsConflict)
+            return "Merge conflicts";
+        if (status.IsArchived)
+            return "Archived";
+        if (status.IsDraft)
+            return "Draft";
+        if (status.IsActive)
+            return "Active";
+        if (status.IsOpen)
+            return "Open";
         return "";
     }
 

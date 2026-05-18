@@ -14,11 +14,9 @@ open Avelia.Core.Abstractions
 
 [<AutoOpen>]
 module private Helpers =
-    let inline asReadOnly (xs: seq<'T>) : IReadOnlyList<'T> =
-        xs |> Seq.toArray :> IReadOnlyList<_>
+    let inline asReadOnly (xs: seq<'T>) : IReadOnlyList<'T> = xs |> Seq.toArray :> IReadOnlyList<_>
 
-    let inline notFound (label: string) =
-        Failure (AveliaError.NotFound label)
+    let inline notFound (label: string) = Failure(AveliaError.NotFound label)
 
 // ============================================================================
 //  Stub: Repository
@@ -26,7 +24,10 @@ module private Helpers =
 
 type StubRepositoryService(initial: seq<Repository>) =
     let store = Dictionary<RepositoryId, Repository>()
-    do for r in initial do store.[r.Id] <- r
+
+    do
+        for r in initial do
+            store.[r.Id] <- r
 
     interface IRepositoryService with
         member _.ListAsync(ct: CancellationToken) =
@@ -35,33 +36,37 @@ type StubRepositoryService(initial: seq<Repository>) =
 
         member _.GetAsync(id, ct) =
             ct.ThrowIfCancellationRequested()
+
             match store.TryGetValue id with
-            | true, repo -> Task.FromResult (Success repo)
-            | _ -> Task.FromResult (notFound $"Repository {id}")
+            | true, repo -> Task.FromResult(Success repo)
+            | _ -> Task.FromResult(notFound $"Repository {id}")
 
         member _.AddAsync(path, defaultBase, ct) =
             ct.ThrowIfCancellationRequested()
             let id = RepositoryId.create ()
+
             let name =
                 let p = path.Value.Replace('\\', '/').TrimEnd('/')
                 let lastSlash = p.LastIndexOf '/'
                 if lastSlash < 0 then p else p.Substring(lastSlash + 1)
-            let repo = {
-                Id = id
-                Name = name
-                Path = path
-                DefaultBase = defaultBase
-                IsOpen = true
-            }
+
+            let repo =
+                { Id = id
+                  Name = name
+                  Path = path
+                  DefaultBase = defaultBase
+                  IsOpen = true }
+
             store.[id] <- repo
-            Task.FromResult (Success repo)
+            Task.FromResult(Success repo)
 
         member _.RemoveAsync(id, ct) =
             ct.ThrowIfCancellationRequested()
+
             if store.Remove id then
-                Task.FromResult (Success ())
+                Task.FromResult(Success())
             else
-                Task.FromResult (notFound $"Repository {id}")
+                Task.FromResult(notFound $"Repository {id}")
 
 // ============================================================================
 //  Stub: Workspace
@@ -69,7 +74,10 @@ type StubRepositoryService(initial: seq<Repository>) =
 
 type StubWorkspaceService(initial: seq<Workspace>) =
     let store = Dictionary<WorkspaceId, Workspace>()
-    do for w in initial do store.[w.Id] <- w
+
+    do
+        for w in initial do
+            store.[w.Id] <- w
 
     interface IWorkspaceService with
         member _.ListAllAsync(ct) =
@@ -78,39 +86,41 @@ type StubWorkspaceService(initial: seq<Workspace>) =
 
         member _.ListByRepoAsync(repoId, ct) =
             ct.ThrowIfCancellationRequested()
-            Task.FromResult(
-                store.Values
-                |> Seq.filter (fun w -> w.RepoId = repoId)
-                |> asReadOnly)
+            Task.FromResult(store.Values |> Seq.filter (fun w -> w.RepoId = repoId) |> asReadOnly)
 
         member _.GetAsync(id, ct) =
             ct.ThrowIfCancellationRequested()
+
             match store.TryGetValue id with
-            | true, w -> Task.FromResult (Success w)
-            | _ -> Task.FromResult (notFound $"Workspace {id}")
+            | true, w -> Task.FromResult(Success w)
+            | _ -> Task.FromResult(notFound $"Workspace {id}")
 
         member _.ArchiveAsync(id, ct) =
             ct.ThrowIfCancellationRequested()
+
             match store.TryGetValue id with
             | true, w ->
                 if Workspace.canTransition w.Status WorkspaceStatus.Archived then
-                    store.[id] <- { w with Status = WorkspaceStatus.Archived }
-                    Task.FromResult (Success ())
+                    store.[id] <-
+                        { w with
+                            Status = WorkspaceStatus.Archived }
+
+                    Task.FromResult(Success())
                 else
-                    Task.FromResult (Failure (AveliaError.Conflict $"Cannot archive from {w.Status}"))
-            | _ -> Task.FromResult (notFound $"Workspace {id}")
+                    Task.FromResult(Failure(AveliaError.Conflict $"Cannot archive from {w.Status}"))
+            | _ -> Task.FromResult(notFound $"Workspace {id}")
 
 // ============================================================================
 //  Stub: Conversation
 // ============================================================================
 
 type StubConversationService
-    (
-        initialConversations: seq<Conversation>,
-        workspaceLookup: WorkspaceId -> Conversation option
-    ) =
+    (initialConversations: seq<Conversation>, workspaceLookup: WorkspaceId -> Conversation option) =
     let byId = Dictionary<ConversationId, Conversation>()
-    do for c in initialConversations do byId.[c.Id] <- c
+
+    do
+        for c in initialConversations do
+            byId.[c.Id] <- c
 
     // One channel per active observer. <c>PostUserMessageAsync</c> fans new
     // events out to every subscriber's channel; subscribers remove themselves
@@ -120,36 +130,39 @@ type StubConversationService
     let gate = obj ()
 
     let broadcast (conversationId: ConversationId) (event: MessageEvent) =
-        let snapshot : Channel<MessageEvent> array =
+        let snapshot: Channel<MessageEvent> array =
             lock gate (fun () ->
                 match subscribers.TryGetValue conversationId with
                 | true, list -> list.ToArray()
                 | _ -> Array.empty)
+
         for ch in snapshot do
             ch.Writer.TryWrite event |> ignore
 
     interface IConversationService with
         member _.GetForWorkspaceAsync(workspaceId, ct) =
             ct.ThrowIfCancellationRequested()
+
             match workspaceLookup workspaceId with
-            | Some conv -> Task.FromResult (Success conv)
-            | None -> Task.FromResult (notFound $"Conversation for workspace {workspaceId}")
+            | Some conv -> Task.FromResult(Success conv)
+            | None -> Task.FromResult(notFound $"Conversation for workspace {workspaceId}")
 
         member _.PostUserMessageAsync(conversationId, text, refs, ct) =
             ct.ThrowIfCancellationRequested()
+
             match byId.TryGetValue conversationId with
             | true, conv ->
-                let msg = {
-                    Id = MessageId.create ()
-                    Text = text
-                    Refs = refs
-                    Timestamp = DateTimeOffset.UtcNow
-                }
+                let msg =
+                    { Id = MessageId.create ()
+                      Text = text
+                      Refs = refs
+                      Timestamp = DateTimeOffset.UtcNow }
+
                 let event = UserMessageAppended msg
                 byId.[conversationId] <- Conversation.applyEvent conv event
                 broadcast conversationId event
-                Task.FromResult (Success msg)
-            | _ -> Task.FromResult (notFound $"Conversation {conversationId}")
+                Task.FromResult(Success msg)
+            | _ -> Task.FromResult(notFound $"Conversation {conversationId}")
 
         member _.ObserveMessages(conversationId, ct) =
             // AllowSynchronousContinuations lets the reader's continuation run on
@@ -158,10 +171,10 @@ type StubConversationService
             // ImmediateUiDispatcher tests depend on. A real backend (Chunk 10)
             // should leave this off so a slow VM can't stall the writer.
             let opts =
-                UnboundedChannelOptions(
-                    SingleReader = true,
-                    AllowSynchronousContinuations = true)
+                UnboundedChannelOptions(SingleReader = true, AllowSynchronousContinuations = true)
+
             let channel = Channel.CreateUnbounded<MessageEvent>(opts)
+
             lock gate (fun () ->
                 let list =
                     match subscribers.TryGetValue conversationId with
@@ -170,10 +183,12 @@ type StubConversationService
                         let l = ResizeArray<Channel<MessageEvent>>()
                         subscribers.[conversationId] <- l
                         l
+
                 list.Add channel)
 
             let cleanup () =
                 channel.Writer.TryComplete() |> ignore
+
                 lock gate (fun () ->
                     match subscribers.TryGetValue conversationId with
                     | true, l -> l.Remove channel |> ignore
@@ -186,8 +201,10 @@ type StubConversationService
             // of the CT, even after the subscriber is gone.
             channel.Reader.Completion.ContinueWith(
                 (fun _ -> registration.Dispose()),
-                TaskContinuationOptions.ExecuteSynchronously)
+                TaskContinuationOptions.ExecuteSynchronously
+            )
             |> ignore
+
             channel.Reader.ReadAllAsync(ct)
 
 // ============================================================================
@@ -203,42 +220,43 @@ type StubDiffService
     interface IDiffService with
         member _.GetWorkspaceDiffAsync(workspaceId, ct) =
             ct.ThrowIfCancellationRequested()
-            Task.FromResult (workspaceFiles workspaceId)
+            Task.FromResult(workspaceFiles workspaceId)
 
         member _.GetPullRequestDiffAsync(prId, ct) =
             ct.ThrowIfCancellationRequested()
-            Task.FromResult (prFiles prId)
+            Task.FromResult(prFiles prId)
 
         member _.GetHunksAsync(prId, file, ct) =
             ct.ThrowIfCancellationRequested()
-            Task.FromResult (prHunks (prId, file))
+            Task.FromResult(prHunks (prId, file))
 
 // ============================================================================
 //  Stub: Pull request
 // ============================================================================
 
 type StubPullRequestService
-    (
-        prsByWorkspace: WorkspaceId -> PullRequest option,
-        prsById: Dictionary<PullRequestId, PullRequest>
-    ) =
+    (prsByWorkspace: WorkspaceId -> PullRequest option, prsById: Dictionary<PullRequestId, PullRequest>) =
     interface IPullRequestService with
         member _.GetForWorkspaceAsync(workspaceId, ct) =
             ct.ThrowIfCancellationRequested()
+
             match prsByWorkspace workspaceId with
-            | Some pr -> Task.FromResult (Success pr)
-            | None -> Task.FromResult (notFound $"PullRequest for workspace {workspaceId}")
+            | Some pr -> Task.FromResult(Success pr)
+            | None -> Task.FromResult(notFound $"PullRequest for workspace {workspaceId}")
 
         member _.MergeAsync(id, ct) =
             ct.ThrowIfCancellationRequested()
+
             match prsById.TryGetValue id with
             | true, pr when pr.MergeReady ->
-                prsById.[id] <- { pr with Status = PrStatus.Merged; MergeReady = false }
-                Task.FromResult (Success ())
-            | true, pr ->
-                Task.FromResult (Failure (AveliaError.Conflict $"PR #{pr.Number} not merge-ready"))
-            | _ ->
-                Task.FromResult (notFound $"PullRequest {id}")
+                prsById.[id] <-
+                    { pr with
+                        Status = PrStatus.Merged
+                        MergeReady = false }
+
+                Task.FromResult(Success())
+            | true, pr -> Task.FromResult(Failure(AveliaError.Conflict $"PR #{pr.Number} not merge-ready"))
+            | _ -> Task.FromResult(notFound $"PullRequest {id}")
 
 // ============================================================================
 //  Stub: Run
@@ -262,3 +280,61 @@ type StubInboxService(initial: seq<InboxItem>) =
         member _.ListAsync(ct) =
             ct.ThrowIfCancellationRequested()
             Task.FromResult(asReadOnly store)
+
+// ============================================================================
+//  Stub: Appearance / settings
+//
+//  Holds a single AppearanceSettings record in memory. Each setter clones the
+//  record with the new field and returns Task.CompletedTask. Real persistence
+//  (Chunk 10) will swap this for a SQLite-backed implementation; the shell
+//  binding doesn't need to change.
+// ============================================================================
+
+type StubSettingsService(initial: AppearanceSettings) =
+    let gate = obj ()
+    let mutable current = initial
+
+    interface ISettingsService with
+        member _.GetAsync(ct) =
+            ct.ThrowIfCancellationRequested()
+            Task.FromResult current
+
+        member _.SetAccentAsync(accent, ct) =
+            ct.ThrowIfCancellationRequested()
+            lock gate (fun () -> current <- { current with Accent = accent })
+            Task.CompletedTask
+
+        member _.SetDensityAsync(density, ct) =
+            ct.ThrowIfCancellationRequested()
+            lock gate (fun () -> current <- { current with Density = density })
+            Task.CompletedTask
+
+        member _.SetTransparencyAsync(enabled, ct) =
+            ct.ThrowIfCancellationRequested()
+            lock gate (fun () -> current <- { current with Transparency = enabled })
+            Task.CompletedTask
+
+        member _.SetOpenWithRightPanelAsync(enabled, ct) =
+            ct.ThrowIfCancellationRequested()
+
+            lock gate (fun () ->
+                current <-
+                    { current with
+                        OpenWithRightPanel = enabled })
+
+            Task.CompletedTask
+
+        member _.SetDefaultModelAsync(model, ct) =
+            ct.ThrowIfCancellationRequested()
+            lock gate (fun () -> current <- { current with DefaultModel = model })
+            Task.CompletedTask
+
+        member _.SetExtendedThinkingAsync(enabled, ct) =
+            ct.ThrowIfCancellationRequested()
+
+            lock gate (fun () ->
+                current <-
+                    { current with
+                        ExtendedThinking = enabled })
+
+            Task.CompletedTask

@@ -31,80 +31,79 @@
                         <ColumnDefinition Width="Auto" />
                     </Grid.ColumnDefinitions>
 
-                <!-- M / A / D / R badge -->
-                <Border
-                    Grid.Column="0"
-                    Width="18"
-                    Height="18"
-                    CornerRadius="{StaticResource AveliaCornerRadiusSmall}"
-                    Background="{ThemeResource AveliaSubtleFillTertiaryBrush}"
-                    BorderBrush="{ThemeResource AveliaSurfaceStrokeBrush}"
-                    BorderThickness="1"
-                    VerticalAlignment="Center"
-                >
-                    <TextBlock
-                        FontFamily="{StaticResource AveliaUiFontFamily}"
-                        FontSize="10"
-                        FontWeight="SemiBold"
-                        HorizontalAlignment="Center"
+                    <!-- M / A / D / R badge -->
+                    <Border
+                        Grid.Column="0"
+                        Width="18"
+                        Height="18"
+                        CornerRadius="{StaticResource AveliaCornerRadiusSmall}"
+                        Background="{ThemeResource AveliaSubtleFillTertiaryBrush}"
+                        BorderBrush="{ThemeResource AveliaSurfaceStrokeBrush}"
+                        BorderThickness="1"
                         VerticalAlignment="Center"
-                        Foreground="{ThemeResource AveliaTextSecondaryBrush}"
-                        Text="{x:Bind KindBadge, Mode=OneTime, FallbackValue=''}"
-                    />
-                </Border>
+                    >
+                        <TextBlock
+                            FontFamily="{StaticResource AveliaUiFontFamily}"
+                            FontSize="10"
+                            FontWeight="SemiBold"
+                            HorizontalAlignment="Center"
+                            VerticalAlignment="Center"
+                            Foreground="{ThemeResource AveliaTextSecondaryBrush}"
+                            Text="{x:Bind KindBadge, Mode=OneTime, FallbackValue=''}"
+                        />
+                    </Border>
 
-                <!-- Folder + filename (single mono run, two TextBlocks) -->
-                <StackPanel
-                    Grid.Column="1"
-                    Orientation="Horizontal"
-                    Spacing="0"
-                    VerticalAlignment="Center"
-                >
-                    <TextBlock
-                        Style="{StaticResource AveliaMonoCaptionTextStyle}"
+                    <!-- Folder + filename (single mono run, two TextBlocks) -->
+                    <StackPanel
+                        Grid.Column="1"
+                        Orientation="Horizontal"
+                        Spacing="0"
+                        VerticalAlignment="Center"
+                    >
+                        <TextBlock
+                            Style="{StaticResource AveliaMonoCaptionTextStyle}"
+                            Foreground="{ThemeResource AveliaTextTertiaryBrush}"
+                            Text="{x:Bind Folder, Mode=OneTime, FallbackValue=''}"
+                            TextTrimming="CharacterEllipsis"
+                        />
+                        <TextBlock
+                            Style="{StaticResource AveliaMonoCaptionTextStyle}"
+                            Foreground="{ThemeResource AveliaTextPrimaryBrush}"
+                            Text="{x:Bind FileName, Mode=OneTime, FallbackValue=''}"
+                            TextTrimming="CharacterEllipsis"
+                        />
+                    </StackPanel>
+
+                    <controls:Chip
+                        Grid.Column="2"
+                        Margin="0,0,4,0"
+                        VerticalAlignment="Center"
+                        FillBrush="{ThemeResource AveliaDiffAddBgBrush}"
+                        StrokeBrush="{ThemeResource AveliaDiffAddStrongBrush}"
+                        TextBrush="{ThemeResource AveliaSuccessBrush}"
+                        Text="{x:Bind AddDisplay, Mode=OneTime, FallbackValue=''}"
+                    />
+                    <controls:Chip
+                        Grid.Column="3"
+                        Margin="0,0,4,0"
+                        VerticalAlignment="Center"
+                        FillBrush="{ThemeResource AveliaDiffDelBgBrush}"
+                        StrokeBrush="{ThemeResource AveliaDiffDelStrongBrush}"
+                        TextBrush="{ThemeResource AveliaDangerBrush}"
+                        Text="{x:Bind DelDisplay, Mode=OneTime, FallbackValue=''}"
+                    />
+
+                    <FontIcon
+                        Grid.Column="4"
+                        FontFamily="Segoe Fluent Icons"
+                        FontSize="10"
+                        Glyph="&#xE76C;"
                         Foreground="{ThemeResource AveliaTextTertiaryBrush}"
-                        Text="{x:Bind Folder, Mode=OneTime, FallbackValue=''}"
-                        TextTrimming="CharacterEllipsis"
+                        VerticalAlignment="Center"
                     />
-                    <TextBlock
-                        Style="{StaticResource AveliaMonoCaptionTextStyle}"
-                        Foreground="{ThemeResource AveliaTextPrimaryBrush}"
-                        Text="{x:Bind FileName, Mode=OneTime, FallbackValue=''}"
-                        TextTrimming="CharacterEllipsis"
-                    />
-                </StackPanel>
-
-                <controls:Chip
-                    Grid.Column="2"
-                    Margin="0,0,4,0"
-                    VerticalAlignment="Center"
-                    FillBrush="{ThemeResource AveliaDiffAddBgBrush}"
-                    StrokeBrush="{ThemeResource AveliaDiffAddStrongBrush}"
-                    TextBrush="{ThemeResource AveliaSuccessBrush}"
-                    Text="{x:Bind AddDisplay, Mode=OneTime, FallbackValue=''}"
-                />
-                <controls:Chip
-                    Grid.Column="3"
-                    Margin="0,0,4,0"
-                    VerticalAlignment="Center"
-                    FillBrush="{ThemeResource AveliaDiffDelBgBrush}"
-                    StrokeBrush="{ThemeResource AveliaDiffDelStrongBrush}"
-                    TextBrush="{ThemeResource AveliaDangerBrush}"
-                    Text="{x:Bind DelDisplay, Mode=OneTime, FallbackValue=''}"
-                />
-
-                <FontIcon
-                    Grid.Column="4"
-                    FontFamily="Segoe Fluent Icons"
-                    FontSize="10"
-                    Glyph="&#xE76C;"
-                    Foreground="{ThemeResource AveliaTextTertiaryBrush}"
-                    VerticalAlignment="Center"
-                />
                 </Grid>
             </Grid>
         </DataTemplate>
-
     </UserControl.Resources>
 
     <ListView
