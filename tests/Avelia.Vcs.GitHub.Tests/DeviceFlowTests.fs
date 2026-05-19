@@ -146,12 +146,13 @@ let ``completeAsync polls through pending then returns the acquired token`` () =
         |> _.GetAwaiter().GetResult()
 
     match result with
-    | Success t ->
+    | Success(t: PendingGitHubToken) ->
         Assert.Equal("ghu_token", t.Token)
         Assert.Equal<string[]>([| "repo"; "read:user" |], t.ScopesGranted)
         Assert.Equal(AuthMethod.OAuthApp, t.Method)
         Assert.Equal(nowFixed().AddSeconds 28800.0, t.ExpiresAt)
-        Assert.Equal("", t.Account) // Account is resolved later via /user.
+    // PendingGitHubToken has no Account field — login resolution
+    // happens at the orchestration layer in Auth.fs, not here.
     | Failure e -> Assert.Fail $"Expected success: {e}"
 
     // Two POSTs to the OAuth token endpoint with the right device code.
@@ -229,7 +230,7 @@ let ``resolveLoginAsync returns the login on 200`` () =
     let result = DeviceFlow.resolveLoginAsync client ct |> _.GetAwaiter().GetResult()
 
     match result with
-    | Success "octocat" -> ()
+    | Success login -> Assert.Equal("octocat", login.Value)
     | other -> Assert.Fail $"Expected Success 'octocat', got {other}"
 
     let req = http.Recorded.[0]

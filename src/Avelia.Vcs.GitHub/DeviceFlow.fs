@@ -113,14 +113,14 @@ module DeviceFlow =
         )
 
     /// Map an Octokit <see cref="Octokit.OauthToken"/> to our
-    /// <see cref="GitHubAccessToken"/>. <c>Account</c> stays empty —
-    /// the caller resolves the login via <see cref="resolveLoginAsync"/>
-    /// before persisting.
+    /// <see cref="PendingGitHubToken"/>. No <c>Account</c> field —
+    /// that's resolved separately via <see cref="resolveLoginAsync"/>
+    /// and attached by <c>Auth.fs</c>.
     let private fromOctokitToken
         (cfg: DeviceFlowConfig)
         (token: Octokit.OauthToken)
         (now: DateTimeOffset)
-        : GitHubAccessToken =
+        : PendingGitHubToken =
         let scopes =
             match box token.Scope with
             | null -> Array.empty
@@ -143,8 +143,7 @@ module DeviceFlow =
             else
                 now.AddSeconds(float token.RefreshTokenExpiresIn)
 
-        { Account = ""
-          Token = if isNull token.AccessToken then "" else token.AccessToken
+        { Token = if isNull token.AccessToken then "" else token.AccessToken
           Method = cfg.Method
           ScopesGranted = scopes
           ExpiresAt = expires
@@ -158,6 +157,12 @@ module DeviceFlow =
     /// <see cref="Octokit.ApiException"/> which we map back to
     /// <see cref="AveliaError"/>.
     ///
+    /// <para>Returns a <see cref="PendingGitHubToken"/>. The
+    /// orchestration layer is responsible for resolving the login via
+    /// <see cref="resolveLoginAsync"/> and promoting to a full
+    /// <see cref="GitHubAccessToken"/> via
+    /// <see cref="GitHubAccessToken.withLogin"/>.</para>
+    ///
     /// <para>The <c>Task.Delay</c> inside Octokit's loop is keyed on
     /// <c>challenge.Interval</c>; tests pass <c>Interval = TimeSpan.Zero</c>
     /// so polling runs synchronously.</para>
@@ -167,7 +172,7 @@ module DeviceFlow =
         (challenge: DeviceCodeChallenge)
         (now: unit -> DateTimeOffset)
         (ct: CancellationToken)
-        : Task<OperationResult<GitHubAccessToken>> =
+        : Task<OperationResult<PendingGitHubToken>> =
         task {
             try
                 let octokitResp = toOctokitResponse challenge (now ())
@@ -179,20 +184,23 @@ module DeviceFlow =
         }
 
     /// Resolve the GitHub login for an access token via
-    /// <c>GET /user</c>. Used to populate the <c>Account</c> field of a
-    /// freshly-acquired token before persisting it.
+    /// <c>GET /user</c>. Returns a validated <see cref="GitHubLogin"/>
+    /// — the smart constructor guarantees non-empty, so any caller
+    /// taking this return type knows the login is well-formed.
     let resolveLoginAsync
         (githubClient: Octokit.IGitHubClient)
         (ct: CancellationToken)
-        : Task<OperationResult<string>> =
+        : Task<OperationResult<GitHubLogin>> =
         task {
             try
                 let! user = githubClient.User.Current()
 
-                if isNull user || String.IsNullOrEmpty user.Login then
-                    return Failure(AveliaError.External("github", "GET /user returned no login."))
+                if isNull user then
+                    return Failure(AveliaError.External("github", "GET /user returned no body."))
                 else
-                    return Success user.Login
+                    match GitHubLogin.TryCreate(if isNull user.Login then "" else user.Login) with
+                    | Ok login -> return Success login
+                    | Error msg -> return Failure(AveliaError.External("github", $"GET /user: {msg}"))
             with
             | :? OperationCanceledException -> return raise (OperationCanceledException ct)
             | ex -> return Failure(mapException ex)

@@ -98,7 +98,7 @@ module TokenSerializer =
     let serialize (token: GitHubAccessToken) : string =
         let dto = TokenDto()
         dto.V <- 1
-        dto.Account <- token.Account
+        dto.Account <- token.Account.Value
         dto.Token <- token.Token
         dto.Method <- AuthMethodWire.toWire token.Method
         dto.ScopesGranted <- token.ScopesGranted
@@ -108,8 +108,9 @@ module TokenSerializer =
         JsonSerializer.Serialize(dto, options)
 
     /// Decode. Returns <c>Failure (AveliaError.Validation _)</c> on a
-    /// malformed blob or unknown <c>method</c> tag — keeps the caller's
-    /// <c>match</c> total without surfacing JSON-parser exceptions.
+    /// malformed blob, unknown <c>method</c> tag, or an empty
+    /// <c>Account</c> field — keeps the caller's <c>match</c> total
+    /// without surfacing JSON-parser exceptions.
     let deserialize (json: string) : OperationResult<GitHubAccessToken> =
         try
             let dto = JsonSerializer.Deserialize<TokenDto>(json, options)
@@ -122,14 +123,23 @@ module TokenSerializer =
                 match AuthMethodWire.tryFromWire methodTag with
                 | ValueNone -> Failure(AveliaError.Validation $"Unknown auth method tag '{methodTag}' in stored token.")
                 | ValueSome m ->
-                    Success
-                        { Account = orEmpty dto.Account
-                          Token = orEmpty dto.Token
-                          Method = m
-                          ScopesGranted = orEmptyArray dto.ScopesGranted
-                          ExpiresAt = dto.ExpiresAt
-                          RefreshToken = orEmpty dto.RefreshToken
-                          RefreshExpiresAt = dto.RefreshExpiresAt }
+                    match GitHubLogin.TryCreate(orEmpty dto.Account) with
+                    | Error msg ->
+                        // An empty/whitespace Account in a stored blob
+                        // means the vault is corrupt — refuse to load
+                        // rather than synthesise a placeholder login
+                        // that would let the rest of the system act on
+                        // a token that points at no real account.
+                        Failure(AveliaError.Validation $"Token blob has invalid Account: {msg}")
+                    | Ok account ->
+                        Success
+                            { Account = account
+                              Token = orEmpty dto.Token
+                              Method = m
+                              ScopesGranted = orEmptyArray dto.ScopesGranted
+                              ExpiresAt = dto.ExpiresAt
+                              RefreshToken = orEmpty dto.RefreshToken
+                              RefreshExpiresAt = dto.RefreshExpiresAt }
         with
         | :? JsonException as ex -> Failure(AveliaError.Validation $"Token blob is not valid JSON: {ex.Message}")
         | ex -> Failure(AveliaError.Internal $"Token blob decode failed: {ex.Message}")
@@ -172,9 +182,18 @@ module CredentialKey =
 /// empty-string secrets are legal values and round-trip as themselves.</para>
 ///
 /// <para>The Meziantou wrapper marshals everything synchronously via Win32
-/// APIs; we wrap calls in <c>Task.Run</c> so the call site can <c>await</c>
-/// without blocking a UI dispatcher thread. The token cancels the
-/// <em>waiter</em>; the Win32 call itself completes anyway.</para>
+/// APIs (<c>CredRead</c> / <c>CredWrite</c> / <c>CredDelete</c>); calls
+/// complete in &lt;10 ms on modern machines. We wrap them in
+/// <c>Task.Run</c> so the caller can <c>await</c> without blocking a UI
+/// dispatcher thread, but we deliberately do NOT pass the cancellation
+/// token to <c>Task.Run</c> — cancelling mid-Win32-call would observe
+/// <see cref="TaskCanceledException"/> on the waiter while the vault op
+/// silently completed anyway, leaving Avelia's in-memory view of the
+/// store out of sync with the OS vault. Instead we check the token
+/// once up front and otherwise run to completion. Cancellation while
+/// the call is in-flight is treated as a "saw the result late" — the
+/// waiter sees <see cref="OperationCanceledException"/>, the vault
+/// state reflects the just-completed call.</para>
 type WindowsCredentialStore() =
 
     /// Username slot in the credential record. Credential Manager requires
@@ -182,66 +201,67 @@ type WindowsCredentialStore() =
     /// since the meaningful identifier is the target name (the caller's key).
     let userName = "avelia"
 
+    /// Run a synchronous vault operation on a worker thread. The
+    /// cancellation token is honoured before the call starts (so a
+    /// pre-cancelled token short-circuits) but the call itself runs to
+    /// completion. The async observer may still throw
+    /// <c>OperationCanceledException</c> after the work returned, but
+    /// the vault state is consistent.
+    let runVaultOp (ct: CancellationToken) (op: unit -> OperationResult<'T>) : Task<OperationResult<'T>> =
+        ct.ThrowIfCancellationRequested()
+        Task.Run(op)
+
     interface ICredentialStore with
         member _.GetAsync(key: string, ct: CancellationToken) : Task<OperationResult<string>> =
-            Task.Run(
-                (fun () ->
-                    try
-                        match CredentialManager.ReadCredential key with
-                        | null -> Failure(AveliaError.NotFound $"credential:{key}")
-                        | cred ->
-                            // Credential Manager stores the secret in
-                            // <c>Password</c> for generic credentials.
-                            let secret =
-                                match cred.Password with
-                                | null -> ""
-                                | s -> s
+            runVaultOp ct (fun () ->
+                try
+                    match CredentialManager.ReadCredential key with
+                    | null -> Failure(AveliaError.NotFound $"credential:{key}")
+                    | cred ->
+                        // Credential Manager stores the secret in
+                        // <c>Password</c> for generic credentials.
+                        let secret =
+                            match cred.Password with
+                            | null -> ""
+                            | s -> s
 
-                            Success secret
-                    with ex ->
-                        Failure(AveliaError.External("credential-manager", ex.Message))),
-                ct
-            )
+                        Success secret
+                with ex ->
+                    Failure(AveliaError.External("credential-manager", ex.Message)))
 
         member _.SetAsync(key: string, secret: string, ct: CancellationToken) : Task<OperationResult<unit>> =
-            Task.Run(
-                (fun () ->
-                    try
-                        let safeSecret =
-                            match (box secret) with
-                            | null -> ""
-                            | _ -> secret
+            runVaultOp ct (fun () ->
+                try
+                    let safeSecret =
+                        match (box secret) with
+                        | null -> ""
+                        | _ -> secret
 
-                        CredentialManager.WriteCredential(
-                            applicationName = key,
-                            userName = userName,
-                            secret = safeSecret,
-                            persistence = CredentialPersistence.LocalMachine
-                        )
+                    CredentialManager.WriteCredential(
+                        applicationName = key,
+                        userName = userName,
+                        secret = safeSecret,
+                        persistence = CredentialPersistence.LocalMachine
+                    )
 
-                        Success()
-                    with ex ->
-                        Failure(AveliaError.External("credential-manager", ex.Message))),
-                ct
-            )
+                    Success()
+                with ex ->
+                    Failure(AveliaError.External("credential-manager", ex.Message)))
 
         member _.DeleteAsync(key: string, ct: CancellationToken) : Task<OperationResult<unit>> =
-            Task.Run(
-                (fun () ->
+            runVaultOp ct (fun () ->
+                try
+                    // Meziantou throws <see cref="Win32Exception"/> with
+                    // ERROR_NOT_FOUND (1168) when the credential is
+                    // missing. We treat that as success (idempotent
+                    // delete is the documented contract).
                     try
-                        // Meziantou throws <see cref="Win32Exception"/> with
-                        // ERROR_NOT_FOUND (1168) when the credential is
-                        // missing. We treat that as success (idempotent
-                        // delete is the documented contract).
-                        try
-                            CredentialManager.DeleteCredential key
-                            Success()
-                        with :? System.ComponentModel.Win32Exception as ex when ex.NativeErrorCode = 1168 ->
-                            Success()
-                    with ex ->
-                        Failure(AveliaError.External("credential-manager", ex.Message))),
-                ct
-            )
+                        CredentialManager.DeleteCredential key
+                        Success()
+                    with :? System.ComponentModel.Win32Exception as ex when ex.NativeErrorCode = 1168 ->
+                        Success()
+                with ex ->
+                    Failure(AveliaError.External("credential-manager", ex.Message)))
 
 // ---------------------------------------------------------------------------
 //  TokenStore — credential-store-aware GitHub token persistence
@@ -257,46 +277,38 @@ type WindowsCredentialStore() =
 /// so this stays free of platform code.
 type TokenStore(store: ICredentialStore) =
 
-    /// Save a token under the canonical GitHub-account key. The account is
-    /// taken from <c>token.Account</c>; storing a token whose
-    /// <c>Account</c> is empty surfaces as
-    /// <c>Failure (Validation _)</c> — callers must resolve the login
-    /// (typically via <c>GET /user</c>) before persisting.
+    /// Save a token under the canonical GitHub-account key
+    /// (<c>"avelia:github:&lt;login&gt;"</c>). The smart-constructor on
+    /// <see cref="GitHubLogin"/> guarantees <c>token.Account</c> is
+    /// non-empty at the type level, so there's no runtime "is it
+    /// empty?" check here — the compiler already rejected empty values
+    /// at construction time.
     member _.SaveAsync(token: GitHubAccessToken, ct: CancellationToken) : Task<OperationResult<unit>> =
         task {
-            if String.IsNullOrWhiteSpace token.Account then
-                return
-                    Failure(AveliaError.Validation "Cannot store a token without an account login; resolve it first.")
-            else
-                let key = CredentialKey.forGitHubAccount token.Account
-                let payload = TokenSerializer.serialize token
-                return! store.SetAsync(key, payload, ct)
+            let key = CredentialKey.forGitHubAccount token.Account.Value
+            let payload = TokenSerializer.serialize token
+            return! store.SetAsync(key, payload, ct)
         }
 
     /// Load a previously-stored token for <paramref name="login"/>.
     /// A missing entry surfaces as <c>Failure (NotFound _)</c> per the
-    /// credential-store contract; a malformed entry surfaces as
+    /// credential-store contract; a malformed entry (incl. an empty
+    /// <c>Account</c> in the stored blob) surfaces as
     /// <c>Failure (Validation _)</c>.
-    member _.LoadAsync(login: string, ct: CancellationToken) : Task<OperationResult<GitHubAccessToken>> =
+    member _.LoadAsync(login: GitHubLogin, ct: CancellationToken) : Task<OperationResult<GitHubAccessToken>> =
         task {
-            if String.IsNullOrWhiteSpace login then
-                return Failure(AveliaError.Validation "Account login is required.")
-            else
-                let key = CredentialKey.forGitHubAccount login
-                let! raw = store.GetAsync(key, ct)
+            let key = CredentialKey.forGitHubAccount login.Value
+            let! raw = store.GetAsync(key, ct)
 
-                match raw with
-                | Failure e -> return Failure e
-                | Success json -> return TokenSerializer.deserialize json
+            match raw with
+            | Failure e -> return Failure e
+            | Success json -> return TokenSerializer.deserialize json
         }
 
     /// Delete the token for <paramref name="login"/>. Idempotent — deleting
     /// a missing entry is a no-op success.
-    member _.DeleteAsync(login: string, ct: CancellationToken) : Task<OperationResult<unit>> =
+    member _.DeleteAsync(login: GitHubLogin, ct: CancellationToken) : Task<OperationResult<unit>> =
         task {
-            if String.IsNullOrWhiteSpace login then
-                return Failure(AveliaError.Validation "Account login is required.")
-            else
-                let key = CredentialKey.forGitHubAccount login
-                return! store.DeleteAsync(key, ct)
+            let key = CredentialKey.forGitHubAccount login.Value
+            return! store.DeleteAsync(key, ct)
         }

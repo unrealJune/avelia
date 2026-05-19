@@ -48,9 +48,24 @@ module private Gen =
                   return DateTimeOffset.FromUnixTimeSeconds(int64 secsFromEpoch)
               }) ]
 
+    /// Generator for valid GitHub logins. Must round-trip through
+    /// <see cref="GitHubLogin.TryCreate"/>, so we synthesise from a
+    /// constrained character class instead of using FsCheck's default
+    /// string generator (which produces empty / whitespace / control
+    /// characters that the smart constructor rejects).
+    let login: Gen<GitHubLogin> =
+        let allowed = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_"
+
+        gen {
+            let! len = Gen.choose (1, 24)
+            let! chars = Gen.listOfLength len (Gen.elements allowed)
+            let s = System.String(chars |> List.toArray)
+            return GitHubLogin.Create s
+        }
+
     let token: Gen<GitHubAccessToken> =
         gen {
-            let! account = nonNullString
+            let! account = login
             let! tok = nonNullString
             let! method' = authMethod
             let! scopes = nonNullStringArray
@@ -71,6 +86,7 @@ module private Gen =
 type Arbs =
     static member Token() = Arb.fromGen Gen.token
     static member AuthMethod() = Arb.fromGen Gen.authMethod
+    static member GitHubLogin() = Arb.fromGen Gen.login
 
 [<Property(Arbitrary = [| typeof<Arbs> |])>]
 let ``serialize then deserialize is identity`` (token: GitHubAccessToken) =
@@ -114,18 +130,30 @@ let ``deserialize rejects malformed JSON`` () =
     | Failure other -> Assert.Fail $"Wrong failure shape: {other}"
 
 [<Fact>]
-let ``deserialize normalises null fields to empty sentinels`` () =
-    // Wire format where every field is JSON null. The deserializer should
-    // collapse to the empty-sentinel convention and pick GitHubApp because
-    // null method maps to no-known-tag — actually, it should fail. Test
-    // the auto-normalisation by sending omitted fields with a valid method.
-    let json = """{"v":1,"Method":"pat"}"""
+let ``deserialize normalises missing string fields to empty sentinels`` () =
+    // Wire format where most fields are omitted but Account + Method
+    // are present (the two required fields after the smart-ctor
+    // tightening — Account must round-trip through GitHubLogin.TryCreate).
+    let json = """{"v":1,"Account":"octocat","Method":"pat"}"""
 
     match TokenSerializer.deserialize json with
     | Success token ->
-        Assert.Equal("", token.Account)
+        Assert.Equal("octocat", token.Account.Value)
         Assert.Equal("", token.Token)
         Assert.Equal(AuthMethod.Pat, token.Method)
         Assert.Empty(token.ScopesGranted)
         Assert.Equal("", token.RefreshToken)
     | Failure e -> Assert.Fail $"Unexpected failure: {e}"
+
+[<Fact>]
+let ``deserialize rejects an empty Account in the stored blob`` () =
+    // Account = "" would mean "I don't know who this token belongs to",
+    // which the type system (GitHubLogin smart-ctor) refuses to
+    // construct. A corrupt vault entry surfaces as Validation rather
+    // than a synthetic placeholder login.
+    let json = """{"v":1,"Account":"","Method":"pat"}"""
+
+    match TokenSerializer.deserialize json with
+    | Success _ -> Assert.Fail "Expected Failure on empty Account."
+    | Failure(AveliaError.Validation msg) -> Assert.Contains("Account", msg)
+    | Failure other -> Assert.Fail $"Wrong failure shape: {other}"

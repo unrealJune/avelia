@@ -92,6 +92,83 @@ let ``Different URLs cache independently`` () =
     Assert.Equal("B" :> obj, store.GetAsync(r2).GetAwaiter().GetResult().Body)
 
 // ----------------------------------------------------------------------------
+//  Bounded-capacity behaviour
+// ----------------------------------------------------------------------------
+
+let private mkReq (path: string) : IRequest =
+    let r = MutableRequest()
+    r.BaseAddressValue <- Uri "https://api.github.com"
+    r.EndpointValue <- Uri(path, UriKind.Relative)
+    r.MethodValue <- System.Net.Http.HttpMethod.Get
+    r :> IRequest
+
+let private mkCachedV1 (body: string) : CachedResponse.V1 =
+    let headers = Dictionary<string, string>() :> IReadOnlyDictionary<string, string>
+
+    CachedResponse.V1(body, headers, freshApiInfo "e", HttpStatusCode.OK, "application/json")
+
+[<Fact>]
+let ``LRU eviction kicks in once MaxEntries is exceeded`` () =
+    // Build a tiny cache so the test doesn't have to insert hundreds
+    // of entries to trigger eviction. The advancing clock guarantees
+    // strictly-ordered LastAccessUtc values so the LRU ordering is
+    // deterministic — without it, two inserts within the same UTC tick
+    // would be tied and the eviction order would be undefined.
+    let mutable ticks = DateTime.UtcNow.Ticks
+
+    let clock =
+        Func<DateTime>(fun () ->
+            ticks <- ticks + 10L
+            DateTime(ticks, DateTimeKind.Utc))
+
+    let limits =
+        { MaxEntries = 3
+          MaxAge = TimeSpan.FromHours 1.0 }
+
+    let cache = InMemoryResponseCache(limits, clock)
+    let store = cache :> IResponseCache
+
+    // Insert 3 entries — within the cap.
+    store.SetAsync(mkReq "/a", mkCachedV1 "A").GetAwaiter().GetResult()
+    store.SetAsync(mkReq "/b", mkCachedV1 "B").GetAwaiter().GetResult()
+    store.SetAsync(mkReq "/c", mkCachedV1 "C").GetAwaiter().GetResult()
+    Assert.Equal(3, cache.Count)
+
+    // Touch /a to bump its LastAccessUtc — /b is now the LRU candidate.
+    let _ = store.GetAsync(mkReq "/a").GetAwaiter().GetResult()
+
+    // Insert /d — overflows; LRU (/b) should get evicted.
+    store.SetAsync(mkReq "/d", mkCachedV1 "D").GetAwaiter().GetResult()
+    Assert.Equal(3, cache.Count)
+    Assert.Null(store.GetAsync(mkReq "/b").GetAwaiter().GetResult())
+    Assert.NotNull(store.GetAsync(mkReq "/a").GetAwaiter().GetResult())
+    Assert.NotNull(store.GetAsync(mkReq "/c").GetAwaiter().GetResult())
+    Assert.NotNull(store.GetAsync(mkReq "/d").GetAwaiter().GetResult())
+
+[<Fact>]
+let ``Entry older than MaxAge is treated as a miss and dropped lazily`` () =
+    let mutable now = DateTime.UtcNow
+    let clock = Func<DateTime>(fun () -> now)
+
+    let limits =
+        { MaxEntries = 10
+          MaxAge = TimeSpan.FromMinutes 30.0 }
+
+    let cache = InMemoryResponseCache(limits, clock)
+    let store = cache :> IResponseCache
+
+    store.SetAsync(mkReq "/x", mkCachedV1 "X").GetAwaiter().GetResult()
+    Assert.Equal(1, cache.Count)
+
+    // Advance past MaxAge.
+    now <- now.AddHours 1.0
+
+    let loaded = store.GetAsync(mkReq "/x").GetAwaiter().GetResult()
+    Assert.Null loaded
+    // Lazy eviction — the expired entry was removed by the failed Get.
+    Assert.Equal(0, cache.Count)
+
+// ----------------------------------------------------------------------------
 //  End-to-end via Octokit's CachingHttpClient — assert the
 //  If-None-Match round-trip and 304-as-cached behaviour.
 // ----------------------------------------------------------------------------

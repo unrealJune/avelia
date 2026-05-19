@@ -37,8 +37,14 @@ type private OctokitNotFoundException = Octokit.NotFoundException
 // ============================================================================
 
 type IGitHubClient =
-    /// Repos the authenticated user has explicit access to. Returns at
-    /// most 100 per upstream page; this method paginates to completion.
+    /// Repos the authenticated user has explicit access to. Returns
+    /// **at most** <see cref="GitHubClient.MaxReposReturned"/> entries
+    /// (the most recently updated). Accounts with more repos than that
+    /// (~1000 for the default cap) get a truncated result — the shell
+    /// is expected to surface a "show more" affordance backed by a
+    /// search/filter API, not to enumerate every repo. Capping here
+    /// keeps the call bounded so we don't blow ~50 rate-limit quota in
+    /// one shot.
     abstract ListUserReposAsync: CancellationToken -> Task<OperationResult<IReadOnlyList<RepoSummary>>>
 
     abstract GetPullRequestAsync:
@@ -50,8 +56,14 @@ type IGitHubClient =
     abstract CommentAsync:
         repo: RepoCoordinate * prNumber: int * body: string * CancellationToken -> Task<OperationResult<unit>>
 
-    /// <c>since = DateTimeOffset.MinValue</c> ⇒ "everything"; matches
-    /// the project-wide empty-sentinel convention.
+    /// Notifications updated after <paramref name="since"/>. Returns
+    /// **at most** <see cref="GitHubClient.MaxNotificationsReturned"/>
+    /// entries (the most recent). Sized for the inbox surface; older
+    /// notifications are unlikely to be actionable and pulling them all
+    /// would waste rate-limit budget on idle accounts.
+    ///
+    /// <para><c>since = DateTimeOffset.MinValue</c> ⇒ "everything";
+    /// matches the project-wide empty-sentinel convention.</para>
     abstract ListNotificationsAsync:
         since: DateTimeOffset * CancellationToken -> Task<OperationResult<IReadOnlyList<Notification>>>
 
@@ -76,6 +88,25 @@ type IGitHubClient =
 // ============================================================================
 
 /// Concrete <see cref="IGitHubClient"/> impl wrapping Octokit.
+///
+/// <para>Pagination caps: hard limits on how many entries each
+/// list method walks before returning. Bounded so a single call never
+/// blows more than ~10 of the rate-limit budget (5000/h).</para>
+///
+/// <para>Rate-limit enforcement: before every Octokit call,
+/// <see cref="invoke"/> consults <see cref="lastRateLimit"/> via
+/// <see cref="RateLimitGuard.classify"/>. If the most recent snapshot is
+/// <c>Exhausted</c>, the call is short-circuited with
+/// <c>Failure (External "github-ratelimit", ...)</c> carrying the wait
+/// time — the caller (polling layer) is expected to sleep
+/// <c>waitUntilOk</c> before retrying. <c>Low</c> snapshots proceed but
+/// are visible to the polling layer via <see cref="LastRateLimit"/> so
+/// it can lengthen its tick. <c>Healthy</c> snapshots proceed
+/// unconditionally.</para>
+///
+/// <para>This makes the guard part of the call path rather than a
+/// passive observer; callers that walk <c>RateLimitGuard.waitUntilOk</c>
+/// themselves before each call get redundant protection, not contradiction.</para>
 type GitHubClient(client: OctokitClient, clock: Func<DateTimeOffset>, responseCache: IResponseCache) =
 
     /// Last snapshot captured from <c>client.GetLastApiInfo().RateLimit</c>.
@@ -115,37 +146,60 @@ type GitHubClient(client: OctokitClient, clock: Func<DateTimeOffset>, responseCa
             | :? System.Net.Http.HttpRequestException as net -> AveliaError.Network net.Message
             | _ -> AveliaError.External("github", ex.Message)
 
+    /// Check the cached rate-limit snapshot. Returns <c>ValueSome err</c>
+    /// to short-circuit when exhausted (carrying the wait-time in
+    /// seconds for the caller); <c>ValueNone</c> when it's safe to
+    /// proceed.
+    ///
+    /// <para>Only <c>Exhausted</c> blocks. <c>Low</c> still proceeds —
+    /// the snapshot is advisory and the polling layer should slow down
+    /// based on <see cref="LastRateLimit"/>, but a single in-flight
+    /// request shouldn't be denied service for crossing the warning
+    /// threshold.</para>
+    let preflightRateLimit () : AveliaError voption =
+        match RateLimitGuard.classify lastRateLimit with
+        | RateLimitTier.Exhausted ->
+            let wait = RateLimitGuard.waitUntilOk lastRateLimit (clock.Invoke())
+            let secs = max 0 (int wait.TotalSeconds)
+
+            ValueSome(AveliaError.External("github-ratelimit", $"preflight; reset in {secs}s"))
+        | RateLimitTier.Low
+        | RateLimitTier.Healthy -> ValueNone
+
     /// Run an Octokit call and translate the outcome into
-    /// <see cref="OperationResult"/>. Cancellation propagates out as
-    /// <see cref="OperationCanceledException"/> via
-    /// <see cref="System.Runtime.ExceptionServices.ExceptionDispatchInfo"/>
+    /// <see cref="OperationResult"/>. Pre-flights the rate-limit guard;
+    /// cancellation propagates out as <see cref="OperationCanceledException"/>
+    /// via <see cref="System.Runtime.ExceptionServices.ExceptionDispatchInfo"/>
     /// — we can't <c>reraise()</c> from inside a task computation
     /// expression (F# compiler restricts <c>reraise</c> to direct
     /// <c>with</c> handlers).
     let invoke (f: unit -> Task<'T>) : Task<OperationResult<'T>> =
         task {
-            let mutable cancelDispatch: System.Runtime.ExceptionServices.ExceptionDispatchInfo | null =
-                null
+            match preflightRateLimit () with
+            | ValueSome err -> return Failure err
+            | ValueNone ->
+                let mutable cancelDispatch: System.Runtime.ExceptionServices.ExceptionDispatchInfo | null =
+                    null
 
-            let mutable result: OperationResult<'T> = Failure(AveliaError.Internal "unfilled")
+                let mutable result: OperationResult<'T> = Failure(AveliaError.Internal "unfilled")
 
-            try
                 try
-                    let! r = f ()
-                    result <- Success r
-                with
-                | :? OperationCanceledException as oce ->
-                    cancelDispatch <- System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture oce
-                | ex -> result <- Failure(mapException ex)
-            finally
-                captureRateLimit ()
+                    try
+                        let! r = f ()
+                        result <- Success r
+                    with
+                    | :? OperationCanceledException as oce ->
+                        cancelDispatch <- System.Runtime.ExceptionServices.ExceptionDispatchInfo.Capture oce
+                    | ex -> result <- Failure(mapException ex)
+                finally
+                    captureRateLimit ()
 
-            match cancelDispatch with
-            | null -> return result
-            | dispatch ->
-                dispatch.Throw()
-                // Unreachable — Throw() never returns.
-                return result
+                match cancelDispatch with
+                | null -> return result
+                | dispatch ->
+                    dispatch.Throw()
+                    // Unreachable — Throw() never returns.
+                    return result
         }
 
     /// Map an Octokit <c>Repository</c> to our <see cref="RepoSummary"/>.
@@ -214,10 +268,21 @@ type GitHubClient(client: OctokitClient, clock: Func<DateTimeOffset>, responseCa
           UpdatedAt = updated }
 
     // -------------------------------------------------------------------
-    //  Convenience constructors
+    //  Convenience constructors + capacity knobs
     // -------------------------------------------------------------------
 
-    /// Construct a client against <c>github.com</c> using the bearer
+    /// Hard upper bound on entries returned by <c>ListUserReposAsync</c>.
+    /// Per-page size is 100 (GitHub's max), so this is ~10 paginated
+    /// round-trips. Accounts with more repos truncate (and the shell
+    /// pushes them to search-filter UX, not raw enumeration).
+    static member val MaxReposReturned = 1000 with get
+
+    /// Hard upper bound on entries returned by <c>ListNotificationsAsync</c>.
+    /// Per-page size is 50 (Octokit's default for this endpoint), so
+    /// this is ~10 round-trips. Older notifications are unlikely to
+    /// matter for inbox UX.
+    static member val MaxNotificationsReturned = 500 with get
+
     /// Production convenience. Loads the bearer token for
     /// <paramref name="login"/> via <paramref name="auth"/>, builds an
     /// Octokit client against <c>api.github.com</c> wrapped in our
@@ -228,7 +293,7 @@ type GitHubClient(client: OctokitClient, clock: Func<DateTimeOffset>, responseCa
     /// (in-memory, process-scoped); pass a long-lived instance into
     /// composition rather than constructing per-call.</para>
     static member CreateAsync
-        (auth: IGitHubAuth, login: string, ct: CancellationToken)
+        (auth: Auth.IGitHubAuth, login: Auth.GitHubLogin, ct: CancellationToken)
         : Task<OperationResult<GitHubClient>> =
         task {
             let! tokenResult = auth.LoadStoredTokenAsync(login, ct)
@@ -259,7 +324,12 @@ type GitHubClient(client: OctokitClient, clock: Func<DateTimeOffset>, responseCa
 
         member _.ListUserReposAsync(ct: CancellationToken) =
             task {
-                let apiOptions = OctokitApiOptions(PageSize = 100, PageCount = Int32.MaxValue)
+                // 100 entries per page (GitHub's max for /user/repos);
+                // cap pages so we don't blow more than ~10 of the
+                // rate-limit budget in one call.
+                let pageSize = 100
+                let pageCount = max 1 (GitHubClient.MaxReposReturned / pageSize)
+                let apiOptions = OctokitApiOptions(PageSize = pageSize, PageCount = pageCount)
                 let! result = invoke (fun () -> client.Repository.GetAllForCurrent apiOptions)
 
                 return
@@ -323,7 +393,9 @@ type GitHubClient(client: OctokitClient, clock: Func<DateTimeOffset>, responseCa
                 if since <> DateTimeOffset.MinValue then
                     req.Since <- System.Nullable since
 
-                let apiOptions = OctokitApiOptions(PageSize = 50, PageCount = Int32.MaxValue)
+                let pageSize = 50
+                let pageCount = max 1 (GitHubClient.MaxNotificationsReturned / pageSize)
+                let apiOptions = OctokitApiOptions(PageSize = pageSize, PageCount = pageCount)
                 let! result = invoke (fun () -> client.Activity.Notifications.GetAllForCurrent(req, apiOptions))
 
                 return

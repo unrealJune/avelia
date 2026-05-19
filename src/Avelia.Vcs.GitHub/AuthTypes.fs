@@ -83,19 +83,68 @@ type DeviceCodeChallenge =
         ExpiresAt: DateTimeOffset
     }
 
-/// A successfully-acquired access token. <c>Account</c> is the GitHub login
-/// (<c>""</c> when the caller hasn't resolved it yet — e.g. immediately after
-/// device-flow completion). <c>Token</c> is the raw bearer string.
+/// GitHub account login. Single-case DU with a smart constructor so an
+/// empty/whitespace login cannot be constructed — anywhere a
+/// <see cref="GitHubLogin"/> appears, the value is known non-empty.
+/// Mirrors the project-wide pattern (<see cref="Avelia.Core.Abstractions.BranchName"/>,
+/// <see cref="Avelia.Core.Abstractions.CommitId"/>, etc.).
+[<Struct>]
+type GitHubLogin =
+    private
+    | GitHubLogin of string
+
+    member this.Value =
+        let (GitHubLogin s) = this
+        if String.IsNullOrEmpty s then "" else s
+
+    override this.ToString() = this.Value
+
+    static member TryCreate(s: string) : Result<GitHubLogin, string> =
+        if String.IsNullOrWhiteSpace s then
+            Error "GitHub login cannot be null, empty, or whitespace."
+        else
+            Ok(GitHubLogin(s.Trim()))
+
+    /// Throwing variant for code paths where the input is known valid
+    /// (test fixtures, hardcoded design data).
+    static member Create(s: string) : GitHubLogin =
+        match GitHubLogin.TryCreate s with
+        | Ok l -> l
+        | Error msg -> raise (ArgumentException(msg, nameof s))
+
+/// A token Octokit handed us before we knew which GitHub account it
+/// belonged to. Only emitted by <c>DeviceFlow.completeAsync</c>; the
+/// orchestration in <c>Auth.fs</c> immediately resolves the login via
+/// <c>GET /user</c> and promotes this to a <see cref="GitHubAccessToken"/>.
+/// Never persisted.
+///
+/// <para>Carries every field except <c>Account</c>: making the
+/// post-device-flow state a distinct type rather than a
+/// <see cref="GitHubAccessToken"/> with an empty <c>Account</c> means
+/// you can't accidentally hand the unresolved token to the credential
+/// store — the compiler stops you.</para>
+type PendingGitHubToken =
+    { Token: string
+      Method: AuthMethod
+      ScopesGranted: string array
+      ExpiresAt: DateTimeOffset
+      RefreshToken: string
+      RefreshExpiresAt: DateTimeOffset }
+
+/// A successfully-acquired AND login-resolved access token. <c>Account</c>
+/// is a <see cref="GitHubLogin"/> so the smart constructor guarantees the
+/// credential key (<c>"avelia:github:&lt;login&gt;"</c>) is always
+/// well-formed — <c>TokenStore.SaveAsync</c> doesn't need a runtime
+/// "is this account empty?" check because the type system already
+/// rejected empty values at construction time.
 ///
 /// Stored verbatim in the credential vault; JSON-serialized to keep the
 /// metadata travelling with the secret. The serializer round-trip is
 /// property-tested.
 type GitHubAccessToken =
     {
-        /// GitHub login of the authenticated account. <c>""</c> means
-        /// "not yet resolved" — the shell calls <c>GET /user</c> to populate
-        /// it before storing.
-        Account: string
+        /// GitHub login of the authenticated account.
+        Account: GitHubLogin
         /// Bearer token. Never log.
         Token: string
         Method: AuthMethod
@@ -116,3 +165,19 @@ type GitHubAccessToken =
         /// or when the server didn't supply an expiry.
         RefreshExpiresAt: DateTimeOffset
     }
+
+[<RequireQualifiedAccess>]
+module GitHubAccessToken =
+    /// Promote a <see cref="PendingGitHubToken"/> to a full
+    /// <see cref="GitHubAccessToken"/> by attaching the resolved login.
+    /// The only legal way to build a <see cref="GitHubAccessToken"/>
+    /// outside of credential-vault deserialization — every other call
+    /// site goes through here.
+    let withLogin (login: GitHubLogin) (pending: PendingGitHubToken) : GitHubAccessToken =
+        { Account = login
+          Token = pending.Token
+          Method = pending.Method
+          ScopesGranted = pending.ScopesGranted
+          ExpiresAt = pending.ExpiresAt
+          RefreshToken = pending.RefreshToken
+          RefreshExpiresAt = pending.RefreshExpiresAt }

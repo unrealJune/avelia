@@ -48,14 +48,14 @@ type IGitHubAuth =
 
     /// Load a previously-stored token for <paramref name="login"/>. Used by
     /// the Octokit client to attach the bearer header on every request.
-    abstract LoadStoredTokenAsync: login: string * CancellationToken -> Task<OperationResult<GitHubAccessToken>>
+    abstract LoadStoredTokenAsync: login: GitHubLogin * CancellationToken -> Task<OperationResult<GitHubAccessToken>>
 
     /// Remove the stored token for <paramref name="login"/>. Idempotent.
-    abstract SignOutAsync: login: string * CancellationToken -> Task<OperationResult<unit>>
+    abstract SignOutAsync: login: GitHubLogin * CancellationToken -> Task<OperationResult<unit>>
 
     /// Enumerate logins that currently have a token in the store.
     /// Returns an empty list when none are present, not a failure.
-    abstract ListStoredAccountsAsync: CancellationToken -> Task<OperationResult<IReadOnlyList<string>>>
+    abstract ListStoredAccountsAsync: CancellationToken -> Task<OperationResult<IReadOnlyList<GitHubLogin>>>
 
 /// Default <see cref="IGitHubAuth"/> implementation. The constructor
 /// takes a factory for Octokit's <see cref="IHttpClient"/> so tests can
@@ -102,27 +102,27 @@ type GitHubAuth(httpClientFactory: Func<IHttpClient>, credentialStore: ICredenti
         member _.CompleteDeviceFlowAsync(config, challenge, ct) =
             task {
                 let client = buildOctokitClient config ""
-                let! tokenResult = DeviceFlow.completeAsync client.Oauth config challenge nowFn ct
+                let! pendingResult = DeviceFlow.completeAsync client.Oauth config challenge nowFn ct
 
-                match tokenResult with
+                match pendingResult with
                 | Failure e -> return Failure e
-                | Success token ->
+                | Success pending ->
                     // Now that we have a bearer, build a second client
                     // with the credential to call /user. Octokit's
                     // credential store is read-once-per-request so we
                     // can't mutate the existing client to add the token.
-                    let authedClient = buildOctokitClient config token.Token
+                    let authedClient = buildOctokitClient config pending.Token
                     let! loginResult = DeviceFlow.resolveLoginAsync authedClient ct
 
                     match loginResult with
                     | Failure e -> return Failure e
                     | Success login ->
-                        let tokenWithLogin = { token with Account = login }
-                        let! saveResult = tokenStore.SaveAsync(tokenWithLogin, ct)
+                        let token = GitHubAccessToken.withLogin login pending
+                        let! saveResult = tokenStore.SaveAsync(token, ct)
 
                         match saveResult with
                         | Failure e -> return Failure e
-                        | Success() -> return Success tokenWithLogin
+                        | Success() -> return Success token
             }
 
         member _.SignInWithPatAsync(config, pat, ct) =
@@ -136,14 +136,17 @@ type GitHubAuth(httpClientFactory: Func<IHttpClient>, credentialStore: ICredenti
                     match loginResult with
                     | Failure e -> return Failure e
                     | Success login ->
-                        let token =
-                            { Account = login
-                              Token = pat
+                        // Build the PendingGitHubToken first then
+                        // promote, so the GitHubAccessToken construction
+                        // path is one (via withLogin) regardless of
+                        // entry point.
+                        let pending: PendingGitHubToken =
+                            { Token = pat
                               Method = AuthMethod.Pat
                               // PAT scopes are returned in the
                               // X-OAuth-Scopes response header; we don't
-                              // surface them at this layer. The
-                              // ApiClient can read them from
+                              // surface them at this layer. The ApiClient
+                              // can read them from
                               // GetLastApiInfo().OauthScopes when
                               // displaying account details.
                               ScopesGranted = Array.empty
@@ -151,6 +154,7 @@ type GitHubAuth(httpClientFactory: Func<IHttpClient>, credentialStore: ICredenti
                               RefreshToken = ""
                               RefreshExpiresAt = DateTimeOffset.MaxValue }
 
+                        let token = GitHubAccessToken.withLogin login pending
                         let! saveResult = tokenStore.SaveAsync(token, ct)
 
                         match saveResult with
@@ -162,12 +166,19 @@ type GitHubAuth(httpClientFactory: Func<IHttpClient>, credentialStore: ICredenti
 
         member _.SignOutAsync(login, ct) = tokenStore.DeleteAsync(login, ct)
 
-        member _.ListStoredAccountsAsync(ct: CancellationToken) : Task<OperationResult<IReadOnlyList<string>>> =
+        member _.ListStoredAccountsAsync(ct: CancellationToken) : Task<OperationResult<IReadOnlyList<GitHubLogin>>> =
             // <see cref="ICredentialStore"/> doesn't expose enumeration —
             // each backend's enumeration story differs. On Windows we go
             // direct to Meziantou; macOS / Linux backends will need their
             // own listing path or an <c>IListableCredentialStore</c>
             // trait.
+            //
+            // Each parsed account name goes through
+            // <c>GitHubLogin.TryCreate</c>; entries that don't validate
+            // (corrupt vault rows, manual edits) are silently dropped
+            // rather than blowing up the enumeration — the user can
+            // still sign out the broken row by clicking through Windows
+            // Credential Manager directly.
             Task.Run(
                 (fun () ->
                     try
@@ -180,12 +191,15 @@ type GitHubAuth(httpClientFactory: Func<IHttpClient>, credentialStore: ICredenti
                                 | null -> None
                                 | _ ->
                                     match CredentialKey.tryParseGitHubAccount c.ApplicationName with
-                                    | ValueSome login -> Some login
+                                    | ValueSome name ->
+                                        match GitHubLogin.TryCreate name with
+                                        | Ok login -> Some login
+                                        | Error _ -> None
                                     | ValueNone -> None)
-                            |> Seq.distinct
+                            |> Seq.distinctBy (fun l -> l.Value)
                             |> Seq.toArray
 
-                        Success(logins :> IReadOnlyList<string>)
+                        Success(logins :> IReadOnlyList<GitHubLogin>)
                     with
                     | :? System.PlatformNotSupportedException as ex ->
                         Failure(AveliaError.External("credential-manager", ex.Message))

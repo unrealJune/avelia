@@ -117,7 +117,9 @@ let ``Delete removes the credential`` () =
 let ``TokenStore round-trips a full GitHubAccessToken`` () =
     let store = WindowsCredentialStore() :> ICredentialStore
     let tokenStore = TokenStore store
-    let login = "avelia-test-" + Guid.NewGuid().ToString("N").Substring(0, 8)
+
+    let login =
+        GitHubLogin.Create("avelia-test-" + Guid.NewGuid().ToString("N").Substring(0, 8))
 
     let token =
         { Account = login
@@ -136,7 +138,7 @@ let ``TokenStore round-trips a full GitHubAccessToken`` () =
             tokenStore.LoadAsync(login, ct).GetAwaiter().GetResult()
             |> assertSuccess "LoadAsync"
 
-        Assert.Equal(token.Account, loaded.Account)
+        Assert.Equal(token.Account.Value, loaded.Account.Value)
         Assert.Equal(token.Token, loaded.Token)
         Assert.Equal(token.Method, loaded.Method)
         Assert.Equal<string[]>(token.ScopesGranted, loaded.ScopesGranted)

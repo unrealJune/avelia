@@ -305,3 +305,36 @@ let ``LastRateLimit stays ValueNone before the first call`` () =
     let http = new ScriptedHttpClient(Seq.empty)
     let client = buildClient http
     Assert.Equal(ValueNone, client.LastRateLimit)
+
+[<Fact>]
+let ``Exhausted snapshot short-circuits subsequent calls without sending HTTP`` () =
+    // First call returns 200 with X-RateLimit-Remaining: 0 +
+    // X-RateLimit-Reset in the future. The guard captures that as
+    // Exhausted, then refuses to issue the second call.
+    let body = "[]"
+
+    let exhaustedHeaders =
+        [ "X-RateLimit-Limit", "5000"
+          "X-RateLimit-Remaining", "0"
+          // Far-future reset so waitUntilOk computes a positive value.
+          "X-RateLimit-Reset", "9999999999" ]
+
+    let http =
+        new ScriptedHttpClient([ okWithHeaders HttpStatusCode.OK body exhaustedHeaders ])
+
+    let client = buildClient http
+
+    // First call: passes through, populates lastRateLimit.
+    let _ = client.ListUserReposAsync(ct).GetAwaiter().GetResult()
+
+    // Second call: should be short-circuited. No more scripted
+    // responses are needed — if the guard fails to short-circuit, the
+    // ScriptedHttpClient throws "no more scripted responses".
+    let result = client.ListUserReposAsync(ct).GetAwaiter().GetResult()
+
+    match result with
+    | Failure(AveliaError.External("github-ratelimit", msg)) -> Assert.Contains("preflight", msg)
+    | other -> Assert.Fail $"Expected preflight short-circuit, got {other}"
+
+    // Only the first call hit the wire.
+    Assert.Equal(1, http.Recorded.Count)

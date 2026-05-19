@@ -2,6 +2,7 @@ namespace Avelia.Vcs.GitHub
 
 open System
 open System.Net.Http
+open System.Threading
 open System.Threading.Tasks
 open Octokit.Internal
 
@@ -14,6 +15,16 @@ open Octokit.Internal
 //  choices from drifting between layers, and gives tests a single seam:
 //  pass an alternative <c>IHttpClient</c> factory and the rest of the
 //  graph follows.
+//
+//  Socket-pool discipline: <see cref="HttpClientAdapter"/> wraps an
+//  <see cref="HttpClient"/> with its own socket pool. Constructing one
+//  per call would leak sockets across the process lifetime (per
+//  Microsoft's HttpClient guidance). The <c>SharedHttpClient</c>
+//  singleton therefore lazily materialises ONE <see cref="HttpMessageHandler"/>
+//  and reuses it across every Octokit client this process builds — auth
+//  flows, API calls, and the caching layer all share the same connection
+//  pool. The default factory hands out the same <see cref="IHttpClient"/>
+//  reference on every invocation.
 // ============================================================================
 
 /// Holds a single static <see cref="Octokit.Credentials"/> value. Octokit
@@ -34,6 +45,28 @@ type internal StaticOctokitCredentials(token: string) =
     interface Octokit.ICredentialStore with
         member _.GetCredentials() = Task.FromResult cached
 
+/// Lazily-initialised process-wide <see cref="IHttpClient"/>. Held in a
+/// <see cref="Lazy"/> so concurrent first-touch never materialises two
+/// pools, and exposed as a function so tests that need their own pool
+/// (e.g. integration tests against a sandbox endpoint) can pass an
+/// alternative factory.
+[<RequireQualifiedAccess>]
+module internal SharedHttpClient =
+
+    let private instance =
+        Lazy<IHttpClient>(fun () ->
+            // Single HttpMessageHandler instance wraps the socket pool.
+            // <see cref="HttpClientAdapter"/> takes a factory rather than
+            // an instance, so we close over a singleton via Lazy too — the
+            // factory is invoked at most once even if Octokit asks more
+            // than once.
+            let handler = lazy (new HttpClientHandler() :> HttpMessageHandler)
+            new HttpClientAdapter(Func<HttpMessageHandler>(fun () -> handler.Value)) :> IHttpClient)
+
+    /// Get the shared <see cref="IHttpClient"/>. Same reference on every
+    /// call; safe to pass into multiple Octokit <c>Connection</c>s.
+    let get () : IHttpClient = instance.Value
+
 /// Construction helpers for Octokit's <see cref="Octokit.Connection"/> /
 /// <see cref="Octokit.GitHubClient"/>. Internal — production callers go
 /// through <c>GitHubAuth</c> or <c>GitHubClient.CreateAsync</c>.
@@ -46,12 +79,17 @@ module internal OctokitFactory =
     let productInfo = Octokit.ProductHeaderValue("Avelia", "0.1")
 
     /// Default factory for the production Octokit <see cref="IHttpClient"/>.
-    /// Tests substitute their own <see cref="IHttpClient"/> implementations
-    /// (scripted responses, asserting recorders) by passing a different
-    /// factory to <c>GitHubAuth</c> / <c>GitHubClient</c>.
+    /// Returns the SAME process-wide instance on every call so all
+    /// Octokit clients share one connection pool — see
+    /// <see cref="SharedHttpClient"/> for the rationale.
+    ///
+    /// <para>Tests substitute their own <see cref="IHttpClient"/>
+    /// implementations (scripted responses, asserting recorders) by
+    /// passing a different factory to <c>GitHubAuth</c> /
+    /// <c>GitHubClient</c>. Each call to a test factory may return a new
+    /// stub — tests don't need pool sharing.</para>
     let defaultHttpClientFactory: Func<IHttpClient> =
-        Func<IHttpClient>(fun () ->
-            new HttpClientAdapter(Func<HttpMessageHandler>(fun () -> new HttpClientHandler())) :> IHttpClient)
+        Func<IHttpClient>(fun () -> SharedHttpClient.get ())
 
     /// Build an Octokit <c>Connection</c>. The caller picks the base
     /// address (<c>https://api.github.com</c> for public GitHub,
@@ -60,6 +98,11 @@ module internal OctokitFactory =
     /// device-flow handshake; bearer for everything else), and the
     /// underlying <see cref="IHttpClient"/> — which already has any
     /// caching layer (<c>CachingHttpClient</c>) wrapped around it.
+    ///
+    /// <para>Uses <see cref="SimpleJsonSerializer"/> — Octokit 14's
+    /// default and recommended <see cref="IJsonSerializer"/> backed by
+    /// System.Text.Json. The Newtonsoft variant was deprecated in
+    /// Octokit 12.</para>
     let buildConnection
         (baseAddress: Uri)
         (credentials: Octokit.ICredentialStore)

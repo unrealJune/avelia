@@ -90,7 +90,7 @@ let ``CompleteDeviceFlowAsync stores the resolved-login token under canonical ke
 
     match result with
     | Success t ->
-        Assert.Equal("OctoCat", t.Account)
+        Assert.Equal("OctoCat", t.Account.Value)
         Assert.Equal("ghu_token", t.Token)
         let key = CredentialKey.forGitHubAccount "OctoCat"
         Assert.True(store.Snapshot().ContainsKey key)
@@ -138,7 +138,7 @@ let ``SignInWithPatAsync validates via GET /user and stores on success`` () =
 
     match result with
     | Success t ->
-        Assert.Equal("alice", t.Account)
+        Assert.Equal("alice", t.Account.Value)
         Assert.Equal("ghp_classic", t.Token)
         Assert.Equal(AuthMethod.Pat, t.Method)
         Assert.True(store.Snapshot().ContainsKey(CredentialKey.forGitHubAccount "alice"))
@@ -189,7 +189,8 @@ let ``LoadStoredTokenAsync returns NotFound for unknown login`` () =
     let store = InMemoryCredentialStore()
     let auth = buildAuth http store
 
-    let result = auth.LoadStoredTokenAsync("unknown", ct).GetAwaiter().GetResult()
+    let result =
+        auth.LoadStoredTokenAsync(GitHubLogin.Create "unknown", ct).GetAwaiter().GetResult()
 
     match result with
     | Failure(AveliaError.NotFound _) -> ()
@@ -204,11 +205,12 @@ let ``Store then Load round-trips`` () =
 
     let _ = auth.SignInWithPatAsync(cfg, "ghp_token", ct).GetAwaiter().GetResult()
 
-    let loaded = auth.LoadStoredTokenAsync("bob", ct).GetAwaiter().GetResult()
+    let loaded =
+        auth.LoadStoredTokenAsync(GitHubLogin.Create "bob", ct).GetAwaiter().GetResult()
 
     match loaded with
     | Success t ->
-        Assert.Equal("bob", t.Account)
+        Assert.Equal("bob", t.Account.Value)
         Assert.Equal("ghp_token", t.Token)
         Assert.Equal(AuthMethod.Pat, t.Method)
     | Failure e -> Assert.Fail $"Expected success, got {e}"
@@ -219,8 +221,11 @@ let ``SignOutAsync is idempotent on a missing account`` () =
     let store = InMemoryCredentialStore()
     let auth = buildAuth http store
 
-    let r1 = auth.SignOutAsync("never-existed", ct).GetAwaiter().GetResult()
-    let r2 = auth.SignOutAsync("never-existed", ct).GetAwaiter().GetResult()
+    let r1 =
+        auth.SignOutAsync(GitHubLogin.Create "never-existed", ct).GetAwaiter().GetResult()
+
+    let r2 =
+        auth.SignOutAsync(GitHubLogin.Create "never-existed", ct).GetAwaiter().GetResult()
 
     match r1, r2 with
     | Success(), Success() -> ()
@@ -236,5 +241,5 @@ let ``SignOutAsync after sign-in removes the credential`` () =
 
     Assert.True(store.Snapshot().ContainsKey(CredentialKey.forGitHubAccount "carol"))
 
-    let _ = auth.SignOutAsync("carol", ct).GetAwaiter().GetResult()
+    let _ = auth.SignOutAsync(GitHubLogin.Create "carol", ct).GetAwaiter().GetResult()
     Assert.False(store.Snapshot().ContainsKey(CredentialKey.forGitHubAccount "carol"))
