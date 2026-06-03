@@ -447,24 +447,28 @@ Per CLAUDE.md test tiers and the existing PBT bar:
 
 Backend rollout is reviewable in chunks the same way the shell was. Initial sketch (subject to revision once we start):
 
-| Chunk | Subject | Notes |
-|------:|:------|:------|
-| B-0 | Service-contract extension | Land `IAgentSession` + `IHeadlessAgentSession` + `IInteractiveAgentSession` + `IAgentSessionFactory`, `IGitOperations`, `IGitInspection`, `ITerminalSession`, `ICredentialStore`, `ISessionPersistence` + new primitives (`CommitId`, `CommitMessage`, `Remote`, `Worktree`, `WorktreeStatus`, `TerminalSize`, etc.) in `Avelia.Core.Abstractions`. Add `AveliaError.External` case. Delete legacy `ITaskService`/`IVcsService`/`IAgentService`. No impls yet — stubs continue to satisfy the shell. |
-| B-1 | Local git CLI driver | `Avelia.Vcs.Git.GitCli` — worktree add/remove/list, commit, push, fetch, checkout via `git.exe`. Per-repo `AsyncLock`. Long-paths check on startup. Integration tests against temp repos. |
-| B-2 | Local git inspection driver | `Avelia.Vcs.Git.GitInspector` — LibGit2Sharp 0.31 wrapper. Status, ahead/behind, log, branches, worktrees. Falls back to CLI on `unsupported repository version` (sparse, partial clone). |
-| B-3 | GitHub auth | Device Flow + GitHub App + PAT fallback. `Avelia.Vcs.GitHub.Auth`. Windows Credential Manager via `ICredentialStore`. Onboarding UI for first-run sign-in. |
-| B-4 | GitHub API client | Octokit.NET REST surface. ETag caching middleware. Rate-limit handling. Polling loops behind `IEventStream`. |
-| B-5 | GitHub dashboard query | Octokit.GraphQL.NET — PR list with checks + reviews. One batched query for the dashboard view. |
-| B-6 | ConPTY layer | `ConPtySession` P/Invoke. Process spawn, resize, Ctrl+C. Property test for byte-0x03 → CTRL_C_EVENT. |
-| B-7 | Terminal renderer | WebView2 + xterm.js + WebGL addon. SharedBufferRequested data path. Asciicast v2 record/replay. |
-| B-8 | Copilot driver | `Avelia.Agent.Copilot` — `GitHub.Copilot.SDK` 1.0.0-beta.4 wrapped to `IAgentSession`. Headless + Interactive modes. Reuses auth from B-3. |
-| B-9 | Claude sidecar — runtime bundle | Vendor Node 20.x into `assets/runtime/node/`. Build-script that strips npm/corepack and verifies SHA. Installer integration. |
-| B-10 | Claude sidecar — script + driver | `assets/agents/claude-host/claude-host.mjs` + `Avelia.Agent.ClaudeCode.ClaudeAgentSession`. JSON-RPC stdio. Headless + Interactive modes. |
-| B-11 | Persistence | SQLite via Microsoft.Data.Sqlite. Schema: repositories, workspaces, conversations, messages, runs, settings. Hydrate on startup. Source-of-truth discipline. |
-| B-12 | Composition + onboarding | Wire real services into `Composition.fs`. First-run UI: GitHub sign-in, agent auth (Anthropic key or Copilot inheritance), repo selection. Settings → Agents fully wired. |
-| B-13 | End-to-end smoke | Real Claude headless run against a real repo, ending in a real PR. Real Copilot too. Document the prerequisite environment in README. |
+| Chunk | Status | Subject | Notes |
+|------:|:--|:------|:------|
+| B-0 | ✅ merged (#8) | Service-contract extension | Land `IAgentSession` + `IHeadlessAgentSession` + `IInteractiveAgentSession` + `IAgentSessionFactory`, `IGitOperations`, `IGitInspection`, `ITerminalSession`, `ICredentialStore`, `ISessionPersistence` + new primitives (`CommitId`, `CommitMessage`, `Remote`, `Worktree`, `WorktreeStatus`, `TerminalSize`, etc.) in `Avelia.Core.Abstractions`. Add `AveliaError.External` case. Delete legacy `ITaskService`/`IVcsService`/`IAgentService`. No impls yet — stubs continue to satisfy the shell. |
+| B-1 | ✅ merged | Local git CLI driver | `Avelia.Vcs.Git.GitCli` — worktree add/remove/list, commit, push, fetch, checkout via `git.exe`. Per-repo `AsyncLock`. Long-paths check on startup. Integration tests against temp repos. |
+| B-2 | ✅ merged | Local git inspection driver | `Avelia.Vcs.Git.GitInspector` — LibGit2Sharp 0.31 wrapper. Status, ahead/behind, log, branches, worktrees. Falls back to CLI on `unsupported repository version` (sparse, partial clone). |
+| B-3 | ✅ merged (#10) | GitHub auth | Device Flow + GitHub App + PAT fallback. `Avelia.Vcs.GitHub.Auth`. Windows Credential Manager via `ICredentialStore`. Onboarding UI for first-run sign-in. |
+| B-4 | ✅ merged (#10) | GitHub API client | Octokit.NET REST surface. ETag caching middleware. Rate-limit handling. Polling loops behind `IEventStream`. |
+| B-5 | 🔄 in review (#12) | GitHub dashboard query | Octokit.GraphQL.NET — PR list with checks + reviews. One batched query for the dashboard view. **Built via raw query string over `IConnection.Run`, not the LINQ builder — see progress log below.** |
+| B-6 | ⬜ next | ConPTY layer | `ConPtySession` P/Invoke. Process spawn, resize, Ctrl+C. Property test for byte-0x03 → CTRL_C_EVENT. |
+| B-7 | ⬜ | Terminal renderer | WebView2 + xterm.js + WebGL addon. SharedBufferRequested data path. Asciicast v2 record/replay. |
+| B-8 | ⬜ | Copilot driver | `Avelia.Agent.Copilot` — `GitHub.Copilot.SDK` 1.0.0-beta.4 wrapped to `IAgentSession`. Headless + Interactive modes. Reuses auth from B-3. |
+| B-9 | ⬜ | Claude sidecar — runtime bundle | Vendor Node 20.x into `assets/runtime/node/`. Build-script that strips npm/corepack and verifies SHA. Installer integration. |
+| B-10 | ⬜ | Claude sidecar — script + driver | `assets/agents/claude-host/claude-host.mjs` + `Avelia.Agent.ClaudeCode.ClaudeAgentSession`. JSON-RPC stdio. Headless + Interactive modes. |
+| B-11 | ⬜ | Persistence | SQLite via Microsoft.Data.Sqlite. Schema: repositories, workspaces, conversations, messages, runs, settings. Hydrate on startup. Source-of-truth discipline. |
+| B-12 | ⬜ | Composition + onboarding | Wire real services into `Composition.fs`. First-run UI: GitHub sign-in, agent auth (Anthropic key or Copilot inheritance), repo selection. Settings → Agents fully wired. |
+| B-13 | ⬜ | End-to-end smoke | Real Claude headless run against a real repo, ending in a real PR. Real Copilot too. Document the prerequisite environment in README. |
 
 Chunks B-0 through B-7 can ship without any agent driver — the shell already runs against stubs, so this is "real plumbing under the hood" without changing the UX surface. B-8+ light up the agentic features.
+
+### Progress log — deviations & decisions found in-flight
+
+- **B-5 (GraphQL via raw query string, not the LINQ builder).** The plan said "Octokit.GraphQL.NET", and B-5 takes the dependency — but it does *not* use the library's `Expression<Func<…>>` query builder. That builder translates C#-style member-init / anonymous-type expression trees, which F# cannot express (F# lambdas auto-quote to `System.Linq.Expressions`, but anonymous records and object-initialiser shapes don't translate). Instead the driver sends a hand-written GraphQL query string through the library's public `IConnection.Run(query, ct)` and parses the response envelope with `System.Text.Json`. `Octokit.GraphQL.Connection` still owns auth/endpoint/User-Agent. Upside: because we own the query text we own the response field names, so the whole `payload → Run → parse → map` path is unit-testable against hand-written JSON via a stub `IConnection` — no live endpoint, no integration-only coverage gap. The Octokit/REST and GraphQL surfaces sit behind one `IGitHubClient`; the GraphQL path lives behind an `IDashboardQuery` seam (`GraphQlDashboard.fs`) so `GitHubClient` stays constructable without a connection. GraphQL's separate points budget means `ListPrsForUserAsync` skips the REST rate-limit preflight. Pinned `Octokit.GraphQL` `0.4.0-beta` (latest published).
 
 ## Open questions / risks
 
