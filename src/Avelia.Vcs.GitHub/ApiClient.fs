@@ -32,8 +32,9 @@ type private OctokitNotFoundException = Octokit.NotFoundException
 //  dependency at composition time, but no caller imports Octokit types
 //  directly.
 //
-//  ListPrsForUserAsync is left for B-5 (GraphQL batched query — vastly
-//  cheaper than the REST equivalent of 76 round-trips).
+//  ListPrsForUserAsync (B-5) is served by a GraphQL batched query — vastly
+//  cheaper than the REST equivalent of ~76 round-trips — behind the
+//  IDashboardQuery seam (GraphQlDashboard.fs).
 // ============================================================================
 
 type IGitHubClient =
@@ -49,6 +50,14 @@ type IGitHubClient =
 
     abstract GetPullRequestAsync:
         repo: RepoCoordinate * prNumber: int * CancellationToken -> Task<OperationResult<PullRequest>>
+
+    /// Open pull requests authored by the authenticated user, each with CI
+    /// checks + review state, in one GraphQL round-trip. Backs the
+    /// dashboard's "my PRs" surface. Bounded by the GraphQL impl's page cap;
+    /// most-recently-updated first. GraphQL has its own 5000-points/h budget
+    /// separate from REST, so this path doesn't consult the REST rate-limit
+    /// preflight.
+    abstract ListPrsForUserAsync: CancellationToken -> Task<OperationResult<IReadOnlyList<PullRequest>>>
 
     abstract CreatePullRequestAsync: request: CreatePrRequest * CancellationToken -> Task<OperationResult<PullRequest>>
 
@@ -107,7 +116,8 @@ type IGitHubClient =
 /// <para>This makes the guard part of the call path rather than a
 /// passive observer; callers that walk <c>RateLimitGuard.waitUntilOk</c>
 /// themselves before each call get redundant protection, not contradiction.</para>
-type GitHubClient(client: OctokitClient, clock: Func<DateTimeOffset>, responseCache: IResponseCache) =
+type GitHubClient
+    (client: OctokitClient, clock: Func<DateTimeOffset>, responseCache: IResponseCache, dashboard: IDashboardQuery) =
 
     /// Last snapshot captured from <c>client.GetLastApiInfo().RateLimit</c>.
     /// F# field assignments on heap references are atomic on .NET, so
@@ -308,14 +318,37 @@ type GitHubClient(client: OctokitClient, clock: Func<DateTimeOffset>, responseCa
                 let cachingHttp = new CachingHttpClient(innerHttp, cache) :> IHttpClient
                 let octokit = OctokitFactory.buildClient baseAddress credentials cachingHttp
                 let clock = Func<DateTimeOffset>(fun () -> DateTimeOffset.UtcNow)
-                return Success(GitHubClient(octokit, clock, cache))
+
+                // GraphQL transport for the dashboard query. Octokit.GraphQL's
+                // Connection owns its own auth header + endpoint (default
+                // api.github.com/graphql) and a private HttpClient; the simple
+                // token ctor is all the dashboard path needs.
+                let gqlConnection =
+                    Octokit.GraphQL.Connection(Octokit.GraphQL.ProductHeaderValue("Avelia", "0.1"), token.Token)
+
+                let dashboard = OctokitGraphQlDashboardQuery(gqlConnection) :> IDashboardQuery
+                return Success(GitHubClient(octokit, clock, cache, dashboard))
         }
 
     /// Test constructor — accept a fully-built Octokit client + cache.
     /// Bypasses credential resolution so unit tests can wire a stubbed
-    /// <see cref="IHttpClient"/> straight into the Connection.
+    /// <see cref="IHttpClient"/> straight into the Connection. The dashboard
+    /// path is unavailable on this ctor (REST-only tests).
     new(client: OctokitClient, responseCache: IResponseCache) =
-        GitHubClient(client, Func<DateTimeOffset>(fun () -> DateTimeOffset.UtcNow), responseCache)
+        GitHubClient(
+            client,
+            Func<DateTimeOffset>(fun () -> DateTimeOffset.UtcNow),
+            responseCache,
+            DashboardQuery.unavailable
+        )
+
+    /// Test constructor — REST client + cache + an injected dashboard query.
+    /// Lets dashboard tests wire a stub <see cref="IDashboardQuery"/> (or a
+    /// real <see cref="OctokitGraphQlDashboardQuery"/> over a stub
+    /// <see cref="Octokit.GraphQL.IConnection"/>) without credential
+    /// resolution.
+    new(client: OctokitClient, responseCache: IResponseCache, dashboard: IDashboardQuery) =
+        GitHubClient(client, Func<DateTimeOffset>(fun () -> DateTimeOffset.UtcNow), responseCache, dashboard)
 
     member _.ResponseCache = responseCache
 
@@ -354,6 +387,11 @@ type GitHubClient(client: OctokitClient, clock: Func<DateTimeOffset>, responseCa
                     | Failure e -> Failure e
                     | Success pr -> Success(toPullRequest pr)
             }
+
+        member _.ListPrsForUserAsync(ct: CancellationToken) =
+            // Delegate straight to the GraphQL seam — no REST rate-limit
+            // preflight, since GraphQL draws on a separate points budget.
+            dashboard.ListViewerPullRequestsAsync ct
 
         member _.CreatePullRequestAsync(request: CreatePrRequest, ct: CancellationToken) =
             task {

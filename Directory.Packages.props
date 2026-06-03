@@ -12,6 +12,8 @@
         <PackageVersion Include="Meziantou.Framework.Win32.CredentialManager" Version="2.0.0" />
         <!-- GitHub REST client (per backend.md chunk B-4). -->
         <PackageVersion Include="Octokit" Version="14.0.0" />
+        <!-- GitHub GraphQL client; dashboard PR-list batched query (B-5). 0.4-beta is the latest published. -->
+        <PackageVersion Include="Octokit.GraphQL" Version="0.4.0-beta" />
         <!-- WinUI 3 / Windows App SDK -->
         <PackageVersion Include="Microsoft.Windows.SDK.BuildTools.WinApp" Version="0.3.1">
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

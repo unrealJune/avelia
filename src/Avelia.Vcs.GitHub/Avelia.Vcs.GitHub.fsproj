@@ -14,6 +14,7 @@
     <Compile Include="ApiClientTypes.fs" />
     <Compile Include="ResponseCache.fs" />
     <Compile Include="RateLimitGuard.fs" />
+    <Compile Include="GraphQlDashboard.fs" />
     <Compile Include="ApiClient.fs" />
   </ItemGroup>
 
@@ -21,6 +22,7 @@
     <PackageReference Include="FSharp.Core" />
     <PackageReference Include="Meziantou.Framework.Win32.CredentialManager" />
     <PackageReference Include="Octokit" />
+    <PackageReference Include="Octokit.GraphQL" />
     <ProjectReference Include="..\Avelia.Core.Abstractions\Avelia.Core.Abstractions.fsproj" />
   </ItemGroup>
 
