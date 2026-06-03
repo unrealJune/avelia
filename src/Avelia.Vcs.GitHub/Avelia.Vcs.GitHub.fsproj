@@ -6,10 +6,21 @@
 
   <ItemGroup>
     <Compile Include="GitHub.fs" />
+    <Compile Include="AuthTypes.fs" />
+    <Compile Include="OctokitInfra.fs" />
+    <Compile Include="CredentialStore.fs" />
+    <Compile Include="DeviceFlow.fs" />
+    <Compile Include="Auth.fs" />
+    <Compile Include="ApiClientTypes.fs" />
+    <Compile Include="ResponseCache.fs" />
+    <Compile Include="RateLimitGuard.fs" />
+    <Compile Include="ApiClient.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="FSharp.Core" />
+    <PackageReference Include="Meziantou.Framework.Win32.CredentialManager" />
+    <PackageReference Include="Octokit" />
     <ProjectReference Include="..\Avelia.Core.Abstractions\Avelia.Core.Abstractions.fsproj" />
   </ItemGroup>
 
