@@ -29,9 +29,9 @@ jobs:
 
       - name: Fast tests
         shell: pwsh
-        run: ./scripts/test-fast.ps1
+        run: ./scripts/test-fast.ps1 -Configuration Release
 
       - name: Integration tests
         if: github.event_name == 'pull_request'
         shell: pwsh
-        run: ./scripts/test-integration.ps1
+        run: ./scripts/test-integration.ps1 -Configuration Release

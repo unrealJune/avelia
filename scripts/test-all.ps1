@@ -1,6 +1,8 @@
 #Requires -Version 7.0
 [CmdletBinding()]
-param()
+param(
+    [ValidateSet("Debug", "Release")][string]$Configuration = "Debug"
+)
 $ErrorActionPreference = "Stop"
 $repoRoot = Split-Path -Parent $PSScriptRoot
-dotnet test "$repoRoot/Avelia.sln" --logger "console;verbosity=minimal"
+dotnet test "$repoRoot/Avelia.sln" -c $Configuration --logger "console;verbosity=minimal"
