@@ -17,6 +17,7 @@
     <Compile Include="ResponseCacheTests.fs" />
     <Compile Include="RateLimitGuardTests.fs" />
     <Compile Include="ApiClientTests.fs" />
+    <Compile Include="DashboardQueryTests.fs" />
   </ItemGroup>
 
   <ItemGroup>
