@@ -89,6 +89,58 @@
                     />
                 </controls:SettingsCard.Action>
             </controls:SettingsCard>
+
+            <!-- GitHub token (Copilot auth) -->
+            <Border
+                Background="{ThemeResource AveliaCardBackgroundBrush}"
+                BorderBrush="{ThemeResource AveliaSurfaceStrokeBrush}"
+                BorderThickness="1"
+                CornerRadius="{StaticResource AveliaCornerRadiusMedium}"
+                Padding="16,14"
+            >
+                <StackPanel Spacing="12">
+                    <StackPanel Spacing="2">
+                        <TextBlock
+                            Style="{StaticResource AveliaBodyStrongTextStyle}"
+                            Text="GitHub token"
+                        />
+                        <TextBlock
+                            Style="{StaticResource AveliaCaptionTextStyle}"
+                            Foreground="{ThemeResource AveliaTextSecondaryBrush}"
+                            Text="Copilot uses your GitHub token. Paste a PAT with Copilot access, or set the COPILOT_GITHUB_TOKEN environment variable."
+                            TextWrapping="Wrap"
+                        />
+                    </StackPanel>
+
+                    <Grid ColumnSpacing="8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <PasswordBox
+                            x:Name="GitHubTokenBox"
+                            Grid.Column="0"
+                            AutomationProperties.AutomationId="GitHubTokenBox"
+                            PlaceholderText="ghp_…"
+                            PasswordChanged="GitHubTokenBox_PasswordChanged"
+                        />
+                        <Button
+                            Grid.Column="1"
+                            AutomationProperties.AutomationId="SaveGitHubTokenButton"
+                            Content="Save"
+                            Command="{x:Bind ViewModel.SaveGitHubTokenCommand}"
+                        />
+                    </Grid>
+
+                    <TextBlock
+                        AutomationProperties.AutomationId="GitHubTokenStatus"
+                        Style="{StaticResource AveliaCaptionTextStyle}"
+                        Foreground="{ThemeResource AveliaTextSecondaryBrush}"
+                        Text="{x:Bind ViewModel.GitHubStatus, Mode=OneWay}"
+                        TextWrapping="Wrap"
+                    />
+                </StackPanel>
+            </Border>
         </StackPanel>
     </ScrollViewer>
 </UserControl>

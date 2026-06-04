@@ -1,5 +1,8 @@
+using System;
 using Avelia.Core;
+using Avelia.Services;
 using Avelia.Shell.Windows.Services;
+using Avelia.Shell.Windows.Terminal;
 using global::Windows.UI.ViewManagement;
 using Microsoft.UI.Xaml;
 
@@ -16,7 +19,18 @@ public partial class App : Application
     {
         InitializeComponent();
         ThemeService = new ThemeService(systemThemeProvider: ReadSystemTheme);
-        Services = Composition.buildStubServices();
+        // Real backend (git + GitHub auth + Copilot) is opt-in via AVELIA_REAL=1
+        // so design-time data and the E2E suite keep running on the stub graph.
+        Services = UseRealBackend()
+            ? RealComposition.buildServices(new ConPtyTerminalSessionFactory())
+            : Composition.buildStubServices();
+    }
+
+    private static bool UseRealBackend()
+    {
+        var flag = Environment.GetEnvironmentVariable("AVELIA_REAL");
+        return string.Equals(flag, "1", StringComparison.Ordinal)
+            || string.Equals(flag, "true", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>

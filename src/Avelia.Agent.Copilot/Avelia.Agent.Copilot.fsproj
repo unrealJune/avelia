@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="CopilotTypes.fs" />
+    <Compile Include="ModelMapping.fs" />
+    <Compile Include="EventMapping.fs" />
+    <Compile Include="CopilotConfig.fs" />
+    <Compile Include="CopilotPermissions.fs" />
+    <Compile Include="CopilotInteractiveSession.fs" />
+    <Compile Include="CopilotHeadlessSession.fs" />
+    <Compile Include="CopilotAgentSessionFactory.fs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="FSharp.Core" />
+    <PackageReference Include="FSharp.Control.TaskSeq" />
+    <PackageReference Include="GitHub.Copilot.SDK" />
+    <ProjectReference Include="..\Avelia.Core.Abstractions\Avelia.Core.Abstractions.fsproj" />
+  </ItemGroup>
+
+</Project>

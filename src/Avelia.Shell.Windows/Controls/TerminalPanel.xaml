@@ -98,6 +98,31 @@
                         Fill="{ThemeResource AveliaTextPrimaryBrush}"
                         Loaded="OnCursorLoaded"
                     />
+
+                    <!-- Launch the live interactive CLI (real backend only). -->
+                    <Button
+                        x:Name="OpenTerminalButton"
+                        AutomationProperties.AutomationId="OpenTerminalButton"
+                        Margin="0,8,0,0"
+                        Padding="8,4"
+                        FontSize="12"
+                        Style="{StaticResource AveliaSubtleButtonStyle}"
+                        Content="Open interactive terminal"
+                        Click="OnOpenTerminalClick"
+                    />
+                    <TextBlock
+                        x:Name="TerminalError"
+                        Style="{StaticResource AveliaCaptionTextStyle}"
+                        Foreground="{ThemeResource AveliaTextTertiaryBrush}"
+                        TextWrapping="Wrap"
+                        Visibility="Collapsed"
+                    />
+                    <Border
+                        x:Name="TerminalHost"
+                        MinHeight="240"
+                        Margin="0,8,0,0"
+                        Visibility="Collapsed"
+                    />
                 </StackPanel>
 
                 <!-- Run body — placeholder until Chunk 10 wires real output -->

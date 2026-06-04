@@ -314,6 +314,22 @@ public class AgentsSubpageViewModelTests
         var snapshot = await services.Settings.GetAsync(CancellationToken.None);
         Assert.True(snapshot.ExtendedThinking);
     }
+
+    [Fact]
+    public async Task SavingGitHubToken_MarksConnectedAndClearsTheField()
+    {
+        var services = Composition.buildStubServices();
+        var vm = new AgentsSubpageViewModel(services);
+        await vm.LoadAsync();
+        Assert.False(vm.IsGitHubConnected);
+
+        vm.GitHubToken = "ghp_secret";
+        await vm.SaveGitHubTokenCommand.ExecuteAsync(null);
+
+        Assert.True(vm.IsGitHubConnected);
+        Assert.Equal(string.Empty, vm.GitHubToken); // secret not retained in the VM
+        Assert.True(await services.Settings.HasGitHubTokenAsync(CancellationToken.None));
+    }
 }
 
 public class ProfileSubpageViewModelTests

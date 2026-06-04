@@ -1,4 +1,5 @@
 using Avelia.Shell.Windows.ViewModels;
+using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
 
 namespace Avelia.Shell.Windows.Pages.SettingsSubpages;
@@ -24,6 +25,15 @@ public sealed partial class AgentsSubpage : UserControl
         {
             _viewModel = value;
             Bindings.Update();
+        }
+    }
+
+    // PasswordBox.Password isn't bindable, so mirror it into the VM on change.
+    private void GitHubTokenBox_PasswordChanged(object sender, RoutedEventArgs e)
+    {
+        if (_viewModel is not null && sender is PasswordBox box)
+        {
+            _viewModel.GitHubToken = box.Password;
         }
     }
 }

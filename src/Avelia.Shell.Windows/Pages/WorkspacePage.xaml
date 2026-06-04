@@ -358,6 +358,7 @@
 
             <!-- Terminal panel — sticky bottom -->
             <controls:TerminalPanel
+                x:Name="TerminalPanelControl"
                 Grid.Row="3"
                 AutomationProperties.AutomationId="TerminalPanel"
                 ViewModel="{x:Bind ViewModel.Terminal, Mode=OneWay}"

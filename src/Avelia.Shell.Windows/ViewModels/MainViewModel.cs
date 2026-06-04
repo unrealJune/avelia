@@ -132,6 +132,54 @@ public partial class MainViewModel : ObservableObject
         ActiveSection = NavRailSection.Home;
     }
 
+    /// <summary>
+    /// Create a new workspace (worktree + branch + conversation) on a repo and
+    /// open it as the active tab. The host supplies the branch name from a small
+    /// input dialog; validation/creation failures come back in the result for
+    /// the host to surface.
+    /// </summary>
+    public async Task<OperationResult<global::Avelia.Core.Abstractions.Workspace>> CreateWorkspaceAsync(
+        RepositoryId repoId,
+        string branchName
+    )
+    {
+        var repoResult = await _services.Repositories.GetAsync(repoId, CancellationToken.None);
+        if (!repoResult.IsSuccess)
+        {
+            return OperationResult<global::Avelia.Core.Abstractions.Workspace>.NewFailure(repoResult.Error);
+        }
+
+        var branchParse = BranchName.TryCreate(branchName);
+        if (branchParse.IsError)
+        {
+            return OperationResult<global::Avelia.Core.Abstractions.Workspace>.NewFailure(
+                AveliaError.NewValidation(branchParse.ErrorValue)
+            );
+        }
+
+        var result = await _services.Workspaces.CreateAsync(
+            repoId,
+            branchParse.ResultValue,
+            repoResult.Value.DefaultBase,
+            CancellationToken.None
+        );
+
+        if (result.IsSuccess)
+        {
+            var ws = result.Value;
+            foreach (var group in RepoGroups)
+            {
+                if (group.Id.Equals(repoId))
+                {
+                    group.Workspaces.Add(WorkspaceItemViewModel.FromWorkspace(ws));
+                    break;
+                }
+            }
+            await OpenWorkspace(ws.Id);
+        }
+        return result;
+    }
+
     [RelayCommand]
     private void CloseTab(WorkspaceTabViewModel? tab)
     {

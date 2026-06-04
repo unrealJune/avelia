@@ -13,6 +13,7 @@
     <Compile Include="DomainTypes.fs" />
     <Compile Include="BackendDomain.fs" />
     <Compile Include="Services.fs" />
+    <Compile Include="Stores.fs" />
   </ItemGroup>
 
   <ItemGroup>

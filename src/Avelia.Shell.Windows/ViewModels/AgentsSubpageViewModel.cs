@@ -58,6 +58,16 @@ public partial class AgentsSubpageViewModel : ObservableObject
     [ObservableProperty]
     private bool _extendedThinking;
 
+    /// <summary>Bound from the PasswordBox (code-behind PasswordChanged).</summary>
+    [ObservableProperty]
+    private string _gitHubToken = string.Empty;
+
+    [ObservableProperty]
+    private bool _isGitHubConnected;
+
+    [ObservableProperty]
+    private string _gitHubStatus = "Checking…";
+
     public async Task LoadAsync(CancellationToken ct = default)
     {
         var snapshot = await _settings.GetAsync(ct).ConfigureAwait(true);
@@ -71,6 +81,29 @@ public partial class AgentsSubpageViewModel : ObservableObject
         {
             _isLoading = false;
         }
+        await RefreshConnectionAsync(ct).ConfigureAwait(true);
+    }
+
+    /// <summary>Save the pasted PAT to the credential vault, then refresh status.</summary>
+    [RelayCommand]
+    private async Task SaveGitHubTokenAsync()
+    {
+        var result = await _settings
+            .SetGitHubTokenAsync(GitHubToken, CancellationToken.None)
+            .ConfigureAwait(true);
+        if (result.IsSuccess)
+        {
+            GitHubToken = string.Empty; // don't keep the secret in the VM
+        }
+        await RefreshConnectionAsync(CancellationToken.None).ConfigureAwait(true);
+    }
+
+    private async Task RefreshConnectionAsync(CancellationToken ct)
+    {
+        IsGitHubConnected = await _settings.HasGitHubTokenAsync(ct).ConfigureAwait(true);
+        GitHubStatus = IsGitHubConnected
+            ? "Connected — a GitHub token is available for Copilot."
+            : "Not connected — paste a GitHub token (or set COPILOT_GITHUB_TOKEN).";
     }
 
     partial void OnSelectedModelChanged(AgentModelOption? value)

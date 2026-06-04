@@ -16,6 +16,8 @@
         <PackageVersion Include="Octokit" Version="14.0.0" />
         <!-- GitHub GraphQL client; dashboard PR-list batched query (B-5). 0.4-beta is the latest published. -->
         <PackageVersion Include="Octokit.GraphQL" Version="0.4.0-beta" />
+        <!-- GitHub Copilot agent SDK (B-8). Release 1.0.0 (GitHub-published). -->
+        <PackageVersion Include="GitHub.Copilot.SDK" Version="1.0.0" />
         <!-- WinUI 3 / Windows App SDK -->
         <PackageVersion Include="Microsoft.Windows.SDK.BuildTools.WinApp" Version="0.3.1">
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
