@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<!--
+  xterm.js host page for Avelia's terminal panel (backend plan B-7).
+
+  Loads xterm.js + the WebGL and fit addons from ./vendor/ (populated by
+  scripts/vendor-xterm.ps1 — not committed). Bridges to the host:
+    host -> page : a base64 web message is decoded and written to the terminal.
+    page -> host : onData (keystrokes) and onResize are posted as JSON
+                   ({t:"i",d:<base64>} and {t:"r",c:<cols>,r:<rows>}).
+-->
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="stylesheet" href="./vendor/xterm.css" />
+    <link rel="stylesheet" href="./terminal.css" />
+    <script src="./vendor/xterm.js"></script>
+    <script src="./vendor/addon-fit.js"></script>
+    <script src="./vendor/addon-webgl.js"></script>
+  </head>
+  <body>
+    <div id="terminal"></div>
+    <script>
+      (function () {
+        "use strict";
+
+        const term = new Terminal({
+          allowProposedApi: true,
+          fontFamily: "Cascadia Mono, Consolas, monospace",
+          fontSize: 13,
+          cursorBlink: true,
+          scrollback: 10000,
+          theme: { background: "#0c0c0c", foreground: "#cccccc" },
+        });
+
+        const fit = new FitAddon.FitAddon();
+        term.loadAddon(fit);
+        term.open(document.getElementById("terminal"));
+
+        // WebGL is the 60fps renderer; fall back silently if the context is
+        // lost (e.g. RDP) so the canvas/DOM renderer keeps the panel alive.
+        try {
+          const webgl = new WebglAddon.WebglAddon();
+          webgl.onContextLoss(() => webgl.dispose());
+          term.loadAddon(webgl);
+        } catch (e) {
+          /* no WebGL — xterm uses its DOM renderer */
+        }
+
+        const host = window.chrome && window.chrome.webview;
+
+        function decodeBase64(b64) {
+          const bin = atob(b64);
+          const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          return bytes;
+        }
+
+        function encodeBase64(bytes) {
+          let bin = "";
+          for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+          return btoa(bin);
+        }
+
+        // Host output: each message is the raw base64 of a ConPTY byte batch.
+        if (host) {
+          host.addEventListener("message", function (ev) {
+            term.write(decodeBase64(ev.data));
+          });
+        }
+
+        const encoder = new TextEncoder();
+
+        // Keystrokes -> host stdin.
+        term.onData(function (data) {
+          if (host) host.postMessage(JSON.stringify({ t: "i", d: encodeBase64(encoder.encode(data)) }));
+        });
+
+        // Viewport resize -> host (ConPTY ResizePseudoConsole).
+        term.onResize(function (size) {
+          if (host) host.postMessage(JSON.stringify({ t: "r", c: size.cols, r: size.rows }));
+        });
+
+        function refit() {
+          try {
+            fit.fit();
+          } catch (e) {
+            /* terminal not yet measured */
+          }
+        }
+
+        window.addEventListener("resize", refit);
+        refit();
+        term.focus();
+      })();
+    </script>
+  </body>
+</html>

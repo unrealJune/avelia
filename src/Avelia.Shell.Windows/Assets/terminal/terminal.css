@@ -1,0 +1,16 @@
+/* Full-bleed terminal surface; xterm.js owns layout inside #terminal. */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: #0c0c0c;
+  overflow: hidden;
+}
+
+#terminal {
+  position: absolute;
+  inset: 0;
+  padding: 6px;
+  box-sizing: border-box;
+}
