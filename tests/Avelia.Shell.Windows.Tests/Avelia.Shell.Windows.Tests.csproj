@@ -111,5 +111,31 @@
             Include="..\..\src\Avelia.Shell.Windows\ViewModels\InboxViewModel.cs"
             Link="ViewModels\InboxViewModel.cs"
         />
+        <!--
+            ConPTY terminal host (chunk B-6). Pure Win32 P/Invoke, no WinUI deps,
+            so it compiles into this net10.0 assembly and runs against real
+            ConPTY on the Windows CI runner.
+        -->
+        <Compile
+            Include="..\..\src\Avelia.Shell.Windows\Terminal\ConPtyNative.cs"
+            Link="Terminal\ConPtyNative.cs"
+        />
+        <Compile
+            Include="..\..\src\Avelia.Shell.Windows\Terminal\ConPtySession.cs"
+            Link="Terminal\ConPtySession.cs"
+        />
+        <!-- Terminal renderer glue (chunk B-7). Pure logic, no WinUI deps. -->
+        <Compile
+            Include="..\..\src\Avelia.Shell.Windows\Terminal\TerminalOutputBatcher.cs"
+            Link="Terminal\TerminalOutputBatcher.cs"
+        />
+        <Compile
+            Include="..\..\src\Avelia.Shell.Windows\Terminal\ITerminalRenderer.cs"
+            Link="Terminal\ITerminalRenderer.cs"
+        />
+        <Compile
+            Include="..\..\src\Avelia.Shell.Windows\Terminal\TerminalBridge.cs"
+            Link="Terminal\TerminalBridge.cs"
+        />
     </ItemGroup>
 </Project>

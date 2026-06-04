@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<UserControl
+    x:Class="Avelia.Shell.Windows.Controls.TerminalView"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+    xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+    mc:Ignorable="d">
+
+    <!--
+        Single WebView2 hosting one xterm.js instance (terminal.html). The
+        control is the ITerminalRenderer for TerminalBridge: output bytes are
+        posted in, the user's keystrokes / resizes come back out as web
+        messages. Multiple terminal sessions are multiple xterm.js instances
+        inside one WebView2 (tabs), not multiple WebView2s.
+    -->
+    <Grid>
+        <WebView2 x:Name="Web" AutomationProperties.Name="Terminal output" />
+    </Grid>
+</UserControl>

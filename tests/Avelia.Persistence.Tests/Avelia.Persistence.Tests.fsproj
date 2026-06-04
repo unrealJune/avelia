@@ -9,6 +9,7 @@
 
   <ItemGroup>
     <Compile Include="StorageTests.fs" />
+    <Compile Include="AsciiCastTests.fs" />
   </ItemGroup>
 
   <ItemGroup>
@@ -16,6 +17,7 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="FsCheck.Xunit" />
     <PackageReference Include="FsUnit.xUnit" />
     <ProjectReference Include="..\..\src\Avelia.Persistence\Avelia.Persistence.fsproj" />
   </ItemGroup>

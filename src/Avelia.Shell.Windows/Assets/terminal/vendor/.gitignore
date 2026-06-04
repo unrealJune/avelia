@@ -1,0 +1,4 @@
+# Vendored xterm.js bundle — fetched by scripts/vendor-xterm.ps1, not committed.
+*
+!.gitignore
+!README.md

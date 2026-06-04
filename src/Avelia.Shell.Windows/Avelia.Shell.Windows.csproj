@@ -50,6 +50,14 @@
 
     <ItemGroup>
         <Content Include="Assets\**\*.png" />
+        <!--
+            Terminal renderer assets (chunk B-7): the xterm.js host page and the
+            vendored library (populated by scripts/vendor-xterm.ps1). Copied next
+            to the app so TerminalView can serve them from a virtual host.
+        -->
+        <Content Include="Assets\terminal\**\*.html;Assets\terminal\**\*.css;Assets\terminal\**\*.js;Assets\terminal\**\*.map">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
     </ItemGroup>
 
     <!--

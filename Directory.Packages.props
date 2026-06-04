@@ -6,6 +6,8 @@
     <ItemGroup>
         <!-- F# core -->
         <PackageVersion Include="FSharp.Core" Version="9.0.300" />
+        <!-- IAsyncEnumerable producers in F# core (asciicast replay, B-7). -->
+        <PackageVersion Include="FSharp.Control.TaskSeq" Version="0.4.0" />
         <!-- Local git inspection (read-only); shells out to git.exe for mutation. -->
         <PackageVersion Include="LibGit2Sharp" Version="0.31.0" />
         <!-- Windows Credential Manager wrapper backing ICredentialStore. -->
