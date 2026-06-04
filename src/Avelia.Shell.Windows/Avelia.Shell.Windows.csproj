@@ -46,6 +46,7 @@
     <ItemGroup>
         <ProjectReference Include="..\Avelia.Core.Abstractions\Avelia.Core.Abstractions.fsproj" />
         <ProjectReference Include="..\Avelia.Core\Avelia.Core.fsproj" />
+        <ProjectReference Include="..\Avelia.Services\Avelia.Services.fsproj" />
     </ItemGroup>
 
     <ItemGroup>

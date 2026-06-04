@@ -317,15 +317,102 @@ public sealed partial class MainWindow : Window
     /// </summary>
     private void OnRailItemInvoked(NavigationView sender, NavigationViewItemInvokedEventArgs args)
     {
-        if (
-            args.InvokedItemContainer is NavigationViewItem item
-            && item.Tag is string tag
-            && tag == "AddRepo"
-        )
+        if (args.InvokedItemContainer is not NavigationViewItem item)
+        {
+            return;
+        }
+
+        if (item.Tag is string tag && tag == "AddRepo")
         {
             ViewModel.OpenAddRepoDialogCommand.Execute(null);
+            return;
+        }
+
+        if (item.Tag is NewWorkspaceAction action)
+        {
+            _ = CreateWorkspaceInteractiveAsync(action.RepoId);
         }
     }
+
+    /// <summary>
+    /// Prompt for a branch name, then create + open a workspace. On success the
+    /// rail subtree is rebuilt so the new workspace appears under its repo.
+    /// </summary>
+    private async Task CreateWorkspaceInteractiveAsync(RepositoryId repoId)
+    {
+        var input = new TextBox
+        {
+            PlaceholderText = "feature/my-change",
+            AcceptsReturn = false,
+        };
+        AutomationProperties.SetAutomationId(input, "NewWorkspaceBranchInput");
+
+        var error = new TextBlock
+        {
+            Foreground = new SolidColorBrush(Microsoft.UI.Colors.OrangeRed),
+            TextWrapping = TextWrapping.Wrap,
+            Visibility = Visibility.Collapsed,
+            Margin = new Thickness(0, 8, 0, 0),
+        };
+
+        var panel = new StackPanel { Spacing = 4 };
+        panel.Children.Add(input);
+        panel.Children.Add(error);
+
+        var dialog = new ContentDialog
+        {
+            Title = "New workspace",
+            Content = panel,
+            PrimaryButtonText = "Create",
+            CloseButtonText = "Cancel",
+            DefaultButton = ContentDialogButton.Primary,
+            XamlRoot = Content.XamlRoot,
+        };
+
+        // Keep the dialog open on a creation error so the user can correct it.
+        dialog.PrimaryButtonClick += async (_, deferralArgs) =>
+        {
+            var deferral = deferralArgs.GetDeferral();
+            try
+            {
+                var result = await ViewModel.CreateWorkspaceAsync(repoId, input.Text);
+                if (!result.IsSuccess)
+                {
+                    deferralArgs.Cancel = true;
+                    error.Text = FormatError(result.Error);
+                    error.Visibility = Visibility.Visible;
+                }
+                else
+                {
+                    RebuildRepoTreeItems();
+                }
+            }
+            finally
+            {
+                deferral.Complete();
+            }
+        };
+
+        try
+        {
+            await dialog.ShowAsync();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[MainWindow] New-workspace dialog failed: {ex}");
+        }
+    }
+
+    private static string FormatError(AveliaError error) =>
+        error.Match(
+            onNotFound: r => $"Not found: {r}",
+            onValidation: m => m,
+            onUnauthorized: () => "Not authorized.",
+            onConflict: m => m,
+            onNetwork: m => $"Network error: {m}",
+            onInternal: m => $"Internal error: {m}",
+            onExternal: (src, detail) => $"{src}: {detail}"
+        );
 
     private void OnRailPaneOpening(NavigationView sender, object args)
     {
@@ -461,8 +548,25 @@ public sealed partial class MainWindow : Window
             AutomationProperties.SetName(wsItem, ws.Branch);
             repoItem.MenuItems.Add(wsItem);
         }
+
+        // "New workspace" action item, routed through ItemInvoked (it never
+        // becomes the selected item).
+        var newWsItem = new NavigationViewItem
+        {
+            Content = "New workspace",
+            Tag = new NewWorkspaceAction(group.Id),
+            SelectsOnInvoked = false,
+            Icon = new SymbolIcon(Symbol.Add),
+        };
+        AutomationProperties.SetName(newWsItem, $"New workspace in {group.Name}");
+        AutomationProperties.SetAutomationId(newWsItem, "NewWorkspaceItem");
+        repoItem.MenuItems.Add(newWsItem);
+
         return repoItem;
     }
+
+    /// <summary>Rail-item tag marking the "New workspace" action for a repo.</summary>
+    private sealed record NewWorkspaceAction(RepositoryId RepoId);
 
     // -------- Frame navigation --------
 

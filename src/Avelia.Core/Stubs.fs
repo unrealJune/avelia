@@ -95,6 +95,26 @@ type StubWorkspaceService(initial: seq<Workspace>) =
             | true, w -> Task.FromResult(Success w)
             | _ -> Task.FromResult(notFound $"Workspace {id}")
 
+        member _.CreateAsync(repoId, branch, baseBranch, ct) =
+            ct.ThrowIfCancellationRequested()
+            let id = WorkspaceId.create ()
+
+            let ws: Workspace =
+                { Id = id
+                  RepoId = repoId
+                  Branch = branch
+                  Base = baseBranch
+                  Status = WorkspaceStatus.Draft
+                  DiffAdd = 0
+                  DiffDel = 0
+                  Agent = Sonnet45
+                  LastUpdated = DateTimeOffset.UtcNow
+                  LastUpdatedDisplay = "just now"
+                  PrNumber = 0 }
+
+            store.[id] <- ws
+            Task.FromResult(Success ws)
+
         member _.ArchiveAsync(id, ct) =
             ct.ThrowIfCancellationRequested()
 
@@ -282,6 +302,48 @@ type StubInboxService(initial: seq<InboxItem>) =
             Task.FromResult(asReadOnly store)
 
 // ============================================================================
+//  Stub: Agent session factory
+//
+//  Fills the AveliaServices.Agents slot on the stub path. The stub conversation
+//  service drives DesignData directly, so these sessions are never actually
+//  pumped; they exist so buildStubServices compiles and any incidental caller
+//  gets a benign no-op rather than a crash.
+// ============================================================================
+
+type private StubHeadlessSession() =
+    interface IAgentSession with
+        member _.SessionId = SessionId.create ()
+        member _.Workspace = RepoPath.Create "C:/stub"
+        member _.InterruptAsync(_ct) = Task.CompletedTask
+        member _.WaitForExitAsync(_ct) = Task.FromResult { ExitCode = 0; IsClean = true }
+
+    interface IHeadlessAgentSession with
+        member _.Events(_ct) =
+            // An immediately-completed stream (no events).
+            let ch = Channel.CreateBounded<AgentEvent>(1)
+            ch.Writer.TryComplete() |> ignore
+            ch.Reader.ReadAllAsync _ct
+
+        member _.SendUserMessageAsync(_text, _refs, _ct) = Task.FromResult(Success())
+        member _.RespondToPermissionAsync(_id, _decision, _ct) = Task.FromResult(Success())
+
+    interface IAsyncDisposable with
+        member _.DisposeAsync() = ValueTask.CompletedTask
+
+type StubAgentSessionFactory() =
+    interface IAgentSessionFactory with
+        member _.StartHeadlessAsync(_config, _ct) =
+            Task.FromResult(Success(StubHeadlessSession() :> IHeadlessAgentSession))
+
+        member _.StartInteractiveAsync(_config, _ct) =
+            Task.FromResult(Failure(AveliaError.Internal "Interactive sessions require the real backend."))
+
+type StubTerminalLaunchService() =
+    interface ITerminalLaunchService with
+        member _.StartAsync(_workspaceId, _ct) =
+            Task.FromResult(Failure(AveliaError.Internal "The terminal requires the real backend (AVELIA_REAL=1)."))
+
+// ============================================================================
 //  Stub: Appearance / settings
 //
 //  Holds a single AppearanceSettings record in memory. Each setter clones the
@@ -293,6 +355,7 @@ type StubInboxService(initial: seq<InboxItem>) =
 type StubSettingsService(initial: AppearanceSettings) =
     let gate = obj ()
     let mutable current = initial
+    let mutable hasToken = false
 
     interface ISettingsService with
         member _.GetAsync(ct) =
@@ -338,3 +401,12 @@ type StubSettingsService(initial: AppearanceSettings) =
                         ExtendedThinking = enabled })
 
             Task.CompletedTask
+
+        member _.SetGitHubTokenAsync(token, ct) =
+            ct.ThrowIfCancellationRequested()
+            lock gate (fun () -> hasToken <- not (System.String.IsNullOrWhiteSpace token))
+            Task.FromResult(Success())
+
+        member _.HasGitHubTokenAsync(ct) =
+            ct.ThrowIfCancellationRequested()
+            Task.FromResult(lock gate (fun () -> hasToken))

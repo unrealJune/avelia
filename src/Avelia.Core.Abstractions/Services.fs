@@ -24,6 +24,17 @@ type IWorkspaceService =
     abstract ListAllAsync: CancellationToken -> Task<IReadOnlyList<Workspace>>
     abstract ListByRepoAsync: repoId: RepositoryId * CancellationToken -> Task<IReadOnlyList<Workspace>>
     abstract GetAsync: id: WorkspaceId * CancellationToken -> Task<OperationResult<Workspace>>
+
+    /// Create a new workspace on <paramref name="repoId"/>: branch
+    /// <paramref name="branch"/> off <paramref name="baseBranch"/>, materialize
+    /// a git worktree for it, and bind a fresh conversation. The real
+    /// implementation creates the worktree on disk (failing with a git
+    /// <c>External</c>/<c>Conflict</c> error if the branch/worktree already
+    /// exists); the stub is in-memory only.
+    abstract CreateAsync:
+        repoId: RepositoryId * branch: BranchName * baseBranch: BranchName * CancellationToken ->
+            Task<OperationResult<Workspace>>
+
     abstract ArchiveAsync: id: WorkspaceId * CancellationToken -> Task<OperationResult<unit>>
 
 type IConversationService =
@@ -103,6 +114,17 @@ type ISettingsService =
     abstract SetOpenWithRightPanelAsync: enabled: bool * CancellationToken -> Task
     abstract SetDefaultModelAsync: model: ModelChoice * CancellationToken -> Task
     abstract SetExtendedThinkingAsync: enabled: bool * CancellationToken -> Task
+
+    /// Persist a manually-entered GitHub token (PAT) to the OS credential vault,
+    /// or clear the saved PAT when <paramref name="token"/> is empty. The
+    /// minimal auth path for Settings → Agents before full device-flow sign-in
+    /// lands. The token never lives in the appearance settings record.
+    abstract SetGitHubTokenAsync: token: string * CancellationToken -> Task<OperationResult<unit>>
+
+    /// True when a GitHub token can be resolved (environment variable, a stored
+    /// account, or a saved PAT). Drives the "connected" indicator on the Agents
+    /// subpage.
+    abstract HasGitHubTokenAsync: CancellationToken -> Task<bool>
 
 // ----------------------------------------------------------------------------
 //  Local git — operations + inspection
@@ -275,6 +297,31 @@ and ITerminalSession =
     /// property test asserts the round-trip.
     abstract SendInterruptAsync: CancellationToken -> Task
     abstract WaitForExitAsync: CancellationToken -> Task<ProcessExit>
+
+/// Spawns a child process attached to a fresh pseudo-terminal and hands back an
+/// <c>ITerminalSession</c>. This is the seam that lets the platform-agnostic F#
+/// agent drivers (which can't reference the Windows ConPTY P/Invoke living in
+/// the shell) host an interactive CLI in a terminal: the driver owns the
+/// <c>IAgentSession</c> lifecycle, the factory supplies the ConPTY. The shell
+/// registers the ConPTY-backed implementation; a future macOS/Linux shell
+/// registers a <c>forkpty(3)</c> one without changing the driver.
+type ITerminalSessionFactory =
+    /// Launch <paramref name="commandLine"/> in a pseudo-terminal sized
+    /// <paramref name="size"/>. <paramref name="workingDirectory"/> of <c>""</c>
+    /// inherits the host's current directory. Returns <c>Failure</c> with an
+    /// <c>External "conpty"</c> error if pseudo-console / process creation fails
+    /// — driver code renders that rather than crashing.
+    abstract StartAsync:
+        commandLine: string * size: TerminalSize * workingDirectory: string * CancellationToken ->
+            Task<OperationResult<ITerminalSession>>
+
+/// Launches an interactive (terminal-hosted) agent session for a workspace,
+/// resolving the worktree path + model behind the scenes so the shell needn't
+/// know either. The shell binds the returned session's <c>Terminal</c> to a
+/// <c>TerminalView</c> and disposes the session when the panel closes.
+type ITerminalLaunchService =
+    abstract StartAsync:
+        workspaceId: WorkspaceId * CancellationToken -> Task<OperationResult<IInteractiveAgentSession>>
 
 // ----------------------------------------------------------------------------
 //  Credential store — secret vault behind a tiny interface

@@ -50,6 +50,10 @@ public sealed partial class WorkspacePage : Page
             Bindings.Update();
         }
 
+        // Give the terminal panel what it needs to host a live interactive
+        // session for this workspace.
+        TerminalPanelControl.Configure(args.Services.Terminals, args.WorkspaceId);
+
         try
         {
             await ViewModel.LoadAsync(args.WorkspaceId);

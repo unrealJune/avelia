@@ -1,0 +1,77 @@
+namespace Avelia.Services
+
+open System
+open System.Collections.Generic
+open Avelia.Core
+open Avelia.Core.Abstractions
+open Avelia.Core.Stubs
+open Avelia.Persistence
+open Avelia.Vcs.Git
+open Avelia.Vcs.GitHub.Auth
+open Avelia.Agent.Copilot
+
+/// The real composition root: assembles the production service graph backed by
+/// in-memory stores (B-11 swaps these for SQLite behind the same interfaces),
+/// real git + GitHub-auth + Copilot adapters.
+///
+/// <paramref name="terminalFactory"/> is supplied by the shell because the
+/// ConPTY implementation is Windows P/Invoke living in the shell — this
+/// platform-agnostic layer can't reference it.
+module RealComposition =
+
+    let private emptyList<'T> () = [||] :> IReadOnlyList<'T>
+
+    let buildServices (terminalFactory: ITerminalSessionFactory) : AveliaServices =
+        let stores = InMemoryStores.create DesignData.defaultAppearance
+        let now () = DateTimeOffset.UtcNow
+
+        // Auth + agent driver.
+        let credentials = WindowsCredentialStore() :> ICredentialStore
+        let auth = GitHubAuth(credentials) :> IGitHubAuth
+        let tokenSource = GitHubTokenSource(auth, credentials) :> IGitHubTokenSource
+
+        let agentFactory =
+            CopilotAgentSessionFactory(tokenSource, terminalFactory, CopilotSettings.defaults) :> IAgentSessionFactory
+
+        // Local git.
+        let inspection = GitInspector() :> IGitInspection
+        let gitOps = GitCli() :> IGitOperations
+
+        // Orchestrator first (the workspace service needs its teardown delegate).
+        let conversations =
+            new AgentConversationService(agentFactory, stores.Conversations, stores.Workspaces, now)
+
+        let workspaces =
+            WorkspaceService(
+                stores.Workspaces,
+                stores.Repositories,
+                stores.Conversations,
+                stores.Settings,
+                gitOps,
+                Storage.worktreesRoot (),
+                now,
+                conversations.DisposeConversationAsync
+            )
+
+        // Surfaces not yet wired to a real backend keep the stub behaviour
+        // (empty data, no crashes) until their own chunks land.
+        let diffs =
+            StubDiffService(
+                (fun _ -> emptyList<DiffFile> ()),
+                (fun _ -> emptyList<DiffFile> ()),
+                (fun _ -> emptyList<DiffHunk> ())
+            )
+
+        let pullRequests =
+            StubPullRequestService((fun _ -> None), Dictionary<PullRequestId, PullRequest>())
+
+        { Repositories = RepositoryService(stores.Repositories, inspection) :> IRepositoryService
+          Workspaces = workspaces :> IWorkspaceService
+          Conversations = conversations :> IConversationService
+          Diffs = diffs :> IDiffService
+          PullRequests = pullRequests :> IPullRequestService
+          Runs = StubRunService() :> IRunService
+          Inbox = StubInboxService(Seq.empty<InboxItem>) :> IInboxService
+          Settings = SettingsService(stores.Settings, credentials, tokenSource) :> ISettingsService
+          Agents = agentFactory
+          Terminals = InteractiveTerminalService(stores.Workspaces, agentFactory) :> ITerminalLaunchService }

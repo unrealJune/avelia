@@ -7,6 +7,7 @@
   <ItemGroup>
     <Compile Include="Storage.fs" />
     <Compile Include="AsciiCast.fs" />
+    <Compile Include="InMemoryStores.fs" />
   </ItemGroup>
 
   <ItemGroup>

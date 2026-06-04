@@ -15,7 +15,12 @@ type AveliaServices =
       PullRequests: IPullRequestService
       Runs: IRunService
       Inbox: IInboxService
-      Settings: ISettingsService }
+      Settings: ISettingsService
+      /// Agent-session factory for the interactive terminal panel (and reused by
+      /// the real conversation service). The stub path supplies a no-op factory.
+      Agents: IAgentSessionFactory
+      /// Launches an interactive terminal session for a workspace.
+      Terminals: ITerminalLaunchService }
 
 module Composition =
 
@@ -64,4 +69,6 @@ module Composition =
           PullRequests = StubPullRequestService(prsByWorkspace, prById) :> IPullRequestService
           Runs = StubRunService() :> IRunService
           Inbox = StubInboxService(DesignData.inboxItems) :> IInboxService
-          Settings = StubSettingsService(DesignData.defaultAppearance) :> ISettingsService }
+          Settings = StubSettingsService(DesignData.defaultAppearance) :> ISettingsService
+          Agents = StubAgentSessionFactory() :> IAgentSessionFactory
+          Terminals = StubTerminalLaunchService() :> ITerminalLaunchService }

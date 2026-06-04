@@ -55,6 +55,33 @@ public class MainViewModelTests
     }
 
     [Fact]
+    public async Task CreateWorkspaceAsync_AddsToGroupAndOpensTab()
+    {
+        var vm = MakeVm();
+        await vm.InitializeAsync();
+        var group = vm.RepoGroups.First();
+        var before = group.Workspaces.Count;
+
+        var result = await vm.CreateWorkspaceAsync(group.Id, "feature/new-thing");
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(before + 1, group.Workspaces.Count);
+        Assert.Equal(result.Value.Id, vm.ActiveTab!.Id);
+    }
+
+    [Fact]
+    public async Task CreateWorkspaceAsync_RejectsAnInvalidBranchName()
+    {
+        var vm = MakeVm();
+        await vm.InitializeAsync();
+        var group = vm.RepoGroups.First();
+
+        var result = await vm.CreateWorkspaceAsync(group.Id, "bad branch with spaces");
+
+        Assert.False(result.IsSuccess);
+    }
+
+    [Fact]
     public async Task OpenWorkspace_TwiceDoesNotDuplicateTab()
     {
         var vm = MakeVm();

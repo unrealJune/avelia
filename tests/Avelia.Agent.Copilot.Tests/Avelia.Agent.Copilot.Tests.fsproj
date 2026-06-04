@@ -8,21 +8,25 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="StorageTests.fs" />
-    <Compile Include="AsciiCastTests.fs" />
-    <Compile Include="InMemoryStoresTests.fs" />
+    <Compile Include="Fakes.fs" />
+    <Compile Include="ModelMappingTests.fs" />
+    <Compile Include="EventMappingTests.fs" />
+    <Compile Include="CopilotConfigTests.fs" />
+    <Compile Include="CopilotPermissionsTests.fs" />
+    <Compile Include="FactoryTests.fs" />
+    <Compile Include="HeadlessIntegrationTests.fs" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="FSharp.Core" />
+    <PackageReference Include="FSharp.Control.TaskSeq" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio" />
-    <PackageReference Include="FsCheck.Xunit" />
     <PackageReference Include="FsUnit.xUnit" />
-    <ProjectReference Include="..\..\src\Avelia.Core\Avelia.Core.fsproj" />
+    <PackageReference Include="FsCheck.Xunit" />
     <ProjectReference Include="..\..\src\Avelia.Core.Abstractions\Avelia.Core.Abstractions.fsproj" />
-    <ProjectReference Include="..\..\src\Avelia.Persistence\Avelia.Persistence.fsproj" />
+    <ProjectReference Include="..\..\src\Avelia.Agent.Copilot\Avelia.Agent.Copilot.fsproj" />
   </ItemGroup>
 
 </Project>
