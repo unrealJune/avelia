@@ -11,6 +11,8 @@
     <Compile Include="StorageTests.fs" />
     <Compile Include="AsciiCastTests.fs" />
     <Compile Include="InMemoryStoresTests.fs" />
+    <Compile Include="CodecTests.fs" />
+    <Compile Include="StoreContractTests.fs" />
   </ItemGroup>
 
   <ItemGroup>

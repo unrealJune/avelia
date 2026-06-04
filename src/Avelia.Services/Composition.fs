@@ -22,7 +22,12 @@ module RealComposition =
     let private emptyList<'T> () = [||] :> IReadOnlyList<'T>
 
     let buildServices (terminalFactory: ITerminalSessionFactory) : AveliaServices =
-        let stores = InMemoryStores.create DesignData.defaultAppearance
+        // SQLite-backed stores are the source of truth (CLAUDE.md rule 7). The
+        // store set keeps the connection alive via the store closures, so it
+        // survives for the app lifetime without an explicit handle. The .db
+        // file persists across runs, so startup "hydration" is just the stores
+        // reading the existing file.
+        let stores = (SqliteStores.create (Storage.defaultDbPath ()) DesignData.defaultAppearance).Stores
         let now () = DateTimeOffset.UtcNow
 
         // Auth + agent driver.
