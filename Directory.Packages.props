@@ -8,6 +8,8 @@
         <PackageVersion Include="FSharp.Core" Version="9.0.300" />
         <!-- IAsyncEnumerable producers in F# core (asciicast replay, B-7). -->
         <PackageVersion Include="FSharp.Control.TaskSeq" Version="0.4.0" />
+        <!-- SQLite-backed persistence stores (B-11). -->
+        <PackageVersion Include="Microsoft.Data.Sqlite" Version="10.0.8" />
         <!-- Local git inspection (read-only); shells out to git.exe for mutation. -->
         <PackageVersion Include="LibGit2Sharp" Version="0.31.0" />
         <!-- Windows Credential Manager wrapper backing ICredentialStore. -->
