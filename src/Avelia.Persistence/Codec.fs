@@ -178,14 +178,14 @@ module Codec =
         | true, v when v.ValueKind = JsonValueKind.Number -> v.GetInt32()
         | _ -> 0
 
-    let private getStrings (e: JsonElement) (name: string) =
+    let private getStrings (e: JsonElement) (name: string) : string[] =
         match e.TryGetProperty name with
         | true, v when v.ValueKind = JsonValueKind.Array ->
             [| for x in v.EnumerateArray() do
                    if x.ValueKind = JsonValueKind.String then
                        match x.GetString() with
                        | null -> ()
-                       | s -> yield s |]
+                       | s -> yield (s: string) |]
         | _ -> [||]
 
     let private msgId (e: JsonElement) =
