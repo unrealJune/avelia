@@ -138,10 +138,9 @@ public partial class MainViewModel : ObservableObject
     /// input dialog; validation/creation failures come back in the result for
     /// the host to surface.
     /// </summary>
-    public async Task<OperationResult<global::Avelia.Core.Abstractions.Workspace>> CreateWorkspaceAsync(
-        RepositoryId repoId,
-        string branchName
-    )
+    public async System.Threading.Tasks.Task<
+        OperationResult<global::Avelia.Core.Abstractions.Workspace>
+    > CreateWorkspaceAsync(RepositoryId repoId, string branchName)
     {
         var repoResult = await _services.Repositories.GetAsync(repoId, CancellationToken.None);
         if (!repoResult.IsSuccess)
@@ -252,7 +251,7 @@ public partial class MainViewModel : ObservableObject
 
     // -------- Helpers --------
 
-    private async Task<string> GetRepoNameAsync(RepositoryId repoId)
+    private async System.Threading.Tasks.Task<string> GetRepoNameAsync(RepositoryId repoId)
     {
         var result = await _services.Repositories.GetAsync(repoId, CancellationToken.None);
         return result.IsSuccess ? result.Value.Name : "";
