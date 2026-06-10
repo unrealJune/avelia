@@ -73,7 +73,7 @@ type internal CopilotHeadlessSession
         member _.SendUserMessageAsync(text, refs, ct) =
             task {
                 try
-                    if isNull refs || refs.Length = 0 then
+                    if refs.Length = 0 then
                         let! _ = session.SendAsync(text, ct)
                         // The send completes when the agent's turn is done; mark
                         // it on the same ordered channel so the pump sees it

@@ -20,7 +20,7 @@ open Avelia.Core.Abstractions
 [<RequireQualifiedAccess>]
 module EventMapping =
 
-    let private str (s: string) = if isNull s then "" else s
+    let private str (s: string | null) = if isNull s then "" else nonNull s
 
     /// Per-usage-event cost. The SDK reports USD as a nullable double; we
     /// convert to integral microdollars (1e-6 USD) so the boundary never
@@ -43,14 +43,12 @@ module EventMapping =
     /// <c>map</c> because cost is accumulated statefully by the caller.
     let tryUsage (ev: SessionEvent) : CostSnapshot voption =
         match ev with
-        | :? AssistantUsageEvent as e when not (isNull e.Data) -> ValueSome(usageDelta e.Data)
+        | :? AssistantUsageEvent as e when not (isNull (box e.Data)) -> ValueSome(usageDelta e.Data)
         | _ -> ValueNone
 
     let private toolBatch (requests: AssistantMessageToolRequest[]) (ts: DateTimeOffset) : MessageEvent =
         let kinds =
-            requests
-            |> Array.map (fun r -> str r.Name)
-            |> Array.filter (fun n -> n <> "")
+            requests |> Array.map (fun r -> str r.Name) |> Array.filter (fun n -> n <> "")
 
         ToolBatchAppended
             { Id = MessageId.create ()
@@ -66,7 +64,7 @@ module EventMapping =
         let ts = ev.Timestamp
 
         match ev with
-        | :? AssistantMessageEvent as e when not (isNull e.Data) ->
+        | :? AssistantMessageEvent as e when not (isNull (box e.Data)) ->
             let d = e.Data
 
             let message =
@@ -83,14 +81,14 @@ module EventMapping =
                     []
 
             let tools =
-                if not (isNull d.ToolRequests) && d.ToolRequests.Length > 0 then
-                    [ AgentEvent.Conversation(toolBatch d.ToolRequests ts) ]
-                else
-                    []
+                match d.ToolRequests with
+                | null -> []
+                | reqs when reqs.Length > 0 -> [ AgentEvent.Conversation(toolBatch reqs ts) ]
+                | _ -> []
 
             message @ tools
 
-        | :? SessionErrorEvent as e when not (isNull e.Data) ->
+        | :? SessionErrorEvent as e when not (isNull (box e.Data)) ->
             [ AgentEvent.Conversation(
                   AgentErrorAppended
                       { Id = MessageId.create ()
@@ -98,14 +96,13 @@ module EventMapping =
                         Timestamp = ts }
               ) ]
 
-        | :? SessionWarningEvent as e when not (isNull e.Data) -> [ AgentEvent.Warning(str e.Data.Message) ]
+        | :? SessionWarningEvent as e when not (isNull (box e.Data)) -> [ AgentEvent.Warning(str e.Data.Message) ]
 
-        | :? ModelCallFailureEvent as e when not (isNull e.Data) ->
+        | :? ModelCallFailureEvent as e when not (isNull (box e.Data)) ->
             [ AgentEvent.Warning("model call failed: " + str e.Data.ErrorMessage) ]
 
         | :? AbortEvent as e ->
-            let reason =
-                if isNull (box e.Data) then "" else str e.Data.Reason.Value
+            let reason = if isNull (box e.Data) then "" else str e.Data.Reason.Value
 
             [ AgentEvent.Warning(if reason = "" then "aborted" else "aborted: " + reason) ]
 

@@ -102,8 +102,13 @@ type ReasoningEffort =
     /// tokens persisted before the vocabulary was aligned (<c>off</c>,
     /// <c>extra_high</c>). Returns <c>null</c> for an unrecognised token so callers
     /// (e.g. the model bar's per-model filter) can skip it.
-    static member FromApiValue(token: string) : ReasoningEffort =
-        match (if isNull token then "" else token.Trim().ToLowerInvariant()) with
+    static member FromApiValue(token: string | null) : ReasoningEffort =
+        match
+            (if isNull token then
+                 ""
+             else
+                 (nonNull token).Trim().ToLowerInvariant())
+        with
         | "none"
         | "off" -> Off
         | "low" -> Low

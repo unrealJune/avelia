@@ -43,7 +43,7 @@ module CopilotPermissions =
 
             let request: Avelia.Core.Abstractions.PermissionRequest =
                 { RequestId = id
-                  ToolName = (if isNull req.Kind then "" else req.Kind)
+                  ToolName = (if isNull (box req.Kind) then "" else req.Kind)
                   ToolInputJson = ""
                   Description = "" }
 

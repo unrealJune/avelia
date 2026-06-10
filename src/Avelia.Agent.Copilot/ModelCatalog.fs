@@ -111,19 +111,19 @@ type CopilotModelCatalog(tokenSource: IGitHubTokenSource, workingDirectory: stri
 type CachingModelCatalog(inner: IModelCatalogService) =
 
     let gate = obj ()
-    let mutable cached: IReadOnlyList<ModelInfo> = null
+    let mutable cached: IReadOnlyList<ModelInfo> | null = null
 
     interface IModelCatalogService with
         member _.ListModelsAsync(ct) =
             task {
                 let snapshot = lock gate (fun () -> cached)
 
-                if not (obj.ReferenceEquals(snapshot, null)) then
-                    return Success snapshot
-                else
+                match snapshot with
+                | null ->
                     match! inner.ListModelsAsync ct with
                     | Success models ->
                         lock gate (fun () -> cached <- models)
                         return Success models
                     | other -> return other
+                | s -> return Success s
             }

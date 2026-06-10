@@ -25,8 +25,7 @@ module RepoLocks =
     // key never constructs (and leaks — <c>SemaphoreSlim</c> is
     // <c>IDisposable</c>) more than one semaphore: the factory may be invoked
     // by multiple threads, but only one <c>Lazy.Value</c> is materialized.
-    let private locks =
-        ConcurrentDictionary<string, Lazy<SemaphoreSlim>>()
+    let private locks = ConcurrentDictionary<string, Lazy<SemaphoreSlim>>()
 
     /// Normalize a filesystem path for use as a dictionary key. Windows is
     /// case-insensitive; we lowercase to make
@@ -45,9 +44,7 @@ module RepoLocks =
     /// — the value is a <c>Lazy</c> so duplicate <c>GetOrAdd</c> factory
     /// invocations never materialize a second semaphore.
     let getOrCreate (key: string) : SemaphoreSlim =
-        locks
-            .GetOrAdd(key, fun _ -> Lazy<SemaphoreSlim>(fun () -> new SemaphoreSlim(1, 1)))
-            .Value
+        locks.GetOrAdd(key, fun _ -> Lazy<SemaphoreSlim>(fun () -> new SemaphoreSlim(1, 1))).Value
 
     /// Acquire the lock identified by <paramref name="key"/>, run
     /// <paramref name="work"/>, then release. Cancellation surfaces from the

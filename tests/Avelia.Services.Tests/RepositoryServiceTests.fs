@@ -26,7 +26,10 @@ let ``AddAsync on a valid repo persists and derives the name`` () =
 [<Fact>]
 let ``AddAsync rejects a non-repository and persists nothing`` () =
     let store = InMemoryRepositoryStore()
-    let inspection = FakeGitInspection(Failure(AveliaError.External("git", "not a git repository")))
+
+    let inspection =
+        FakeGitInspection(Failure(AveliaError.External("git", "not a git repository")))
+
     let svc = RepositoryService(store, inspection) :> IRepositoryService
 
     match (svc.AddAsync(path, main, ct)).Result with

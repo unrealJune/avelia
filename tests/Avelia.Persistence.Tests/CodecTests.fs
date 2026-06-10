@@ -120,7 +120,7 @@ let ``agent markdown round-trips`` () =
     )
 
 [<Property>]
-let ``any user-message text and refs survive the round-trip`` (text: NonNull<string>) (refs: NonNull<string>[]) =
+let ``any user-message text and refs survive the round-trip`` (text: NonEmptyString) (refs: NonEmptyString[]) =
     let cleaned = refs |> Array.map (fun r -> r.Get)
 
     let ev =

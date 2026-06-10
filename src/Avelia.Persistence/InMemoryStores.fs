@@ -22,7 +22,9 @@ type InMemoryRepositoryStore() =
     interface IRepositoryStore with
         member _.ListAsync(ct) =
             ct.ThrowIfCancellationRequested()
-            lock gate (fun () -> store.Values |> Seq.toArray :> IReadOnlyList<_>) |> Task.FromResult
+
+            lock gate (fun () -> store.Values |> Seq.toArray :> IReadOnlyList<_>)
+            |> Task.FromResult
 
         member _.GetAsync(id, ct) =
             ct.ThrowIfCancellationRequested()
@@ -50,16 +52,15 @@ type InMemoryWorkspaceStore() =
     interface IWorkspaceStore with
         member _.ListAllAsync(ct) =
             ct.ThrowIfCancellationRequested()
-            lock gate (fun () -> store.Values |> Seq.toArray :> IReadOnlyList<_>) |> Task.FromResult
+
+            lock gate (fun () -> store.Values |> Seq.toArray :> IReadOnlyList<_>)
+            |> Task.FromResult
 
         member _.ListByRepoAsync(repoId, ct) =
             ct.ThrowIfCancellationRequested()
 
             lock gate (fun () ->
-                store.Values
-                |> Seq.filter (fun r -> r.Workspace.RepoId = repoId)
-                |> Seq.toArray
-                :> IReadOnlyList<_>)
+                store.Values |> Seq.filter (fun r -> r.Workspace.RepoId = repoId) |> Seq.toArray :> IReadOnlyList<_>)
             |> Task.FromResult
 
         member _.GetAsync(id, ct) =

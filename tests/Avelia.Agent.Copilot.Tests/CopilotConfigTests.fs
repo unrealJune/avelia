@@ -80,7 +80,7 @@ let ``allowed tools become the available-tools filter`` () =
             noEvent
             noPermission
 
-    Assert.Equal<string list>([ "Edit"; "Read" ], List.ofSeq c.AvailableTools)
+    Assert.Equal<string list>([ "Edit"; "Read" ], List.ofSeq (nonNull c.AvailableTools))
 
 [<Fact>]
 let ``empty allowed tools leaves the filter unset (SDK default)`` () =
@@ -111,13 +111,13 @@ let ``mcp servers map to stdio config with command, args and env`` () =
     let c =
         CopilotConfig.build { baseConfig with McpServers = servers } noEvent noPermission
 
-    Assert.True(c.McpServers.ContainsKey "fs")
+    Assert.True((nonNull c.McpServers).ContainsKey "fs")
 
-    match c.McpServers.["fs"] with
+    match (nonNull c.McpServers).["fs"] with
     | :? McpStdioServerConfig as stdio ->
         Assert.Equal("node", stdio.Command)
-        Assert.Equal<string list>([ "server.js"; "--port=3000" ], List.ofSeq stdio.Args)
-        Assert.Equal("abc", stdio.Env.["TOKEN"])
+        Assert.Equal<string list>([ "server.js"; "--port=3000" ], List.ofSeq (nonNull stdio.Args))
+        Assert.Equal("abc", (nonNull stdio.Env).["TOKEN"])
     | other -> failwithf "expected stdio config, got %A" other
 
 [<Fact>]

@@ -51,7 +51,12 @@ type GitHubTokenSource(auth: IGitHubAuth, credentials: ICredentialStore, getEnv:
                             match! auth.ListStoredAccountsAsync ct with
                             | Success logins when logins.Count > 0 ->
                                 match! auth.LoadStoredTokenAsync(logins.[0], ct) with
-                                | Success tok -> return (if String.IsNullOrWhiteSpace tok.Token then None else Some tok.Token)
+                                | Success tok ->
+                                    return
+                                        (if String.IsNullOrWhiteSpace tok.Token then
+                                             None
+                                         else
+                                             Some tok.Token)
                                 | Failure _ -> return None
                             | _ -> return None
                         }

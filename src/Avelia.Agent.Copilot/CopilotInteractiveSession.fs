@@ -10,8 +10,7 @@ open Avelia.Core.Abstractions
 /// entirely — the terminal IS the UI. The driver still owns the
 /// <c>IAgentSession</c> lifecycle and forwards interrupt / wait / dispose to the
 /// terminal. The chat event stream is empty in this mode by design.
-type internal CopilotInteractiveSession
-    (sessionId: SessionId, workspace: RepoPath, terminal: ITerminalSession) =
+type internal CopilotInteractiveSession(sessionId: SessionId, workspace: RepoPath, terminal: ITerminalSession) =
 
     interface IAgentSession with
         member _.SessionId = sessionId

@@ -44,14 +44,19 @@ CREATE TABLE IF NOT EXISTS settings (
   default_model TEXT NOT NULL, reasoning_effort TEXT NOT NULL, context_tier TEXT NOT NULL);
 """
 
-    /// Idempotent column additions for databases created before a column
-    /// existed. <c>ADD COLUMN</c> throws if the column is already present (fresh
-    /// DBs get it from <c>CREATE TABLE</c>), so each runs best-effort.
+    /// Idempotent column reconciliations for databases created before the
+    /// current schema. <c>ADD COLUMN</c> throws if the column is already present
+    /// (fresh DBs get it from <c>CREATE TABLE</c>) and <c>DROP COLUMN</c> throws
+    /// if it is already gone, so each runs best-effort.
     let migrations =
         [ "ALTER TABLE workspaces ADD COLUMN reasoning_effort TEXT NOT NULL DEFAULT ''"
           "ALTER TABLE workspaces ADD COLUMN context_tier TEXT NOT NULL DEFAULT ''"
           "ALTER TABLE settings ADD COLUMN reasoning_effort TEXT NOT NULL DEFAULT ''"
-          "ALTER TABLE settings ADD COLUMN context_tier TEXT NOT NULL DEFAULT ''" ]
+          "ALTER TABLE settings ADD COLUMN context_tier TEXT NOT NULL DEFAULT ''"
+          // The unified model bar replaced the boolean `extended_thinking` with
+          // `reasoning_effort`. Drop the orphaned NOT NULL column or every
+          // settings upsert fails its INSERT arm with a NOT NULL violation.
+          "ALTER TABLE settings DROP COLUMN extended_thinking" ]
 
 /// Shared connection + lock. All store access funnels through <c>run</c>.
 type private Db(connectionString: string) =
@@ -429,7 +434,10 @@ type private SqliteConversationStore(db: Db) =
 type private SqliteSettingsStore(db: Db, initial: AppearanceSettings) =
     let read (conn: SqliteConnection) : AppearanceSettings option =
         use cmd = conn.CreateCommand()
-        cmd.CommandText <- "SELECT accent,density,transparency,open_with_right_panel,default_model,reasoning_effort,context_tier FROM settings WHERE id = 1"
+
+        cmd.CommandText <-
+            "SELECT accent,density,transparency,open_with_right_panel,default_model,reasoning_effort,context_tier FROM settings WHERE id = 1"
+
         use r = cmd.ExecuteReader()
 
         if r.Read() then
@@ -438,9 +446,9 @@ type private SqliteSettingsStore(db: Db, initial: AppearanceSettings) =
                   Density = Codec.densityOfString (r.GetString 1)
                   Transparency = r.GetInt32 2 <> 0
                   OpenWithRightPanel = r.GetInt32 3 <> 0
-                  DefaultModel = Codec.modelOfString(r.GetString 4)
-                  ReasoningEffort = Codec.reasoningEffortOfString(r.GetString 5)
-                  ContextTier = Codec.contextTierOfString(r.GetString 6) }
+                  DefaultModel = Codec.modelOfString (r.GetString 4)
+                  ReasoningEffort = Codec.reasoningEffortOfString (r.GetString 5)
+                  ContextTier = Codec.contextTierOfString (r.GetString 6) }
         else
             None
 

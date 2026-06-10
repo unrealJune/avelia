@@ -12,14 +12,17 @@ let private ct = CancellationToken.None
 [<Fact>]
 let ``GetAsync returns the stored snapshot`` () =
     let store = InMemorySettingsStore(DesignData.defaultAppearance)
+
     let svc =
         SettingsService(store, FakeCredentialStore(), FakeGitHubTokenSource(Failure AveliaError.Unauthorized))
         :> ISettingsService
+
     Assert.Equal(DesignData.defaultAppearance, (svc.GetAsync ct).Result)
 
 [<Fact>]
 let ``setters persist through the store`` () =
     let store = InMemorySettingsStore(DesignData.defaultAppearance)
+
     let svc =
         SettingsService(store, FakeCredentialStore(), FakeGitHubTokenSource(Failure AveliaError.Unauthorized))
         :> ISettingsService
@@ -35,7 +38,9 @@ let ``setters persist through the store`` () =
 let ``SetGitHubToken writes the PAT to the credential vault`` () =
     let store = InMemorySettingsStore(DesignData.defaultAppearance)
     let cred = FakeCredentialStore() :> ICredentialStore
-    let svc = SettingsService(store, cred, FakeGitHubTokenSource(Failure AveliaError.Unauthorized)) :> ISettingsService
+
+    let svc =
+        SettingsService(store, cred, FakeGitHubTokenSource(Failure AveliaError.Unauthorized)) :> ISettingsService
 
     (svc.SetGitHubTokenAsync("ghp_secret", ct)).Result |> ignore
     Assert.Equal(Success "ghp_secret", (cred.GetAsync(GitHubTokenKeys.Pat, ct)).Result)
@@ -43,7 +48,13 @@ let ``SetGitHubToken writes the PAT to the credential vault`` () =
 [<Fact>]
 let ``HasGitHubToken reflects the token source`` () =
     let store = InMemorySettingsStore(DesignData.defaultAppearance)
-    let connected = SettingsService(store, FakeCredentialStore(), FakeGitHubTokenSource(Success "tok")) :> ISettingsService
-    let disconnected = SettingsService(store, FakeCredentialStore(), FakeGitHubTokenSource(Failure AveliaError.Unauthorized)) :> ISettingsService
+
+    let connected =
+        SettingsService(store, FakeCredentialStore(), FakeGitHubTokenSource(Success "tok")) :> ISettingsService
+
+    let disconnected =
+        SettingsService(store, FakeCredentialStore(), FakeGitHubTokenSource(Failure AveliaError.Unauthorized))
+        :> ISettingsService
+
     Assert.True((connected.HasGitHubTokenAsync ct).Result)
     Assert.False((disconnected.HasGitHubTokenAsync ct).Result)

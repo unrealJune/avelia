@@ -105,8 +105,13 @@ type AgentConversationService
 
     /// Map an SDK reasoning-effort wire token back to the DU. Unknown / blank
     /// tokens fall to <c>Off</c> — the safe minimum for a throwaway summariser.
-    let effortOfApiValue (raw: string) : ReasoningEffort =
-        match (if isNull raw then "" else raw.Trim().ToLowerInvariant()) with
+    let effortOfApiValue (raw: string | null) : ReasoningEffort =
+        match
+            (if isNull raw then
+                 ""
+             else
+                 (nonNull raw).Trim().ToLowerInvariant())
+        with
         | "high" -> ReasoningEffort.High
         | "extra_high" -> ReasoningEffort.ExtraHigh
         | "max" -> ReasoningEffort.Max
@@ -126,11 +131,7 @@ type AgentConversationService
         match pick with
         | None -> Haiku45, ReasoningEffort.Off
         | Some m ->
-            let efforts =
-                if isNull m.ReasoningEfforts then
-                    []
-                else
-                    List.ofSeq m.ReasoningEfforts
+            let efforts = List.ofSeq m.ReasoningEfforts
 
             let effort =
                 efforts
