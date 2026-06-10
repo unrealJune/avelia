@@ -128,9 +128,7 @@ public partial class ModelBarViewModel : ObservableObject
         {
             foreach (var token in efforts)
             {
-                var match = ReasoningEffort.All.FirstOrDefault(e =>
-                    string.Equals(e.ApiValue, token, StringComparison.OrdinalIgnoreCase)
-                );
+                var match = ReasoningEffort.FromApiValue(token);
                 if (match is not null)
                 {
                     options.Add(new ModelBarOption(match.Label, match));

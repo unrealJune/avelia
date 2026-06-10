@@ -35,15 +35,14 @@ module Codec =
     let reasoningEffortToString (e: ReasoningEffort) : string = e.ApiValue
 
     let reasoningEffortOfString (s: string) : ReasoningEffort =
-        match s with
-        | "off" -> ReasoningEffort.Off
-        | "extra_high" -> ReasoningEffort.ExtraHigh
-        | "max" -> ReasoningEffort.Max
-        | "high" -> ReasoningEffort.High
-        // Legacy tokens persisted before the thinking-mode vocabulary changed.
-        | "low" -> ReasoningEffort.Off
-        | "medium" -> ReasoningEffort.High
-        | _ -> ReasoningEffort.High
+        // Accepts the current vocabulary (none/low/medium/high/xhigh/max) plus the
+        // legacy tokens persisted before it was aligned. Unknown → High.
+        let parsed = ReasoningEffort.FromApiValue s
+
+        if obj.ReferenceEquals(parsed, null) then
+            ReasoningEffort.High
+        else
+            parsed
 
     // -- ContextTier ---------------------------------------------------------
 

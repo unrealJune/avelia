@@ -98,3 +98,32 @@ type CopilotModelCatalog(tokenSource: IGitHubTokenSource, workingDirectory: stri
                     // empty — the user can still run on a preset.
                     return presets ()
             }
+
+/// Process-lifetime cache over an <see cref="IModelCatalogService"/>.
+///
+/// The live <see cref="CopilotModelCatalog"/> starts a Copilot CLI client on
+/// every call — a multi-second cost. The catalog is effectively static for a
+/// session, yet the shell re-reads it on every workspace switch (and on the
+/// Agents settings page), which made switching workspaces appear to hang. This
+/// decorator memoises the first successful read and serves it to all later
+/// callers. A failed read is not cached, so a subsequent call can still retry
+/// (e.g. after the user signs in).
+type CachingModelCatalog(inner: IModelCatalogService) =
+
+    let gate = obj ()
+    let mutable cached: IReadOnlyList<ModelInfo> = null
+
+    interface IModelCatalogService with
+        member _.ListModelsAsync(ct) =
+            task {
+                let snapshot = lock gate (fun () -> cached)
+
+                if not (obj.ReferenceEquals(snapshot, null)) then
+                    return Success snapshot
+                else
+                    match! inner.ListModelsAsync ct with
+                    | Success models ->
+                        lock gate (fun () -> cached <- models)
+                        return Success models
+                    | other -> return other
+            }

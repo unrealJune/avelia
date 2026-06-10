@@ -42,8 +42,8 @@ public class ModelBarViewModelTests
         vm.SetCatalog(
             new[]
             {
-                Model(ModelCatalog.SonnetId, "Sonnet 4.5", "off", "high", "extra_high", "max"),
-                Model(ModelCatalog.HaikuId, "Haiku 4.5", "off", "high"),
+                Model(ModelCatalog.SonnetId, "Sonnet 4.5", "none", "high", "xhigh", "max"),
+                Model(ModelCatalog.HaikuId, "Haiku 4.5", "none", "high"),
             }
         );
         vm.SetSelections(ModelChoice.Sonnet45, ReasoningEffort.Max, ContextTier.Default);
@@ -53,7 +53,7 @@ public class ModelBarViewModelTests
         vm.SelectedModel = haiku;
 
         var tokens = vm.ReasoningOptions.Select(o => ((ReasoningEffort)o.Value).ApiValue).ToArray();
-        Assert.Equal(new[] { "off", "high" }, tokens);
+        Assert.Equal(new[] { "none", "high" }, tokens);
         // Max isn't supported by Haiku, so the selection drops to the first option.
         Assert.Equal(ReasoningEffort.Off, vm.SelectedReasoning!.Value);
     }

@@ -46,22 +46,30 @@ type ModelChoice =
 /// the SDK expects. Surfaced in the composer's model bar and Settings → Agents.
 type ReasoningEffort =
     | Off
+    | Low
+    | Medium
     | High
     | ExtraHigh
     | Max
 
     /// Wire token the Copilot SDK's <c>SessionConfig.ReasoningEffort</c> takes.
+    /// These mirror the Copilot model catalog's <c>SupportedReasoningEfforts</c>
+    /// vocabulary (<c>none/low/medium/high/xhigh/max</c>).
     member this.ApiValue: string =
         match this with
-        | Off -> "off"
+        | Off -> "none"
+        | Low -> "low"
+        | Medium -> "medium"
         | High -> "high"
-        | ExtraHigh -> "extra_high"
+        | ExtraHigh -> "xhigh"
         | Max -> "max"
 
     /// Title-case label for the picker.
     member this.Label: string =
         match this with
         | Off -> "Off"
+        | Low -> "Low"
+        | Medium -> "Medium"
         | High -> "High"
         | ExtraHigh -> "Extra High"
         | Max -> "Max"
@@ -71,18 +79,40 @@ type ReasoningEffort =
     member this.Match<'TResult>
         (
             off: System.Func<'TResult>,
+            low: System.Func<'TResult>,
+            medium: System.Func<'TResult>,
             high: System.Func<'TResult>,
             extraHigh: System.Func<'TResult>,
             max: System.Func<'TResult>
         ) : 'TResult =
         match this with
         | Off -> off.Invoke()
+        | Low -> low.Invoke()
+        | Medium -> medium.Invoke()
         | High -> high.Invoke()
         | ExtraHigh -> extraHigh.Invoke()
         | Max -> max.Invoke()
 
     /// All efforts in display order (lowest → highest).
-    static member All: ReasoningEffort array = [| Off; High; ExtraHigh; Max |]
+    static member All: ReasoningEffort array = [| Off; Low; Medium; High; ExtraHigh; Max |]
+
+    /// Parse a wire token — an SDK <c>SupportedReasoningEfforts</c> entry or a
+    /// persisted value — into a <see cref="ReasoningEffort"/>. Accepts the current
+    /// Copilot vocabulary (<c>none/low/medium/high/xhigh/max</c>) and the legacy
+    /// tokens persisted before the vocabulary was aligned (<c>off</c>,
+    /// <c>extra_high</c>). Returns <c>null</c> for an unrecognised token so callers
+    /// (e.g. the model bar's per-model filter) can skip it.
+    static member FromApiValue(token: string) : ReasoningEffort =
+        match (if isNull token then "" else token.Trim().ToLowerInvariant()) with
+        | "none"
+        | "off" -> Off
+        | "low" -> Low
+        | "medium" -> Medium
+        | "high" -> High
+        | "xhigh"
+        | "extra_high" -> ExtraHigh
+        | "max" -> Max
+        | _ -> Unchecked.defaultof<ReasoningEffort>
 
 /// Context-window tier the agent runs with. Mirrors the Copilot SDK's
 /// <c>ContextTier</c> (<c>default</c> / <c>long_context</c>); <see cref="ApiValue"/>
@@ -159,10 +189,10 @@ module ModelCatalog =
 
     /// Reasoning-effort levels offered for the built-in presets when the live
     /// catalog is unavailable. The live catalog reports each model's actual
-    /// supported set; this is the offline fallback. Mirrors the thinking modes
-    /// Copilot surfaces in VS Code (Off / High / Extra High / Max).
+    /// supported set; this is the offline fallback. Mirrors the vocabulary the
+    /// Copilot catalog reports for the Claude presets (low / medium / high / xhigh).
     let defaultReasoningEfforts: IReadOnlyList<string> =
-        [| "off"; "high"; "extra_high"; "max" |] :> IReadOnlyList<_>
+        [| "low"; "medium"; "high"; "xhigh" |] :> IReadOnlyList<_>
 
     /// <c>ModelChoice</c> → catalog id. <c>CustomModel</c> passes through; a
     /// blank custom name yields <c>""</c> so the SDK picks its own default.

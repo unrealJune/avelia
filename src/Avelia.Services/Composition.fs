@@ -82,7 +82,7 @@ module RealComposition =
           Runs = StubRunService() :> IRunService
           Inbox = StubInboxService(Seq.empty<InboxItem>) :> IInboxService
           Settings = SettingsService(stores.Settings, credentials, tokenSource) :> ISettingsService
-          ModelCatalog = CopilotModelCatalog(tokenSource) :> IModelCatalogService
+          ModelCatalog = CachingModelCatalog(CopilotModelCatalog(tokenSource)) :> IModelCatalogService
           Agents = agentFactory
           Terminals =
             InteractiveTerminalService(stores.Workspaces, stores.Settings, agentFactory) :> ITerminalLaunchService }
