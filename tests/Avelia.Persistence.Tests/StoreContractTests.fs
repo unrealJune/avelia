@@ -4,6 +4,7 @@ open System
 open System.IO
 open System.Threading
 open Xunit
+open Microsoft.Data.Sqlite
 open Avelia.Core
 open Avelia.Core.Abstractions
 open Avelia.Persistence
@@ -172,6 +173,58 @@ let ``sqlite persists across reopen`` () =
         finally
             (s2 :> IDisposable).Dispose()
     finally
+        try
+            File.Delete path
+        with _ ->
+            ()
+
+[<Fact>]
+[<Trait("Category", "Integration")>]
+let ``sqlite reconciles a legacy extended_thinking settings table on open`` () =
+    let path =
+        Path.Combine(Path.GetTempPath(), "avelia-sql-" + Guid.NewGuid().ToString("N") + ".db")
+
+    try
+        // Seed a settings table in the pre-unified-model-bar shape: the boolean
+        // `extended_thinking` column the schema since dropped, still NOT NULL with
+        // no default. The current upsert never supplies it, so without the drop
+        // migration every settings write fails its INSERT arm with a NOT NULL
+        // violation — which is what crashed the app at startup.
+        let connStr = SqliteConnectionStringBuilder(DataSource = path).ToString()
+
+        do
+            use conn = new SqliteConnection(connStr)
+            conn.Open()
+            use cmd = conn.CreateCommand()
+
+            cmd.CommandText <-
+                """CREATE TABLE settings (
+                     id INTEGER PRIMARY KEY CHECK (id = 1), accent TEXT NOT NULL, density TEXT NOT NULL,
+                     transparency INTEGER NOT NULL, open_with_right_panel INTEGER NOT NULL,
+                     default_model TEXT NOT NULL, extended_thinking INTEGER NOT NULL,
+                     reasoning_effort TEXT NOT NULL DEFAULT '', context_tier TEXT NOT NULL DEFAULT '');
+                   INSERT INTO settings (id, accent, density, transparency, open_with_right_panel, default_model, extended_thinking, reasoning_effort, context_tier)
+                     VALUES (1, 'skyblue', 'comfortable', 1, 1, 'custom:claude-opus-4.8', 1, '', '');"""
+
+            cmd.ExecuteNonQuery() |> ignore
+
+        // Opening runs the migrations (which drop the orphan); a settings save
+        // must then succeed and round-trip rather than throw.
+        let set = SqliteStores.create path DesignData.defaultAppearance
+
+        try
+            let changed =
+                { DesignData.defaultAppearance with
+                    Density = Density.Compact
+                    Accent = AccentChoice.Sage }
+
+            (set.Stores.Settings.SaveAsync(changed, ct)).Result |> ignore
+            Assert.Equal(changed, (set.Stores.Settings.LoadAsync ct).Result)
+        finally
+            (set :> IDisposable).Dispose()
+    finally
+        SqliteConnection.ClearAllPools()
+
         try
             File.Delete path
         with _ ->

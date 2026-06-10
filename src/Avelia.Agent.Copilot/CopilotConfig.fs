@@ -16,10 +16,10 @@ module CopilotConfig =
     let private mcpServer (m: McpServerConfig) : GitHub.Copilot.McpServerConfig =
         let stdio = McpStdioServerConfig(Command = m.Command)
 
-        if not (isNull m.Args) && m.Args.Length > 0 then
+        if m.Args.Length > 0 then
             stdio.Args <- ResizeArray m.Args
 
-        if not (isNull m.Env) && m.Env.Count > 0 then
+        if m.Env.Count > 0 then
             stdio.Env <- Dictionary m.Env
 
         stdio :> GitHub.Copilot.McpServerConfig
@@ -60,10 +60,10 @@ module CopilotConfig =
 
         c.ContextTier <- Nullable sdkTier
 
-        if not (isNull config.AllowedTools) && config.AllowedTools.Length > 0 then
+        if config.AllowedTools.Length > 0 then
             c.AvailableTools <- ResizeArray config.AllowedTools
 
-        if not (isNull config.McpServers) && config.McpServers.Count > 0 then
+        if config.McpServers.Count > 0 then
             let dict = Dictionary<string, GitHub.Copilot.McpServerConfig>()
 
             for kv in config.McpServers do

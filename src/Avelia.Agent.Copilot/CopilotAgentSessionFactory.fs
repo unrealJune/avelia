@@ -44,8 +44,16 @@ type CopilotAgentSessionFactory
                         do! client.StartAsync ct
 
                         let channel = Channel.CreateUnbounded<AgentEvent>()
-                        let pending = ConcurrentDictionary<Guid, TaskCompletionSource<Rpc.PermissionDecision>>()
-                        let totals = ref { InputTokens = 0; OutputTokens = 0; CostMicroUsd = 0L }
+
+                        let pending =
+                            ConcurrentDictionary<Guid, TaskCompletionSource<Rpc.PermissionDecision>>()
+
+                        let totals =
+                            ref
+                                { InputTokens = 0
+                                  OutputTokens = 0
+                                  CostMicroUsd = 0L }
+
                         let totalsLock = obj ()
 
                         let onEvent (ev: SessionEvent) =

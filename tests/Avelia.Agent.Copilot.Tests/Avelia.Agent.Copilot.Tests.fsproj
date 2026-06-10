@@ -5,6 +5,9 @@
     <IsPackable>false</IsPackable>
     <IsTestProject>true</IsTestProject>
     <GenerateProgramFile>true</GenerateProgramFile>
+    <!-- FS0057: the GitHub.Copilot SDK marks its public surface [<Experimental>].
+         Consuming the preview SDK is intentional, so silence the experimental noise. -->
+    <NoWarn>$(NoWarn);57</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

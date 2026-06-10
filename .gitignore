@@ -12,6 +12,11 @@ publish/
 !.vscode/extensions.json
 !.vscode/settings.shared.json
 .idea/
+*.lscache
+
+# Coding agents (local state)
+.claude/settings.local.json
+.claude/worktrees/
 
 # Test results
 TestResults/

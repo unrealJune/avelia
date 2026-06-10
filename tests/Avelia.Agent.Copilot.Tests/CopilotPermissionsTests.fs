@@ -10,8 +10,7 @@ open Avelia.Core.Abstractions
 open Avelia.Agent.Copilot
 
 let private fresh () =
-    Channel.CreateUnbounded<AgentEvent>(),
-    ConcurrentDictionary<Guid, TaskCompletionSource<Rpc.PermissionDecision>>()
+    Channel.CreateUnbounded<AgentEvent>(), ConcurrentDictionary<Guid, TaskCompletionSource<Rpc.PermissionDecision>>()
 
 let private approveKind = Rpc.PermissionDecision.ApproveOnce().Kind
 let private rejectKind = (Rpc.PermissionDecision.Reject "x").Kind
@@ -20,7 +19,10 @@ let private rejectKind = (Rpc.PermissionDecision.Reject "x").Kind
 let ``AcceptEdits approves inline with no event emitted`` () =
     let channel, pending = fresh ()
     let req = GitHub.Copilot.PermissionRequest(Kind = "write")
-    let decision = (CopilotPermissions.handle PermissionMode.AcceptEdits pending channel req).Result
+
+    let decision =
+        (CopilotPermissions.handle PermissionMode.AcceptEdits pending channel req).Result
+
     Assert.Equal(approveKind, decision.Kind)
     Assert.False(fst (channel.Reader.TryRead())) // nothing queued
     Assert.Empty pending
@@ -30,7 +32,13 @@ let ``AcceptEdits approves inline with no event emitted`` () =
 [<InlineData "plan">]
 let ``ReadOnly and Plan reject inline`` (mode: string) =
     let channel, pending = fresh ()
-    let m = if mode = "plan" then PermissionMode.Plan else PermissionMode.ReadOnly
+
+    let m =
+        if mode = "plan" then
+            PermissionMode.Plan
+        else
+            PermissionMode.ReadOnly
+
     let req = GitHub.Copilot.PermissionRequest(Kind = "write")
     let decision = (CopilotPermissions.handle m pending channel req).Result
     Assert.Equal(rejectKind, decision.Kind)
@@ -40,7 +48,9 @@ let ``ReadOnly and Plan reject inline`` (mode: string) =
 let ``RequireApproval emits a PermissionRequired event and blocks on the host`` () =
     let channel, pending = fresh ()
     let req = GitHub.Copilot.PermissionRequest(Kind = "write")
-    let task = CopilotPermissions.handle PermissionMode.RequireApproval pending channel req
+
+    let task =
+        CopilotPermissions.handle PermissionMode.RequireApproval pending channel req
 
     // The SDK callback is pending until the host answers.
     Assert.False task.IsCompleted

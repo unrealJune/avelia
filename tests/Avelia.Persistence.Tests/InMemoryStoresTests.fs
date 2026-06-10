@@ -132,7 +132,7 @@ let ``appending to a missing conversation is NotFound`` () =
     | other -> failwithf "unexpected %A" other
 
 [<Property>]
-let ``appending events folds the same as Conversation.replay`` (texts: NonEmptyArray<NonNull<string>>) =
+let ``appending events folds the same as Conversation.replay`` (texts: NonEmptyArray<NonEmptyString>) =
     let store = InMemoryConversationStore() :> IConversationStore
     let convId = ConversationId.create ()
     let wsId = WorkspaceId.create ()

@@ -12,6 +12,7 @@ let private ct = CancellationToken.None
 
 let private make (env: Map<string, string>) (accounts) (pat: string option) =
     let cred = FakeCredentialStore() :> ICredentialStore
+
     match pat with
     | Some p -> (cred.SetAsync(GitHubTokenKeys.Pat, p, ct)).Result |> ignore
     | None -> ()

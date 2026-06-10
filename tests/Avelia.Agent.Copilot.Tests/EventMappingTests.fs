@@ -17,9 +17,10 @@ let private usage (input: int64) (output: int64) (cost: float option) =
         Model = "test-model",
         InputTokens = Nullable input,
         OutputTokens = Nullable output,
-        Cost = (match cost with
-                | Some c -> Nullable c
-                | None -> Nullable())
+        Cost =
+            (match cost with
+             | Some c -> Nullable c
+             | None -> Nullable())
     )
 
 let private toolReq (name: string) =
@@ -54,7 +55,10 @@ let ``usageDelta never produces negative cost for non-negative USD`` (cents: Non
 
 [<Fact>]
 let ``tryUsage returns None for a non-usage event`` () =
-    Assert.True((EventMapping.tryUsage (SessionIdleEvent(Data = SessionIdleData())) |> ValueOption.isNone))
+    Assert.True(
+        (EventMapping.tryUsage (SessionIdleEvent(Data = SessionIdleData()))
+         |> ValueOption.isNone)
+    )
 
 [<Fact>]
 let ``tryUsage returns Some for a usage event`` () =
@@ -101,7 +105,8 @@ let ``empty assistant content with no tools maps to nothing`` () =
 
 [<Fact>]
 let ``session warning maps to AgentEvent Warning`` () =
-    let ev = SessionWarningEvent(Data = SessionWarningData(Message = "low on quota", WarningType = "quota"))
+    let ev =
+        SessionWarningEvent(Data = SessionWarningData(Message = "low on quota", WarningType = "quota"))
 
     match single (EventMapping.map ev) with
     | AgentEvent.Warning msg -> Assert.Equal("low on quota", msg)
@@ -109,7 +114,8 @@ let ``session warning maps to AgentEvent Warning`` () =
 
 [<Fact>]
 let ``session error maps to AgentErrorAppended`` () =
-    let ev = SessionErrorEvent(Data = SessionErrorData(Message = "boom", ErrorType = "fatal"))
+    let ev =
+        SessionErrorEvent(Data = SessionErrorData(Message = "boom", ErrorType = "fatal"))
 
     match single (EventMapping.map ev) with
     | AgentEvent.Conversation(AgentErrorAppended e) -> Assert.Equal("boom", e.Text)

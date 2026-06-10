@@ -213,7 +213,7 @@ module Codec =
                    if x.ValueKind = JsonValueKind.String then
                        match x.GetString() with
                        | null -> ()
-                       | s -> yield (s: string) |]
+                       | s -> yield (nonNull s) |]
         | _ -> [||]
 
     let private msgId (e: JsonElement) =
