@@ -9,7 +9,6 @@
     <UserControl.Resources>
         <conv:PositiveIntToVisibilityConverter x:Key="PositiveVis" />
         <conv:PrefixIntConverter x:Key="PrefixInt" />
-        <conv:BoolToVisibilityConverter x:Key="BoolToVisibility" />
     </UserControl.Resources>
 
     <!--
@@ -24,18 +23,13 @@
         </Grid.ColumnDefinitions>
 
         <Grid Grid.Column="0" Width="14" Height="14">
+            <!-- The dot pulses while the agent runs (StatusDot.IsBusy); no
+                 separate spinner overlay (a 14px ProgressRing renders invisibly). -->
             <local:StatusDot
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Status="{x:Bind Item.Status, Mode=OneWay, FallbackValue={x:Null}}"
-            />
-            <!-- Overlays the dot while the agent runs; hidden (no layout shift) otherwise. -->
-            <ProgressRing
-                Width="14"
-                Height="14"
-                IsActive="{x:Bind Item.IsAgentWorking, Mode=OneWay}"
-                Visibility="{x:Bind Item.IsAgentWorking, Mode=OneWay, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}"
-                Foreground="{ThemeResource AveliaWarningBrush}"
+                IsBusy="{x:Bind Item.IsAgentWorking, Mode=OneWay}"
             />
         </Grid>
 
