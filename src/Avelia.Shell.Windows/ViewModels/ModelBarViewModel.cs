@@ -46,6 +46,14 @@ public partial class ModelBarViewModel : ObservableObject
 
     private bool _suppress;
 
+    /// <summary>
+    /// Per-model reasoning-effort tokens as reported by the live Copilot SDK
+    /// catalog (<see cref="ModelInfo.ReasoningEfforts"/>). Drives the thinking
+    /// dropdown so it reflects what each model actually supports instead of a
+    /// fixed list. Empty/unknown for a model falls back to <see cref="ReasoningEffort.All"/>.
+    /// </summary>
+    private readonly Dictionary<ModelChoice, IReadOnlyList<string>> _reasoningByModel = new();
+
     public ModelBarViewModel()
     {
         foreach (var m in PresetModels)
@@ -72,8 +80,9 @@ public partial class ModelBarViewModel : ObservableObject
     /// (a catalog id outside the three presets becomes a <c>CustomModel</c>), so
     /// the picked value still round-trips through the persisted setting. A blank
     /// or empty catalog is ignored, leaving the built-in presets in place so the
-    /// dropdown is never empty. Does not fire the change callbacks; callers
-    /// typically follow with <see cref="SetSelections"/>.
+    /// dropdown is never empty. Each model's live reasoning efforts are also
+    /// captured so the thinking dropdown reflects the SDK. Does not fire the
+    /// change callbacks; callers typically follow with <see cref="SetSelections"/>.
     /// </summary>
     public void SetCatalog(IReadOnlyList<ModelInfo> models)
     {
@@ -86,16 +95,73 @@ public partial class ModelBarViewModel : ObservableObject
         try
         {
             ModelOptions.Clear();
+            _reasoningByModel.Clear();
             foreach (var m in models)
             {
                 var choice = ModelCatalog.ChoiceOfId(m.Id);
                 var display = string.IsNullOrWhiteSpace(m.DisplayName) ? m.Id : m.DisplayName;
                 ModelOptions.Add(new ModelBarOption(display, choice));
+                if (m.ReasoningEfforts is { Count: > 0 })
+                {
+                    _reasoningByModel[choice] = m.ReasoningEfforts;
+                }
             }
         }
         finally
         {
             _suppress = false;
+        }
+    }
+
+    /// <summary>
+    /// Rebuild the thinking dropdown from <paramref name="model"/>'s live SDK
+    /// reasoning efforts (captured by <see cref="SetCatalog"/>). Each SDK token
+    /// is matched to a <see cref="ReasoningEffort"/> by its wire value; unknown
+    /// tokens are dropped. Falls back to the full static list when the catalog
+    /// reports none. Preserves the current selection when it survives the rebuild,
+    /// otherwise selects the first option. Never fires the change callback.
+    /// </summary>
+    private void ApplyReasoningForModel(ModelChoice model)
+    {
+        var options = new List<ModelBarOption>();
+        if (_reasoningByModel.TryGetValue(model, out var efforts))
+        {
+            foreach (var token in efforts)
+            {
+                var match = ReasoningEffort.All.FirstOrDefault(e =>
+                    string.Equals(e.ApiValue, token, StringComparison.OrdinalIgnoreCase)
+                );
+                if (match is not null)
+                {
+                    options.Add(new ModelBarOption(match.Label, match));
+                }
+            }
+        }
+        if (options.Count == 0)
+        {
+            foreach (var e in ReasoningEffort.All)
+            {
+                options.Add(new ModelBarOption(e.Label, e));
+            }
+        }
+
+        var prior = SelectedReasoning?.Value;
+        var prevSuppress = _suppress;
+        _suppress = true;
+        try
+        {
+            ReasoningOptions.Clear();
+            foreach (var o in options)
+            {
+                ReasoningOptions.Add(o);
+            }
+            SelectedReasoning =
+                ReasoningOptions.FirstOrDefault(o => prior is not null && o.Value.Equals(prior))
+                ?? ReasoningOptions.FirstOrDefault();
+        }
+        finally
+        {
+            _suppress = prevSuppress;
         }
     }
 
@@ -128,7 +194,10 @@ public partial class ModelBarViewModel : ObservableObject
         try
         {
             SelectedModel = FindOrAddModel(model);
-            SelectedReasoning = ReasoningOptions.First(o => o.Value.Equals(effort));
+            ApplyReasoningForModel(model);
+            SelectedReasoning =
+                ReasoningOptions.FirstOrDefault(o => o.Value.Equals(effort))
+                ?? ReasoningOptions.FirstOrDefault();
             SelectedContext = ContextOptions.First(o => o.Value.Equals(tier));
         }
         finally
@@ -153,7 +222,11 @@ public partial class ModelBarViewModel : ObservableObject
     {
         if (_suppress || value is null)
             return;
-        ModelChanged?.Invoke((ModelChoice)value.Value);
+        var model = (ModelChoice)value.Value;
+        // Re-point the thinking dropdown at the newly-picked model's live SDK
+        // efforts before notifying the host.
+        ApplyReasoningForModel(model);
+        ModelChanged?.Invoke(model);
     }
 
     partial void OnSelectedReasoningChanged(ModelBarOption? value)
