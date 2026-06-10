@@ -103,9 +103,7 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
         _conversationId = null;
 
         // Resolve the workspace first so we know which agent model to show on
-        // the composer + which branch the terminal panel renders. Then the
-        // conversation snapshot. PR + diff load alongside so the right pane
-        // populates in the same logical step.
+        // the composer + which branch the terminal panel renders.
         var workspaceResult = await _services.Workspaces.GetAsync(id, ct).ConfigureAwait(true);
         if (workspaceResult.IsSuccess)
         {
@@ -121,8 +119,11 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
             Terminal.Reset();
         }
 
-        await PrPane.LoadAsync(id, ct).ConfigureAwait(true);
-
+        // Load + render the conversation transcript first. It's a fast local
+        // SQLite read, whereas the PR pane below hits the network (PR lookup)
+        // and git (workspace diff). Rendering the chat before awaiting the PR
+        // pane means the transcript shows ~instantly instead of being blocked
+        // behind the slow right-pane load.
         var result = await _services
             .Conversations.GetForWorkspaceAsync(id, ct)
             .ConfigureAwait(true);
@@ -130,6 +131,8 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
         {
             Title = string.Empty;
             IsLoading = false;
+            // Still populate the right pane so it doesn't show stale state.
+            await PrPane.LoadAsync(id, ct).ConfigureAwait(true);
             return;
         }
 
@@ -154,6 +157,11 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
         IsLoading = false;
 
         StartObserving(conversation.Id);
+
+        // Right pane loads after the chat is on screen — it's the slow part
+        // (PR lookup over the network + git diff), so we never block the
+        // transcript on it.
+        await PrPane.LoadAsync(id, ct).ConfigureAwait(true);
     }
 
     /// <summary>
