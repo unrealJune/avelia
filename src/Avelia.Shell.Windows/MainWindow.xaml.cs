@@ -15,6 +15,7 @@ using Microsoft.UI.Text;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
 using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Input;
 using Microsoft.UI.Xaml.Media;
 using Microsoft.UI.Xaml.Media.Animation;
 using Task = System.Threading.Tasks.Task;
@@ -268,6 +269,27 @@ public sealed partial class MainWindow : Window
         {
             ViewModel.CloseTabCommand.Execute(tab);
         }
+    }
+
+    // Ctrl+Tab / Ctrl+Shift+Tab cycle the active workspace tab. (Alt+Tab is
+    // reserved by Windows for the system task switcher and never reaches the
+    // app, so we use the standard Ctrl+Tab convention instead.)
+    private void OnNextTabAccelerator(
+        KeyboardAccelerator sender,
+        KeyboardAcceleratorInvokedEventArgs args
+    )
+    {
+        ViewModel.CycleTabCommand.Execute(true);
+        args.Handled = true;
+    }
+
+    private void OnPreviousTabAccelerator(
+        KeyboardAccelerator sender,
+        KeyboardAcceleratorInvokedEventArgs args
+    )
+    {
+        ViewModel.CycleTabCommand.Execute(false);
+        args.Handled = true;
     }
 
     // -------- Title-bar tools --------
