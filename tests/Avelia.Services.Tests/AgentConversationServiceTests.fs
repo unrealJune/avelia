@@ -76,13 +76,17 @@ let private collect (n: int) (stream: IAsyncEnumerable<ConversationUpdate>) =
     }
 
 let private mk (factory: IAgentSessionFactory) (stores: Stores) =
+    let emptyMcp =
+        Dictionary<string, McpServerConfig>() :> IReadOnlyDictionary<string, McpServerConfig>
+
     new AgentConversationService(
         factory,
         stores.Conversations,
         stores.Workspaces,
         stores.Settings,
         FakeModelCatalog(),
-        epoch
+        epoch,
+        (fun _ -> emptyMcp)
     )
 
 [<Fact>]
@@ -238,7 +242,8 @@ let ``auto-rename runs Haiku at the cheapest supported thinking level`` () =
             stores.Workspaces,
             stores.Settings,
             (catalog :> IModelCatalogService),
-            epoch
+            epoch,
+            (fun _ -> Dictionary<string, McpServerConfig>() :> IReadOnlyDictionary<string, McpServerConfig>)
         )
 
     let isvc = svc :> IConversationService

@@ -15,6 +15,7 @@
     <Compile Include="WorkspaceServiceTests.fs" />
     <Compile Include="PullRequestServiceTests.fs" />
     <Compile Include="AgentConversationServiceTests.fs" />
+    <Compile Include="AveliaMcpServerTests.fs" />
     <Compile Include="InteractiveTerminalServiceTests.fs" />
     <Compile Include="WorkspaceServiceIntegrationTests.fs" />
   </ItemGroup>
