@@ -157,15 +157,33 @@ module CredentialKey =
     [<Literal>]
     let GitHubPrefix = "avelia:github:"
 
+    /// Leading-underscore suffixes under <see cref="GitHubPrefix"/> are
+    /// reserved for non-account sentinel slots that share the GitHub
+    /// namespace but are NOT per-login account tokens — e.g. the
+    /// manually-pasted PAT lives at <c>avelia:github:_pat</c> and stores a
+    /// raw token string, not a serialized <see cref="GitHubAccessToken"/>
+    /// blob. Reserving the <c>_</c>-prefixed namespace is safe because a
+    /// real GitHub login can never begin with an underscore.
+    [<Literal>]
+    let SentinelMarker = "_"
+
     let forGitHubAccount (login: string) : string = GitHubPrefix + login.ToLowerInvariant()
 
     /// Inverse of <see cref="forGitHubAccount"/>. Returns <c>ValueNone</c> if
-    /// the key doesn't carry the GitHub prefix.
+    /// the key doesn't carry the GitHub prefix, or if it names a reserved
+    /// sentinel slot (a <c>_</c>-prefixed suffix such as <c>_pat</c>) rather
+    /// than a real account — those store a different on-disk format and must
+    /// not be enumerated as signed-in accounts.
     let tryParseGitHubAccount (key: string | null) : string voption =
         match key with
         | null -> ValueNone
         | k when k.StartsWith(GitHubPrefix, StringComparison.OrdinalIgnoreCase) ->
-            ValueSome(k.Substring(GitHubPrefix.Length))
+            let suffix = k.Substring(GitHubPrefix.Length)
+
+            if suffix.StartsWith(SentinelMarker, StringComparison.Ordinal) then
+                ValueNone
+            else
+                ValueSome suffix
         | _ -> ValueNone
 
 // ---------------------------------------------------------------------------
