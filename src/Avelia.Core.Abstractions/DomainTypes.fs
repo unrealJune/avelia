@@ -252,6 +252,26 @@ type PrStatus =
     | Merged
     | Closed
 
+/// How a pull request is integrated when merged. Mirrors GitHub's three
+/// merge strategies; the impl maps it to Octokit's
+/// <c>PullRequestMergeMethod</c>. <c>Merge</c> is the conservative default.
+[<RequireQualifiedAccess>]
+type PrMergeMethod =
+    | Merge
+    | Squash
+    | Rebase
+
+    /// Visitor over the union — keeps C# off the F# DU's case types and forces
+    /// exhaustive handling at the call site (same pattern as the other DUs the
+    /// shell consumes).
+    member this.Match<'TResult>
+        (merge: System.Func<'TResult>, squash: System.Func<'TResult>, rebase: System.Func<'TResult>)
+        : 'TResult =
+        match this with
+        | Merge -> merge.Invoke()
+        | Squash -> squash.Invoke()
+        | Rebase -> rebase.Invoke()
+
 /// Outcome of a single CI check.
 [<RequireQualifiedAccess>]
 type CheckStatus =

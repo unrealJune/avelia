@@ -121,8 +121,24 @@ type IDiffService =
         prId: PullRequestId * file: RelativePath * CancellationToken -> Task<IReadOnlyList<DiffHunk>>
 
 type IPullRequestService =
+    /// Live PR for the workspace's recorded <c>PrNumber</c>. <c>NotFound</c>
+    /// when the workspace has no PR yet (the benign no-PR contract the PR pane
+    /// renders as the empty/create state, not an error).
     abstract GetForWorkspaceAsync: workspaceId: WorkspaceId * CancellationToken -> Task<OperationResult<PullRequest>>
-    abstract MergeAsync: id: PullRequestId * CancellationToken -> Task<OperationResult<unit>>
+
+    /// Open a pull request for the workspace's branch. Pushes the worktree's
+    /// branch to <c>origin</c> first (a PR can't reference an unpushed branch),
+    /// then creates the PR against the workspace's base branch and records the
+    /// new number on the workspace. Fails <c>Conflict</c> if the workspace
+    /// already has a PR, <c>Validation</c> if the title is empty.
+    abstract CreateForWorkspaceAsync:
+        workspaceId: WorkspaceId * title: string * body: string * draft: bool * CancellationToken ->
+            Task<OperationResult<PullRequest>>
+
+    /// Merge the workspace's pull request using the given strategy.
+    /// <c>NotFound</c> when the workspace has no PR.
+    abstract MergeForWorkspaceAsync:
+        workspaceId: WorkspaceId * method: PrMergeMethod * CancellationToken -> Task<OperationResult<unit>>
 
 type IRunService =
     abstract ListAsync: workspaceId: WorkspaceId * CancellationToken -> Task<IReadOnlyList<RunId>>

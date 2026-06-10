@@ -298,27 +298,66 @@ type StubDiffService
 
 type StubPullRequestService
     (prsByWorkspace: WorkspaceId -> PullRequest option, prsById: Dictionary<PullRequestId, PullRequest>) =
+    // Created/merged PRs are tracked per workspace so the stub stays consistent
+    // across Create → Get → Merge within a session (the seed function is static
+    // over DesignData; this overlay holds live mutations).
+    let overlay = Dictionary<WorkspaceId, PullRequest>()
+    let mutable nextNumber = 9000
+
+    let resolve (wsId: WorkspaceId) : PullRequest option =
+        match overlay.TryGetValue wsId with
+        | true, pr -> Some pr
+        | _ -> prsByWorkspace wsId
+
     interface IPullRequestService with
         member _.GetForWorkspaceAsync(workspaceId, ct) =
             ct.ThrowIfCancellationRequested()
 
-            match prsByWorkspace workspaceId with
+            match resolve workspaceId with
             | Some pr -> Task.FromResult(Success pr)
             | None -> Task.FromResult(notFound $"PullRequest for workspace {workspaceId}")
 
-        member _.MergeAsync(id, ct) =
+        member _.CreateForWorkspaceAsync(workspaceId, title, body, draft, ct) =
             ct.ThrowIfCancellationRequested()
 
-            match prsById.TryGetValue id with
-            | true, pr when pr.MergeReady ->
-                prsById.[id] <-
+            if String.IsNullOrWhiteSpace title then
+                Task.FromResult(Failure(AveliaError.Validation "A pull-request title is required."))
+            else
+                match resolve workspaceId with
+                | Some pr ->
+                    Task.FromResult(Failure(AveliaError.Conflict $"This workspace already has PR #{pr.Number}."))
+                | None ->
+                    nextNumber <- nextNumber + 1
+
+                    let pr: PullRequest =
+                        { Id = PullRequestId nextNumber
+                          Number = nextNumber
+                          Title = title.Trim()
+                          Branch = BranchName.Create "feature"
+                          Base = BranchName.Create "main"
+                          Status = (if draft then PrStatus.Draft else PrStatus.Open)
+                          Checks = [||]
+                          MergeReady = false }
+
+                    overlay.[workspaceId] <- pr
+                    prsById.[pr.Id] <- pr
+                    Task.FromResult(Success pr)
+
+        member _.MergeForWorkspaceAsync(workspaceId, _method, ct) =
+            ct.ThrowIfCancellationRequested()
+
+            match resolve workspaceId with
+            | None -> Task.FromResult(notFound $"PullRequest for workspace {workspaceId}")
+            | Some pr when pr.MergeReady ->
+                let merged =
                     { pr with
                         Status = PrStatus.Merged
                         MergeReady = false }
 
+                overlay.[workspaceId] <- merged
+                prsById.[pr.Id] <- merged
                 Task.FromResult(Success())
-            | true, pr -> Task.FromResult(Failure(AveliaError.Conflict $"PR #{pr.Number} not merge-ready"))
-            | _ -> Task.FromResult(notFound $"PullRequest {id}")
+            | Some pr -> Task.FromResult(Failure(AveliaError.Conflict $"PR #{pr.Number} not merge-ready"))
 
 // ============================================================================
 //  Stub: Model catalog

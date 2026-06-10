@@ -84,7 +84,13 @@ module RealComposition =
         let diffs = DiffService(stores.Workspaces, inspection)
 
         let pullRequests =
-            PullRequestService((fun ct -> ghProvider.GetAsync ct), stores.Workspaces, stores.Repositories, inspection)
+            PullRequestService(
+                (fun ct -> ghProvider.GetAsync ct),
+                stores.Workspaces,
+                stores.Repositories,
+                inspection,
+                gitOps
+            )
 
         { Repositories = RepositoryService(stores.Repositories, inspection) :> IRepositoryService
           Workspaces = workspaces :> IWorkspaceService

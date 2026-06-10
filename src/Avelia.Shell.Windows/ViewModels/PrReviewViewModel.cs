@@ -267,11 +267,13 @@ public partial class PrReviewViewModel : ObservableObject
     [RelayCommand(CanExecute = nameof(CanMerge))]
     private async Task Merge(CancellationToken ct)
     {
-        if (_prId is null)
+        if (_workspaceId is not { } workspaceId)
         {
             return;
         }
-        var result = await _services.PullRequests.MergeAsync(_prId, ct).ConfigureAwait(true);
+        var result = await _services
+            .PullRequests.MergeForWorkspaceAsync(workspaceId, PrMergeMethod.Merge, ct)
+            .ConfigureAwait(true);
         if (result.IsSuccess)
         {
             ErrorMessage = null;
