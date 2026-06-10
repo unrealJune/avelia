@@ -61,38 +61,68 @@
                 </Border>
             </DataTemplate>
 
-            <!-- 3) Tool-batch — collapsed strip with summary line -->
+            <!-- 3) Tool-batch — collapsed strip with summary line; the chevron
+                 expands to reveal the individual tool kinds in the batch. -->
             <DataTemplate x:Key="ToolBatchTemplate" x:DataType="vm:ToolBatchViewModel">
-                <Border
+                <Expander
                     Margin="0,4"
+                    HorizontalAlignment="Stretch"
+                    HorizontalContentAlignment="Stretch"
                     Background="{ThemeResource AveliaSubtleFillTertiaryBrush}"
                     BorderBrush="{ThemeResource AveliaSurfaceStrokeBrush}"
                     BorderThickness="1"
                     CornerRadius="{StaticResource AveliaCornerRadiusSmall}"
-                    Padding="10,8"
+                    AutomationProperties.AutomationId="ToolBatch"
+                    AutomationProperties.Name="{x:Bind Summary}"
                 >
-                    <StackPanel Orientation="Horizontal" Spacing="10" VerticalAlignment="Center">
-                        <FontIcon
-                            FontFamily="Segoe Fluent Icons"
-                            FontSize="13"
-                            Glyph="&#xE74C;"
-                            Foreground="{ThemeResource AveliaTextTertiaryBrush}"
-                        />
-                        <TextBlock
-                            Style="{StaticResource AveliaCaptionTextStyle}"
-                            FontFamily="{StaticResource AveliaMonoFontFamily}"
-                            Foreground="{ThemeResource AveliaTextSecondaryBrush}"
-                            Text="{x:Bind Summary, FallbackValue=''}"
+                    <Expander.Header>
+                        <StackPanel
+                            Orientation="Horizontal"
+                            Spacing="10"
                             VerticalAlignment="Center"
-                        />
-                        <FontIcon
-                            FontFamily="Segoe Fluent Icons"
-                            FontSize="10"
-                            Glyph="&#xE70D;"
-                            Foreground="{ThemeResource AveliaTextTertiaryBrush}"
-                        />
-                    </StackPanel>
-                </Border>
+                        >
+                            <FontIcon
+                                FontFamily="Segoe Fluent Icons"
+                                FontSize="13"
+                                Glyph="&#xE74C;"
+                                Foreground="{ThemeResource AveliaTextTertiaryBrush}"
+                            />
+                            <TextBlock
+                                Style="{StaticResource AveliaCaptionTextStyle}"
+                                FontFamily="{StaticResource AveliaMonoFontFamily}"
+                                Foreground="{ThemeResource AveliaTextSecondaryBrush}"
+                                Text="{x:Bind Summary, FallbackValue=''}"
+                                VerticalAlignment="Center"
+                            />
+                        </StackPanel>
+                    </Expander.Header>
+                    <ItemsControl ItemsSource="{x:Bind ToolKinds}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate x:DataType="x:String">
+                                <StackPanel
+                                    Margin="0,2"
+                                    Orientation="Horizontal"
+                                    Spacing="8"
+                                    VerticalAlignment="Center"
+                                >
+                                    <Ellipse
+                                        Width="4"
+                                        Height="4"
+                                        VerticalAlignment="Center"
+                                        Fill="{ThemeResource AveliaTextTertiaryBrush}"
+                                    />
+                                    <TextBlock
+                                        Style="{StaticResource AveliaCaptionTextStyle}"
+                                        FontFamily="{StaticResource AveliaMonoFontFamily}"
+                                        Foreground="{ThemeResource AveliaTextSecondaryBrush}"
+                                        Text="{x:Bind}"
+                                        VerticalAlignment="Center"
+                                    />
+                                </StackPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </Expander>
             </DataTemplate>
 
             <!-- 4) Change note — file path + diff chips -->
