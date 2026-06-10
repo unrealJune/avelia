@@ -268,3 +268,19 @@ let ``MergeForWorkspaceAsync forwards the workspace PR number and strategy to th
         Assert.Equal(Some PrMergeMethod.Squash, client.LastMergeMethod)
         Assert.Equal("acme", client.LastCoord.Owner)
     | Failure e -> failwithf "expected success, got %A" e
+
+[<Fact>]
+let ``MergeForWorkspaceAsync settles the workspace status to Ready on success`` () =
+    let stores = InMemoryStores.create DesignData.defaultAppearance
+    let wsId = seed stores 42
+    let client = FakeGitHubClient(Success samplePr, mergeResult = Success())
+
+    let svc =
+        mk (fun _ -> Task.FromResult(Success(client :> IGitHubClient))) stores (githubInspection ())
+
+    match (svc.MergeForWorkspaceAsync(wsId, PrMergeMethod.Squash, ct)).Result with
+    | Success() ->
+        match (stores.Workspaces.GetAsync(wsId, ct)).Result with
+        | Success record -> Assert.True(record.Workspace.Status.IsReady)
+        | Failure e -> failwithf "expected workspace, got %A" e
+    | Failure e -> failwithf "expected success, got %A" e

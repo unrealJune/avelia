@@ -144,6 +144,30 @@ type WorkspaceService
                 | Success record -> return! inspection.StatusAsync(record.WorktreePath, ct)
             }
 
+        member _.UpdateStatusAsync(id, status, ct) =
+            task {
+                match! workspaces.GetAsync(id, ct) with
+                | Failure e -> return Failure e
+                | Success record ->
+                    if Workspace.canTransition record.Workspace.Status status then
+                        let updated =
+                            { record with
+                                Workspace =
+                                    { record.Workspace with
+                                        Status = status } }
+
+                        match! workspaces.UpsertAsync(updated, ct) with
+                        | Success() -> return Success updated.Workspace
+                        | Failure e -> return Failure e
+                    else
+                        return
+                            Failure(
+                                AveliaError.Conflict(
+                                    sprintf "Cannot transition from %A to %A" record.Workspace.Status status
+                                )
+                            )
+            }
+
         member _.SetAgentConfigAsync(id, model, reasoningEffort, contextTier, ct) =
             task {
                 match! workspaces.GetAsync(id, ct) with

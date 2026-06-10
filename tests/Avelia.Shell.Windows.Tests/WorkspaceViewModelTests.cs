@@ -210,6 +210,22 @@ public class WorkspaceViewModelTests
     }
 
     [Fact]
+    public async Task SendMessage_PersistsWorkspaceAsWorking()
+    {
+        var services = Composition.buildStubServices();
+        var vm = new WorkspaceViewModel(services, new ImmediateUiDispatcher());
+        await vm.LoadAsync(DesignData.archiveWorkspaceId);
+
+        vm.ComposerText = "do the thing";
+        await vm.SendMessageCommand.ExecuteAsync(null);
+
+        // A successful send marks the workspace Working so the unmerged-work
+        // indicator survives a restart (read back from the store).
+        var ws = (await services.Workspaces.GetAsync(DesignData.archiveWorkspaceId, default)).Value;
+        Assert.True(ws.Status.IsWorking);
+    }
+
+    [Fact]
     public async Task TurnCompleted_ClearsWorkingIndicator()
     {
         var fake = new FakeConversationService(DesignData.archiveConversation);

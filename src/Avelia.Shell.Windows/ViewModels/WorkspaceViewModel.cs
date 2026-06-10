@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using Avelia.Core;
@@ -337,6 +338,31 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
             _pendingUserEchoes.Remove(optimistic);
             Messages.Remove(optimistic);
             IsAgentWorking = false;
+            return;
+        }
+
+        // The agent now has unmerged work in flight. Persist the workspace as
+        // Working so the indicator survives a restart until the change merges.
+        // Best-effort and fire-and-forget — a persist failure must not disrupt
+        // the send, and the live in-memory dot is driven separately.
+        var workspaceId = WorkspaceId;
+        if (workspaceId is not null)
+        {
+            _ = PersistWorkingAsync(workspaceId, ct);
+        }
+    }
+
+    private async Task PersistWorkingAsync(WorkspaceId id, CancellationToken ct)
+    {
+        try
+        {
+            await _services
+                .Workspaces.UpdateStatusAsync(id, WorkspaceStatus.Working, ct)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[WorkspaceViewModel] persist Working failed: {ex.Message}");
         }
     }
 

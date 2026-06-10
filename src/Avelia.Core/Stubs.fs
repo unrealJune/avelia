@@ -131,6 +131,19 @@ type StubWorkspaceService(initial: seq<Workspace>) =
                 Task.FromResult(Success status)
             | _ -> Task.FromResult(notFound $"Workspace {id}")
 
+        member _.UpdateStatusAsync(id, status, ct) =
+            ct.ThrowIfCancellationRequested()
+
+            match store.TryGetValue id with
+            | true, w ->
+                if Workspace.canTransition w.Status status then
+                    let updated = { w with Status = status }
+                    store.[id] <- updated
+                    Task.FromResult(Success updated)
+                else
+                    Task.FromResult(Failure(AveliaError.Conflict $"Cannot transition from {w.Status} to {status}"))
+            | _ -> Task.FromResult(notFound $"Workspace {id}")
+
         member _.DeleteAsync(id, ct) =
             ct.ThrowIfCancellationRequested()
 

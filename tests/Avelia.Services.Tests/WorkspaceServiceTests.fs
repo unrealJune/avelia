@@ -193,6 +193,59 @@ let ``ArchiveAsync disposes the session and flips status`` () =
     | Failure e -> failwithf "expected success, got %A" e
 
 [<Fact>]
+let ``UpdateStatusAsync persists a legal transition`` () =
+    let stores = InMemoryStores.create DesignData.defaultAppearance
+    let repo = addRepo stores.Repositories
+    let svc = mkService stores (FakeGitOperations()) (ResizeArray())
+
+    let ws =
+        (svc.CreateAsync(repo.Id, BranchName.Create "f", BranchName.Create "main", ct)).Result.Value
+
+    // Fresh workspaces are Draft; Draft -> Working is legal.
+    match (svc.UpdateStatusAsync(ws.Id, WorkspaceStatus.Working, ct)).Result with
+    | Success updated ->
+        Assert.True(updated.Status.IsWorking)
+        let reread = (stores.Workspaces.GetAsync(ws.Id, ct)).Result.Value.Workspace
+        Assert.True(reread.Status.IsWorking)
+    | Failure e -> failwithf "expected success, got %A" e
+
+[<Fact>]
+let ``UpdateStatusAsync rejects an illegal transition and leaves status unchanged`` () =
+    let stores = InMemoryStores.create DesignData.defaultAppearance
+    let repo = addRepo stores.Repositories
+    let svc = mkService stores (FakeGitOperations()) (ResizeArray())
+
+    let ws =
+        (svc.CreateAsync(repo.Id, BranchName.Create "f", BranchName.Create "main", ct)).Result.Value
+
+    // Drive to Archived, from which Working is not reachable.
+    let record = (stores.Workspaces.GetAsync(ws.Id, ct)).Result.Value
+
+    (stores.Workspaces.UpsertAsync(
+        { record with
+            Workspace =
+                { record.Workspace with
+                    Status = WorkspaceStatus.Archived } },
+        ct
+    ))
+        .Result
+    |> ignore
+
+    match (svc.UpdateStatusAsync(ws.Id, WorkspaceStatus.Working, ct)).Result with
+    | Failure(AveliaError.Conflict _) ->
+        Assert.Equal(WorkspaceStatus.Archived, (stores.Workspaces.GetAsync(ws.Id, ct)).Result.Value.Workspace.Status)
+    | other -> failwithf "unexpected %A" other
+
+[<Fact>]
+let ``UpdateStatusAsync fails for an unknown workspace`` () =
+    let stores = InMemoryStores.create DesignData.defaultAppearance
+    let svc = mkService stores (FakeGitOperations()) (ResizeArray())
+
+    match (svc.UpdateStatusAsync(WorkspaceId.create (), WorkspaceStatus.Working, ct)).Result with
+    | Failure(AveliaError.NotFound _) -> ()
+    | other -> failwithf "unexpected %A" other
+
+[<Fact>]
 let ``ListAll projects the shell-facing workspace out of the record`` () =
     let stores = InMemoryStores.create DesignData.defaultAppearance
     let repo = addRepo stores.Repositories
