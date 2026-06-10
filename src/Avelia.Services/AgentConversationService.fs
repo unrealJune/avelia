@@ -45,6 +45,7 @@ type AgentConversationService
         conversations: IConversationStore,
         workspaces: IWorkspaceStore,
         settings: ISettingsStore,
+        catalog: IModelCatalogService,
         now: unit -> DateTimeOffset
     ) =
 
@@ -102,6 +103,44 @@ type AgentConversationService
         else
             trimmed
 
+    /// Map an SDK reasoning-effort wire token back to the DU. Unknown / blank
+    /// tokens fall to <c>Off</c> — the safe minimum for a throwaway summariser.
+    let effortOfApiValue (raw: string) : ReasoningEffort =
+        match (if isNull raw then "" else raw.Trim().ToLowerInvariant()) with
+        | "high" -> ReasoningEffort.High
+        | "extra_high" -> ReasoningEffort.ExtraHigh
+        | "max" -> ReasoningEffort.Max
+        | _ -> ReasoningEffort.Off
+
+    /// Pick the throwaway title-summariser's config from the live catalog:
+    /// prefer Haiku (cheapest), else the first listed model; run it at the
+    /// lowest thinking level the model actually supports (prefer <c>Off</c> — a
+    /// 3–6 word title needs no reasoning, and a hardcoded effort the model
+    /// doesn't support would fail the session). Empty catalog → Haiku / Off.
+    let chooseRenameConfig (models: IReadOnlyList<ModelInfo>) : ModelChoice * ReasoningEffort =
+        let pick =
+            models
+            |> Seq.tryFind (fun m -> String.Equals(m.Id, ModelCatalog.HaikuId, StringComparison.OrdinalIgnoreCase))
+            |> Option.orElse (Seq.tryHead models)
+
+        match pick with
+        | None -> Haiku45, ReasoningEffort.Off
+        | Some m ->
+            let efforts =
+                if isNull m.ReasoningEfforts then
+                    []
+                else
+                    List.ofSeq m.ReasoningEfforts
+
+            let effort =
+                efforts
+                |> List.tryFind (fun e -> String.Equals(e, "off", StringComparison.OrdinalIgnoreCase))
+                |> Option.orElse (List.tryHead efforts)
+                |> Option.map effortOfApiValue
+                |> Option.defaultValue ReasoningEffort.Off
+
+            ModelCatalog.choiceOfId m.Id, effort
+
     /// Best-effort one-shot rename: open a headless Haiku session against the
     /// worktree (read-only), ask for a 3–6 word Title-Case summary of the
     /// task's first user message, take the first assistant reply, and persist
@@ -123,10 +162,21 @@ type AgentConversationService
                     + "Task: "
                     + firstUserText
 
+                // The title model + thinking level come from the live catalog so
+                // the throwaway summariser runs a model/effort the backend
+                // actually offers (a hardcoded effort can be unsupported and
+                // fail the session). Catalog failure falls back to Haiku / Off.
+                let! catalogResult = catalog.ListModelsAsync lifetime.Token
+
+                let renameModel, renameEffort =
+                    match catalogResult with
+                    | Success models -> chooseRenameConfig models
+                    | Failure _ -> Haiku45, ReasoningEffort.Off
+
                 let config: AgentSessionConfig =
                     { Workspace = record.WorktreePath
-                      Model = Haiku45
-                      ReasoningEffort = ReasoningEffort.High
+                      Model = renameModel
+                      ReasoningEffort = renameEffort
                       ContextTier = ContextTier.Default
                       SystemPromptAppend = ""
                       AllowedTools = [||]

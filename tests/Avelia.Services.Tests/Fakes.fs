@@ -15,6 +15,18 @@ type FakeGitHubTokenSource(result: OperationResult<string>) =
     interface IGitHubTokenSource with
         member _.GetTokenAsync(_ct) = Task.FromResult result
 
+/// A model catalog returning a fixed model list (default: the built-in presets)
+/// or a scripted failure. Drives the orchestrator's title-rename model/effort
+/// choice without a live Copilot SDK call.
+type FakeModelCatalog(?models: ModelInfo list, ?failure: AveliaError) =
+    interface IModelCatalogService with
+        member _.ListModelsAsync(_ct) =
+            match failure with
+            | Some e -> Task.FromResult(Failure e)
+            | None ->
+                let list = defaultArg models (List.ofArray ModelCatalog.presets)
+                Task.FromResult(Success(List.toArray list :> IReadOnlyList<ModelInfo>))
+
 // ---------------------------------------------------------------------------
 //  Shared fakes for the service unit tests. Real stores (InMemory*) are used
 //  where convenient; these fakes stand in for the git / agent boundaries that

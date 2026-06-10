@@ -46,13 +46,25 @@ module RealComposition =
         let agentFactory =
             CopilotAgentSessionFactory(tokenSource, terminalFactory, CopilotSettings.defaults) :> IAgentSessionFactory
 
+        // Live model catalog (also used by the orchestrator's title-rename to
+        // choose a valid model/effort for the throwaway summariser).
+        let modelCatalog =
+            CachingModelCatalog(CopilotModelCatalog(tokenSource)) :> IModelCatalogService
+
         // Local git.
         let inspection = GitInspector() :> IGitInspection
         let gitOps = GitCli() :> IGitOperations
 
         // Orchestrator first (the workspace service needs its teardown delegate).
         let conversations =
-            new AgentConversationService(agentFactory, stores.Conversations, stores.Workspaces, stores.Settings, now)
+            new AgentConversationService(
+                agentFactory,
+                stores.Conversations,
+                stores.Workspaces,
+                stores.Settings,
+                modelCatalog,
+                now
+            )
 
         let workspaces =
             WorkspaceService(
@@ -82,7 +94,7 @@ module RealComposition =
           Runs = StubRunService() :> IRunService
           Inbox = StubInboxService(Seq.empty<InboxItem>) :> IInboxService
           Settings = SettingsService(stores.Settings, credentials, tokenSource) :> ISettingsService
-          ModelCatalog = CachingModelCatalog(CopilotModelCatalog(tokenSource)) :> IModelCatalogService
+          ModelCatalog = modelCatalog
           Agents = agentFactory
           Terminals =
             InteractiveTerminalService(stores.Workspaces, stores.Settings, agentFactory) :> ITerminalLaunchService }
