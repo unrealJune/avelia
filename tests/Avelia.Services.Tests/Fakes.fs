@@ -78,6 +78,9 @@ type FakeGitOperations(?worktreeAddResult: OperationResult<Worktree>, ?pushResul
     member val WorktreeAddCalls = 0 with get, set
     member val PushCalls = 0 with get, set
     member val LastPushWorktree = "" with get, set
+    member val BranchRenameCalls = 0 with get, set
+    member val LastRenameWorktree = "" with get, set
+    member val LastRenameBranch = "" with get, set
 
     interface IGitOperations with
         member this.WorktreeAddAsync(repo, branch, worktree, _ct) =
@@ -111,6 +114,12 @@ type FakeGitOperations(?worktreeAddResult: OperationResult<Worktree>, ?pushResul
         member _.CheckoutAsync(_worktree, _branch, _ct) = Task.FromResult(Success())
         member _.BranchCreateAsync(_repo, _branch, _baseRef, _ct) = Task.FromResult(Success())
         member _.BranchDeleteAsync(_repo, _branch, _force, _ct) = Task.FromResult(Success())
+
+        member this.BranchRenameAsync(worktree, newBranch, _ct) =
+            this.BranchRenameCalls <- this.BranchRenameCalls + 1
+            this.LastRenameWorktree <- worktree.Value
+            this.LastRenameBranch <- newBranch.Value
+            Task.FromResult(Success())
 
 /// In-memory <c>ICredentialStore</c> (no Windows Credential Manager dependency).
 type FakeCredentialStore() =

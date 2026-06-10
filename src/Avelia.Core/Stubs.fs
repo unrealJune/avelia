@@ -104,6 +104,7 @@ type StubWorkspaceService(initial: seq<Workspace>) =
                   RepoId = repoId
                   Branch = branch
                   Base = baseBranch
+                  Title = ""
                   Status = WorkspaceStatus.Draft
                   DiffAdd = 0
                   DiffDel = 0
@@ -181,6 +182,23 @@ type StubWorkspaceService(initial: seq<Workspace>) =
                     Task.FromResult(Success())
                 else
                     Task.FromResult(Failure(AveliaError.Conflict $"Cannot archive from {w.Status}"))
+            | _ -> Task.FromResult(notFound $"Workspace {id}")
+
+        member _.RenameAsync(id, title, ct) =
+            ct.ThrowIfCancellationRequested()
+
+            match store.TryGetValue id with
+            | true, w ->
+                match BranchName.TryFromTitle title with
+                | Error msg -> Task.FromResult(Failure(AveliaError.Validation msg))
+                | Ok branch ->
+                    let updated =
+                        { w with
+                            Branch = branch
+                            Title = title.Trim() }
+
+                    store.[id] <- updated
+                    Task.FromResult(Success updated)
             | _ -> Task.FromResult(notFound $"Workspace {id}")
 
 // ============================================================================

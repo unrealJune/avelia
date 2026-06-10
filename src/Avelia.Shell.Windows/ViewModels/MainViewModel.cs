@@ -408,6 +408,26 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Apply a renamed workspace title to its tab + rail row (relayed from the
+    /// active page's <see cref="WorkspaceViewModel.TitleRenamed"/>). Both VMs
+    /// fall back to the branch name when the title is empty.
+    /// </summary>
+    public void SetWorkspaceTitle(WorkspaceId id, string title)
+    {
+        var item = FindRailItem(id);
+        if (item is not null)
+        {
+            item.Title = title;
+        }
+
+        var tab = OpenTabs.FirstOrDefault(t => t.Id.Equals(id));
+        if (tab is not null)
+        {
+            tab.Title = title;
+        }
+    }
+
     private WorkspaceItemViewModel? FindRailItem(WorkspaceId id)
     {
         foreach (var group in RepoGroups)

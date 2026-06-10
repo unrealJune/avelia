@@ -414,6 +414,11 @@ type Workspace =
         RepoId: RepositoryId
         Branch: BranchName
         Base: BranchName
+        /// Human display title shown in the tab + nav-rail (e.g.
+        /// <c>"Add MCP Server"</c>). Empty means "no custom title" — the UI
+        /// falls back to the branch name. Set by the <c>rename_workspace</c>
+        /// flow, which also slugs it into the git branch.
+        Title: string
         Status: WorkspaceStatus
         DiffAdd: int
         DiffDel: int

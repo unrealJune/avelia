@@ -215,6 +215,20 @@ type GitCli() =
                         | Error e -> Failure e
                 })
 
+        member _.BranchRenameAsync(worktree: RepoPath, newBranch: BranchName, ct: CancellationToken) =
+            withWorktreeLockAsync worktree ct (fun () ->
+                task {
+                    // One-arg `git branch -m <new>` renames the *current* branch
+                    // (the one checked out in this worktree), so run it from the
+                    // worktree. Git updates the worktree HEAD to the new ref.
+                    let! r = runChecked worktree.Value [ "branch"; "-m"; newBranch.Value ] ct
+
+                    return
+                        match r with
+                        | Ok _ -> Success()
+                        | Error e -> Failure e
+                })
+
         member _.BranchDeleteAsync(repo: RepoPath, branch: BranchName, force: bool, ct: CancellationToken) =
             withRepoLockAsync repo ct (fun () ->
                 task {

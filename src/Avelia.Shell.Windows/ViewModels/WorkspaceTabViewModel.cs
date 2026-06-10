@@ -31,8 +31,20 @@ public partial class WorkspaceTabViewModel : ObservableObject
 
     public WorkspaceId Id { get; }
 
+    /// <summary>
+    /// Human display title (e.g. "Add MCP Server"), set via the rename flow.
+    /// Empty falls back to <see cref="Branch"/> in <see cref="DisplayName"/>.
+    /// </summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DisplayName))]
+    private string _title = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DisplayName))]
     private string _branch;
+
+    /// <summary>What the tab shows: the title when set, else the branch name.</summary>
+    public string DisplayName => string.IsNullOrWhiteSpace(Title) ? Branch : Title;
 
     [ObservableProperty]
     private string _base;
@@ -66,5 +78,8 @@ public partial class WorkspaceTabViewModel : ObservableObject
             add: w.DiffAdd,
             del: w.DiffDel,
             repoName: repoName
-        );
+        )
+        {
+            Title = w.Title,
+        };
 }

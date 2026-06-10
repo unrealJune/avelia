@@ -117,6 +117,7 @@ type WorkspaceService
                                   RepoId = repoId
                                   Branch = branch
                                   Base = baseBranch
+                                  Title = ""
                                   Status = WorkspaceStatus.Draft
                                   DiffAdd = 0
                                   DiffDel = 0
@@ -211,6 +212,61 @@ type WorkspaceService
                         | Failure _ -> ()
 
                         return! workspaces.RemoveAsync(id, ct)
+            }
+
+        member _.RenameAsync(id, title, ct) =
+            task {
+                match! workspaces.GetAsync(id, ct) with
+                | Failure e -> return Failure e
+                | Success record ->
+                    match BranchName.TryFromTitle title with
+                    | Error msg -> return Failure(AveliaError.Validation msg)
+                    | Ok desired ->
+                        match! repositories.GetAsync(record.Workspace.RepoId, ct) with
+                        | Failure e -> return Failure e
+                        | Success repo ->
+                            let current = record.Workspace.Branch
+
+                            // Resolve a collision-free branch name, then rename
+                            // the git branch. When the slug already equals the
+                            // current branch the rename is a no-op (only the
+                            // title changes).
+                            let! branchResult =
+                                task {
+                                    if desired.Value = current.Value then
+                                        return Ok current
+                                    else
+                                        match! inspection.ListBranchesAsync(repo.Path, ct) with
+                                        | Failure e -> return Error e
+                                        | Success existing ->
+                                            let taken = existing |> Seq.map (fun b -> b.Value) |> Set.ofSeq
+
+                                            let unique =
+                                                if taken.Contains desired.Value then
+                                                    let shortId = (string (WorkspaceId.value id)).Substring(0, 8)
+
+                                                    BranchName.Create(desired.Value + "-" + shortId)
+                                                else
+                                                    desired
+
+                                            match! git.BranchRenameAsync(record.WorktreePath, unique, ct) with
+                                            | Failure e -> return Error e
+                                            | Success() -> return Ok unique
+                                }
+
+                            match branchResult with
+                            | Error e -> return Failure e
+                            | Ok newBranch ->
+                                let updated =
+                                    { record with
+                                        Workspace =
+                                            { record.Workspace with
+                                                Branch = newBranch
+                                                Title = title.Trim() } }
+
+                                match! workspaces.UpsertAsync(updated, ct) with
+                                | Success() -> return Success updated.Workspace
+                                | Failure e -> return Failure e
             }
 
         member _.ArchiveAsync(id, ct) =

@@ -30,7 +30,8 @@ CREATE TABLE IF NOT EXISTS workspaces (
   status TEXT NOT NULL, diff_add INTEGER NOT NULL, diff_del INTEGER NOT NULL,
   agent TEXT NOT NULL, last_updated TEXT NOT NULL, last_updated_display TEXT NOT NULL,
   pr_number INTEGER NOT NULL, worktree_path TEXT NOT NULL, conversation_id TEXT NOT NULL,
-  reasoning_effort TEXT NOT NULL DEFAULT '', context_tier TEXT NOT NULL DEFAULT '');
+  reasoning_effort TEXT NOT NULL DEFAULT '', context_tier TEXT NOT NULL DEFAULT '',
+  title TEXT NOT NULL DEFAULT '');
 CREATE TABLE IF NOT EXISTS conversations (
   id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, title TEXT NOT NULL, last_sequence INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS messages (
@@ -51,6 +52,7 @@ CREATE TABLE IF NOT EXISTS settings (
     let migrations =
         [ "ALTER TABLE workspaces ADD COLUMN reasoning_effort TEXT NOT NULL DEFAULT ''"
           "ALTER TABLE workspaces ADD COLUMN context_tier TEXT NOT NULL DEFAULT ''"
+          "ALTER TABLE workspaces ADD COLUMN title TEXT NOT NULL DEFAULT ''"
           "ALTER TABLE settings ADD COLUMN reasoning_effort TEXT NOT NULL DEFAULT ''"
           "ALTER TABLE settings ADD COLUMN context_tier TEXT NOT NULL DEFAULT ''"
           // The unified model bar replaced the boolean `extended_thinking` with
@@ -114,6 +116,7 @@ module private SqliteHelpers =
               RepoId = RepositoryId(Guid.Parse(r.GetString 1))
               Branch = BranchName.Create(r.GetString 2)
               Base = BranchName.Create(r.GetString 3)
+              Title = r.GetString 15
               Status = Codec.statusOfString (r.GetString 4)
               DiffAdd = r.GetInt32 5
               DiffDel = r.GetInt32 6
@@ -226,7 +229,7 @@ type private SqliteRepositoryStore(db: Db) =
 
 type private SqliteWorkspaceStore(db: Db) =
     let cols =
-        "id,repo_id,branch,base,status,diff_add,diff_del,agent,last_updated,last_updated_display,pr_number,worktree_path,conversation_id,reasoning_effort,context_tier"
+        "id,repo_id,branch,base,status,diff_add,diff_del,agent,last_updated,last_updated_display,pr_number,worktree_path,conversation_id,reasoning_effort,context_tier,title"
 
     let readAll (conn: SqliteConnection) (sql: string) (binds: (string * obj) list) =
         use cmd = conn.CreateCommand()
@@ -286,9 +289,9 @@ type private SqliteWorkspaceStore(db: Db) =
             db.run (fun conn ->
                 exec
                     conn
-                    "INSERT INTO workspaces (id,repo_id,branch,base,status,diff_add,diff_del,agent,last_updated,last_updated_display,pr_number,worktree_path,conversation_id,reasoning_effort,context_tier)
-                     VALUES ($id,$repo,$branch,$base,$status,$da,$dd,$agent,$lu,$lud,$pr,$wt,$conv,$re,$ctx)
-                     ON CONFLICT(id) DO UPDATE SET repo_id=$repo,branch=$branch,base=$base,status=$status,diff_add=$da,diff_del=$dd,agent=$agent,last_updated=$lu,last_updated_display=$lud,pr_number=$pr,worktree_path=$wt,conversation_id=$conv,reasoning_effort=$re,context_tier=$ctx"
+                    "INSERT INTO workspaces (id,repo_id,branch,base,status,diff_add,diff_del,agent,last_updated,last_updated_display,pr_number,worktree_path,conversation_id,reasoning_effort,context_tier,title)
+                     VALUES ($id,$repo,$branch,$base,$status,$da,$dd,$agent,$lu,$lud,$pr,$wt,$conv,$re,$ctx,$title)
+                     ON CONFLICT(id) DO UPDATE SET repo_id=$repo,branch=$branch,base=$base,status=$status,diff_add=$da,diff_del=$dd,agent=$agent,last_updated=$lu,last_updated_display=$lud,pr_number=$pr,worktree_path=$wt,conversation_id=$conv,reasoning_effort=$re,context_tier=$ctx,title=$title"
                     [ "$id", (WorkspaceId.value ws.Id).ToString() :> obj
                       "$repo", (RepositoryId.value ws.RepoId).ToString() :> obj
                       "$branch", ws.Branch.Value :> obj
@@ -303,7 +306,8 @@ type private SqliteWorkspaceStore(db: Db) =
                       "$wt", record.WorktreePath.Value :> obj
                       "$conv", (ConversationId.value record.ConversationId).ToString() :> obj
                       "$re", ws.ReasoningEffort :> obj
-                      "$ctx", ws.ContextTier :> obj ])
+                      "$ctx", ws.ContextTier :> obj
+                      "$title", ws.Title :> obj ])
 
             Task.FromResult(Success())
 

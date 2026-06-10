@@ -176,6 +176,39 @@ let ``RelativePath rejects leading hyphen`` (s: string) =
     | Error _ -> ()
     | Ok _ -> Assert.Fail $"Expected rejection for {s}"
 
+// ----- BranchName.TryFromTitle (rename slug) -----
+
+[<Theory>]
+[<InlineData("Add MCP Server", "add-mcp-server")>]
+[<InlineData("  Fix   the  Bug!! ", "fix-the-bug")>]
+[<InlineData("Refactor: Auth (v2)", "refactor-auth-v2")>]
+[<InlineData("UPPER lower 123", "upper-lower-123")>]
+[<InlineData("---hello---", "hello")>]
+let ``BranchName.TryFromTitle slugs a title into a valid branch name`` (title: string) (expected: string) =
+    match BranchName.TryFromTitle title with
+    | Ok b -> Assert.Equal(expected, b.Value)
+    | Error msg -> Assert.Fail $"Expected success for '{title}', got: {msg}"
+
+[<Theory>]
+[<InlineData("")>]
+[<InlineData("   ")>]
+[<InlineData("!!!")>]
+[<InlineData("…—")>]
+let ``BranchName.TryFromTitle rejects titles with no slug-able characters`` (title: string) =
+    match BranchName.TryFromTitle title with
+    | Error _ -> ()
+    | Ok b -> Assert.Fail $"Expected failure for '{title}', got: {b.Value}"
+
+[<Fact>]
+let ``BranchName.TryFromTitle output always passes TryCreate`` () =
+    for title in [ "Add MCP Server"; "weird @#$ chars"; "leading -dash title" ] do
+        match BranchName.TryFromTitle title with
+        | Ok b ->
+            match BranchName.TryCreate b.Value with
+            | Ok _ -> ()
+            | Error msg -> Assert.Fail $"slug '{b.Value}' should be a valid branch name: {msg}"
+        | Error _ -> ()
+
 // ----- Property tests with actual generators -----
 //
 // CLAUDE.md calls for PBT on every domain primitive. These properties hit

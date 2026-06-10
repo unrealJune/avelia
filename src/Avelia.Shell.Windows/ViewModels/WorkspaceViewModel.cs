@@ -142,6 +142,16 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
     /// </summary>
     public event EventHandler? WorkMerged;
 
+    /// <summary>
+    /// Raised when the conversation is renamed after load (the
+    /// <c>rename_workspace</c> tool or the Haiku auto-rename, delivered via the
+    /// live observe stream). The shell relays it to the workspace's tab + rail
+    /// row so their display name updates without a reload. The initial load-time
+    /// title assignment intentionally does <em>not</em> raise this — the tab/rail
+    /// seed their title from the persisted <c>Workspace.Title</c>.
+    /// </summary>
+    public event EventHandler<string>? TitleRenamed;
+
     partial void OnIsAgentWorkingChanged(bool value) => AgentWorkingChanged?.Invoke(this, value);
 
     /// <summary>
@@ -434,7 +444,11 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
                 );
                 if (titleChange is not null)
                 {
-                    _dispatcher.Post(() => Title = titleChange);
+                    _dispatcher.Post(() =>
+                    {
+                        Title = titleChange;
+                        TitleRenamed?.Invoke(this, titleChange);
+                    });
                 }
                 else
                 {

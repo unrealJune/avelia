@@ -37,6 +37,16 @@ type IWorkspaceService =
 
     abstract ArchiveAsync: id: WorkspaceId * CancellationToken -> Task<OperationResult<unit>>
 
+    /// Rename the workspace: set its human display <paramref name="title"/>
+    /// (shown in the tab + nav-rail) and rename its local git branch to a slug
+    /// derived from that title (e.g. <c>"Add MCP Server"</c> →
+    /// <c>add-mcp-server</c>). The worktree directory is left where it is — git
+    /// tracks worktrees by path, not branch name. Returns the updated
+    /// shell-facing workspace; a <c>Validation</c> error when the title yields
+    /// no usable branch slug; or the underlying git error if the rename fails
+    /// (e.g. the target branch name already exists).
+    abstract RenameAsync: id: WorkspaceId * title: string * CancellationToken -> Task<OperationResult<Workspace>>
+
     /// Permanently remove the workspace: tear down any running agent session,
     /// remove the git worktree from disk (force — discards uncommitted work in
     /// the worktree), best-effort delete its branch, and drop the store record.
@@ -256,6 +266,14 @@ type IGitOperations =
 
     abstract BranchCreateAsync:
         repo: RepoPath * branch: BranchName * baseRef: BranchName * CancellationToken -> Task<OperationResult<unit>>
+
+    /// Rename the branch currently checked out in <paramref name="worktree"/>
+    /// to <paramref name="newBranch"/> (<c>git branch -m &lt;new&gt;</c>, run
+    /// from inside the worktree so git rewrites that worktree's HEAD too).
+    /// Fails with an <c>External</c> error if a branch named
+    /// <paramref name="newBranch"/> already exists.
+    abstract BranchRenameAsync:
+        worktree: RepoPath * newBranch: BranchName * CancellationToken -> Task<OperationResult<unit>>
 
     /// Delete a branch from the repo. When <paramref name="force"/> is false
     /// the call fails for unmerged branches (git's <c>-d</c> behavior); when

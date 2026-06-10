@@ -28,8 +28,20 @@ public partial class WorkspaceItemViewModel : ObservableObject
 
     public WorkspaceId Id { get; }
 
+    /// <summary>
+    /// Human display title (e.g. "Add MCP Server"), set via the rename flow.
+    /// Empty falls back to <see cref="Branch"/> in <see cref="DisplayName"/>.
+    /// </summary>
     [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DisplayName))]
+    private string _title = string.Empty;
+
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(DisplayName))]
     private string _branch;
+
+    /// <summary>What the rail row shows: the title when set, else the branch name.</summary>
+    public string DisplayName => string.IsNullOrWhiteSpace(Title) ? Branch : Title;
 
     [ObservableProperty]
     private WorkspaceStatus _status;
@@ -51,5 +63,8 @@ public partial class WorkspaceItemViewModel : ObservableObject
     private bool _isActive;
 
     public static WorkspaceItemViewModel FromWorkspace(Workspace w) =>
-        new(id: w.Id, branch: w.Branch.Value, status: w.Status, add: w.DiffAdd, del: w.DiffDel);
+        new(id: w.Id, branch: w.Branch.Value, status: w.Status, add: w.DiffAdd, del: w.DiffDel)
+        {
+            Title = w.Title,
+        };
 }

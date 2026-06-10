@@ -18,6 +18,7 @@ let private seedWorkspace (stores: Stores) (worktree: string) =
           RepoId = RepositoryId.create ()
           Branch = BranchName.Create "f"
           Base = BranchName.Create "main"
+          Title = ""
           Status = WorkspaceStatus.Active
           DiffAdd = 0
           DiffDel = 0

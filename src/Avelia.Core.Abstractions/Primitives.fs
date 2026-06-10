@@ -62,6 +62,35 @@ type BranchName =
         | Ok b -> b
         | Error msg -> raise (ArgumentException(msg, nameof s))
 
+    /// Derive a git-safe branch slug from an arbitrary display title:
+    /// lower-cased, runs of non-alphanumerics collapsed to a single hyphen,
+    /// leading/trailing hyphens trimmed (e.g. <c>"Add MCP Server"</c> →
+    /// <c>"add-mcp-server"</c>). Returns <c>Error</c> when nothing usable
+    /// remains (empty/whitespace title, or all punctuation).
+    static member TryFromTitle(title: string) : Result<BranchName, string> =
+        if String.IsNullOrWhiteSpace title then
+            Error "Title cannot be null, empty, or whitespace."
+        else
+            let sb = System.Text.StringBuilder()
+            let mutable pendingHyphen = false
+
+            for ch in title.ToLowerInvariant() do
+                if (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9') then
+                    if pendingHyphen && sb.Length > 0 then
+                        sb.Append '-' |> ignore
+
+                    sb.Append ch |> ignore
+                    pendingHyphen <- false
+                else
+                    pendingHyphen <- true
+
+            let slug = sb.ToString()
+
+            if slug.Length = 0 then
+                Error "Title has no characters usable in a branch name."
+            else
+                BranchName.TryCreate slug
+
 /// An absolute path on disk to a repository working tree root.
 [<Struct>]
 type RepoPath =

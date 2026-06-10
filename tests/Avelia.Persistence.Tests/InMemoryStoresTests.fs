@@ -26,6 +26,7 @@ let private workspaceRecord (repoId: RepositoryId) =
           RepoId = repoId
           Branch = BranchName.Create "feature/x"
           Base = BranchName.Create "main"
+          Title = ""
           Status = WorkspaceStatus.Draft
           DiffAdd = 0
           DiffDel = 0
