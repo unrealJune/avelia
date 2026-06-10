@@ -9,6 +9,8 @@ open Avelia.Agent.Copilot
 let private config =
     { Workspace = RepoPath.Create "C:/work/repo"
       Model = Sonnet45
+      ReasoningEffort = ReasoningEffort.Medium
+      ContextTier = ContextTier.Default
       SystemPromptAppend = ""
       AllowedTools = [||]
       PermissionMode = PermissionMode.AcceptEdits
@@ -17,7 +19,10 @@ let private config =
 
 let private mkFactory (token: OperationResult<string>) (terminal: OperationResult<ITerminalSession>) =
     let tf = FakeTerminalSessionFactory terminal
-    let factory = CopilotAgentSessionFactory(FakeTokenSource token, tf, CopilotSettings.defaults)
+
+    let factory =
+        CopilotAgentSessionFactory(FakeTokenSource token, tf, CopilotSettings.defaults)
+
     factory :> IAgentSessionFactory, tf
 
 // ---------------------------------------------------------------------------
@@ -26,7 +31,8 @@ let private mkFactory (token: OperationResult<string>) (terminal: OperationResul
 
 [<Fact>]
 let ``headless propagates a token-source failure as-is`` () =
-    let factory, _ = mkFactory (Failure(AveliaError.Network "offline")) (Failure AveliaError.Unauthorized)
+    let factory, _ =
+        mkFactory (Failure(AveliaError.Network "offline")) (Failure AveliaError.Unauthorized)
 
     match (factory.StartHeadlessAsync(config, CancellationToken.None)).Result with
     | Failure(AveliaError.Network "offline") -> ()
@@ -66,7 +72,9 @@ let ``interactive spawns the configured CLI in the workspace and wraps the termi
 let ``interactive forwards interrupt, wait and dispose to the terminal`` () =
     let terminal = FakeTerminalSession({ ExitCode = 7; IsClean = false })
     let factory, _ = mkFactory (Success "tok") (Success(terminal :> ITerminalSession))
-    let session = (factory.StartInteractiveAsync(config, CancellationToken.None)).Result.Value
+
+    let session =
+        (factory.StartInteractiveAsync(config, CancellationToken.None)).Result.Value
 
     session.InterruptAsync(CancellationToken.None).Wait()
     Assert.Equal(1, terminal.Interrupted)
@@ -80,7 +88,8 @@ let ``interactive forwards interrupt, wait and dispose to the terminal`` () =
 
 [<Fact>]
 let ``interactive propagates a terminal-factory failure`` () =
-    let factory, _ = mkFactory (Success "tok") (Failure(AveliaError.External("conpty", "no pty")))
+    let factory, _ =
+        mkFactory (Success "tok") (Failure(AveliaError.External("conpty", "no pty")))
 
     match (factory.StartInteractiveAsync(config, CancellationToken.None)).Result with
     | Failure(AveliaError.External("conpty", "no pty")) -> ()

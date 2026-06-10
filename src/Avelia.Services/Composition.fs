@@ -27,7 +27,9 @@ module RealComposition =
         // survives for the app lifetime without an explicit handle. The .db
         // file persists across runs, so startup "hydration" is just the stores
         // reading the existing file.
-        let stores = (SqliteStores.create (Storage.defaultDbPath ()) DesignData.defaultAppearance).Stores
+        let stores =
+            (SqliteStores.create (Storage.defaultDbPath ()) DesignData.defaultAppearance).Stores
+
         let now () = DateTimeOffset.UtcNow
 
         // Auth + agent driver.
@@ -44,7 +46,7 @@ module RealComposition =
 
         // Orchestrator first (the workspace service needs its teardown delegate).
         let conversations =
-            new AgentConversationService(agentFactory, stores.Conversations, stores.Workspaces, now)
+            new AgentConversationService(agentFactory, stores.Conversations, stores.Workspaces, stores.Settings, now)
 
         let workspaces =
             WorkspaceService(
@@ -79,4 +81,5 @@ module RealComposition =
           Inbox = StubInboxService(Seq.empty<InboxItem>) :> IInboxService
           Settings = SettingsService(stores.Settings, credentials, tokenSource) :> ISettingsService
           Agents = agentFactory
-          Terminals = InteractiveTerminalService(stores.Workspaces, agentFactory) :> ITerminalLaunchService }
+          Terminals =
+            InteractiveTerminalService(stores.Workspaces, stores.Settings, agentFactory) :> ITerminalLaunchService }
