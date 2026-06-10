@@ -52,6 +52,11 @@ public sealed partial class TerminalView : UserControl, ITerminalRenderer
             await Web.EnsureCoreWebView2Async();
             _core = Web.CoreWebView2;
 
+            // Auto-grant clipboard read so the terminal's Ctrl+Shift+V / right-
+            // click paste works without surfacing a permission prompt. Writing
+            // (copy) needs no permission in a secure context.
+            _core.PermissionRequested += OnPermissionRequested;
+
             // Serve the packaged terminal assets from a virtual https origin so
             // xterm.js loads under a normal web security context.
             string assetRoot = Path.Combine(AppContext.BaseDirectory, "Assets", "terminal");
@@ -80,6 +85,20 @@ public sealed partial class TerminalView : UserControl, ITerminalRenderer
             _ready.TrySetResult();
         else
             _ready.TrySetException(new InvalidOperationException("terminal.html failed to load."));
+    }
+
+    private void OnPermissionRequested(
+        CoreWebView2 sender,
+        CoreWebView2PermissionRequestedEventArgs args
+    )
+    {
+        // The terminal page is the only content we host; allow it to read the
+        // clipboard so paste works silently. Other permission kinds fall
+        // through to the default.
+        if (args.PermissionKind == CoreWebView2PermissionKind.ClipboardRead)
+        {
+            args.State = CoreWebView2PermissionState.Allow;
+        }
     }
 
     public Task WriteAsync(ReadOnlyMemory<byte> bytes, CancellationToken cancellationToken)
@@ -157,6 +176,7 @@ public sealed partial class TerminalView : UserControl, ITerminalRenderer
         {
             _core.WebMessageReceived -= OnWebMessageReceived;
             _core.NavigationCompleted -= OnNavigationCompleted;
+            _core.PermissionRequested -= OnPermissionRequested;
         }
     }
 }

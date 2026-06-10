@@ -149,5 +149,14 @@
             Include="..\..\src\Avelia.Shell.Windows\Terminal\TerminalBridge.cs"
             Link="Terminal\TerminalBridge.cs"
         />
+        <!-- Markdown parser (chat transcript rendering). Pure logic, no WinUI deps. -->
+        <Compile
+            Include="..\..\src\Avelia.Shell.Windows\Controls\Markdown\MarkdownModels.cs"
+            Link="Controls\Markdown\MarkdownModels.cs"
+        />
+        <Compile
+            Include="..\..\src\Avelia.Shell.Windows\Controls\Markdown\MarkdownParser.cs"
+            Link="Controls\Markdown\MarkdownParser.cs"
+        />
     </ItemGroup>
 </Project>

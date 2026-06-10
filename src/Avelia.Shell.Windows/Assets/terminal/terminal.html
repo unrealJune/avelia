@@ -76,6 +76,57 @@
           if (host) host.postMessage(JSON.stringify({ t: "i", d: encodeBase64(encoder.encode(data)) }));
         });
 
+        // ---- Copy / paste ----------------------------------------------------
+        // Ctrl+C is reserved for SIGINT, so copy/paste use Ctrl+Shift+C /
+        // Ctrl+Shift+V (matching Windows Terminal). The page runs from an https
+        // virtual host, so navigator.clipboard is available; the host grants the
+        // clipboard-read permission so paste works without a prompt.
+        function copySelection() {
+          const sel = term.getSelection();
+          if (sel && navigator.clipboard) {
+            navigator.clipboard.writeText(sel).catch(function () {});
+          }
+        }
+
+        function pasteClipboard() {
+          if (!navigator.clipboard || !navigator.clipboard.readText) return;
+          navigator.clipboard
+            .readText()
+            .then(function (txt) {
+              if (txt) term.paste(txt);
+            })
+            .catch(function () {});
+        }
+
+        term.attachCustomKeyEventHandler(function (e) {
+          if (e.type !== "keydown") return true;
+          if (e.ctrlKey && e.shiftKey && (e.key === "C" || e.key === "c")) {
+            copySelection();
+            return false;
+          }
+          if (e.ctrlKey && e.shiftKey && (e.key === "V" || e.key === "v")) {
+            pasteClipboard();
+            return false;
+          }
+          // Shift+Insert paste (common terminal convention).
+          if (e.shiftKey && e.key === "Insert") {
+            pasteClipboard();
+            return false;
+          }
+          return true;
+        });
+
+        // Right-click: paste, or copy first if there is an active selection.
+        document.addEventListener("contextmenu", function (e) {
+          e.preventDefault();
+          if (term.hasSelection()) {
+            copySelection();
+            term.clearSelection();
+          } else {
+            pasteClipboard();
+          }
+        });
+
         // Viewport resize -> host (ConPTY ResizePseudoConsole).
         term.onResize(function (size) {
           if (host) host.postMessage(JSON.stringify({ t: "r", c: size.cols, r: size.rows }));
