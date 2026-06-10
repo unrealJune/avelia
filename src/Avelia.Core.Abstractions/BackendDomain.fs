@@ -189,6 +189,11 @@ type AgentEvent =
     | PermissionRequired of request: PermissionRequest
     | RetryAttempt of attempt: int * delayMs: int * reason: string
     | Warning of message: string
+    /// The agent finished responding to the latest user message and is idle,
+    /// ready for the next prompt. Distinct from <c>Ended</c>: the session stays
+    /// alive across turns, so a single session emits many <c>TurnEnded</c>s but
+    /// exactly one terminal <c>Ended</c>.
+    | TurnEnded
     /// Terminal event. Always emitted; the events stream completes after.
     | Ended of exitCode: int * totals: CostSnapshot
 
@@ -200,6 +205,7 @@ type AgentEvent =
             onPermission: System.Func<PermissionRequest, 'TResult>,
             onRetry: System.Func<int, int, string, 'TResult>,
             onWarning: System.Func<string, 'TResult>,
+            onTurnEnded: System.Func<'TResult>,
             onEnded: System.Func<int, CostSnapshot, 'TResult>
         ) : 'TResult =
         match this with
@@ -209,4 +215,5 @@ type AgentEvent =
         | PermissionRequired r -> onPermission.Invoke r
         | RetryAttempt(a, d, reason) -> onRetry.Invoke(a, d, reason)
         | Warning msg -> onWarning.Invoke msg
+        | TurnEnded -> onTurnEnded.Invoke()
         | Ended(code, totals) -> onEnded.Invoke(code, totals)

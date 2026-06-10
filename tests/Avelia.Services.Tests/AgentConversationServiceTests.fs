@@ -53,11 +53,11 @@ let private waitUntil (cond: unit -> bool) (timeoutMs: int) =
 
     cond ()
 
-/// Collect up to <paramref name="n"/> events from the stream, giving up after a
-/// timeout.
-let private collect (n: int) (stream: IAsyncEnumerable<MessageEvent>) =
+/// Collect up to <paramref name="n"/> updates from the stream, giving up after
+/// a timeout.
+let private collect (n: int) (stream: IAsyncEnumerable<ConversationUpdate>) =
     task {
-        let results = ResizeArray<MessageEvent>()
+        let results = ResizeArray<ConversationUpdate>()
         use timeout = new CancellationTokenSource(2000)
         let e = stream.GetAsyncEnumerator timeout.Token
 
@@ -101,11 +101,35 @@ let ``posting broadcasts the user message and starts a session`` () =
     Assert.True posted.IsSuccess
 
     match collecting.Result with
-    | [ UserMessageAppended m ] -> Assert.Equal("hello", m.Text)
+    | [ MessageAppended(UserMessageAppended m) ] -> Assert.Equal("hello", m.Text)
     | other -> failwithf "unexpected %A" other
 
     Assert.True(waitUntil (fun () -> factory.StartCount = 1) 2000)
     Assert.True(waitUntil (fun () -> factory.Sessions.Count = 1 && factory.Sessions.[0].Sent.Contains "hello") 2000)
+
+[<Fact>]
+let ``a session TurnEnded becomes a non-persisted TurnCompleted update`` () =
+    let stores = InMemoryStores.create DesignData.defaultAppearance
+    let _, convId = seed stores
+    let factory = FakeAgentSessionFactory()
+    let svc = mk factory stores
+    let isvc = svc :> IConversationService
+    use cts = new CancellationTokenSource()
+    let collecting = collect 2 (isvc.ObserveMessages(convId, cts.Token))
+
+    (isvc.PostUserMessageAsync(convId, "hi", [||], ct)).Result |> ignore
+    Assert.True(waitUntil (fun () -> factory.Sessions.Count = 1) 2000)
+
+    // The agent finishes the turn.
+    factory.Sessions.[0].Emit AgentEvent.TurnEnded
+
+    match collecting.Result with
+    | [ MessageAppended(UserMessageAppended _); TurnCompleted ] -> ()
+    | other -> failwithf "unexpected %A" other
+
+    // TurnCompleted is ephemeral — only the user message is persisted.
+    let conv = (stores.Conversations.GetAsync(convId, ct)).Result.Value
+    Assert.Equal(1, conv.Messages.Length)
 
 [<Fact>]
 let ``agent conversation events are mapped to the stream and persisted`` () =
@@ -129,7 +153,8 @@ let ``agent conversation events are mapped to the stream and persisted`` () =
     factory.Sessions.[0].Emit(AgentEvent.Conversation agentMsg)
 
     match collecting.Result with
-    | [ UserMessageAppended _; AgentMessageAppended a ] -> Assert.Equal("working on it", a.Text)
+    | [ MessageAppended(UserMessageAppended _); MessageAppended(AgentMessageAppended a) ] ->
+        Assert.Equal("working on it", a.Text)
     | other -> failwithf "unexpected %A" other
 
     // Both events are persisted in the conversation.
@@ -150,7 +175,11 @@ let ``multiple subscribers all receive the broadcast`` () =
 
     let isUser =
         function
+<<<<<<< HEAD
+        | [ MessageAppended(UserMessageAppended m) ] -> m.Text = "fanout"
+=======
         | [ UserMessageAppended m ] -> m.Text = "fanout"
+>>>>>>> origin/main
         | _ -> false
 
     Assert.True(isUser a.Result)
@@ -170,7 +199,8 @@ let ``a failed session start surfaces as an error message in chat`` () =
     Assert.True((isvc.PostUserMessageAsync(convId, "go", [||], ct)).Result.IsSuccess)
 
     match collecting.Result with
-    | [ UserMessageAppended _; AgentErrorAppended e ] -> Assert.Contains("authorized", e.Text)
+    | [ MessageAppended(UserMessageAppended _); MessageAppended(AgentErrorAppended e) ] ->
+        Assert.Contains("authorized", e.Text)
     | other -> failwithf "unexpected %A" other
 
 [<Fact>]
@@ -193,7 +223,7 @@ let ``two conversations get isolated sessions`` () =
     Assert.True(waitUntil (fun () -> factory.Sessions |> Seq.forall (fun s -> s.Sent.Count = 1)) 2000)
     // A's subscriber only saw A's message.
     match aEvents.Result with
-    | [ UserMessageAppended m ] -> Assert.Equal("a", m.Text)
+    | [ MessageAppended(UserMessageAppended m) ] -> Assert.Equal("a", m.Text)
     | other -> failwithf "unexpected %A" other
 
 [<Fact>]

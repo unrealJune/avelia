@@ -29,6 +29,25 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
     private Task? _observeTask;
     private ConversationId? _conversationId;
 
+    /// <summary>
+    /// User messages shown optimistically (see <see cref="SendMessage"/>) that
+    /// are still awaiting their live <c>ObserveMessages</c> echo. FIFO: the head
+    /// is the oldest un-echoed send. Touched only on the UI thread (send runs
+    /// there; echoes are marshalled via <see cref="_dispatcher"/>), so it needs
+    /// no lock.
+    /// </summary>
+    private readonly List<UserMessageViewModel> _pendingUserEchoes = new();
+
+    // -------- Turn-grouping projection state (UI thread only) --------
+    // A "turn" runs from one user message to the next. Within a turn, tool
+    // batches / change notes / superseded agent messages collapse into a single
+    // grey AgentActivityGroupViewModel; only the latest result candidate stays
+    // surfaced. The final result falls out naturally — nothing supersedes it —
+    // so no end-of-turn signal from the backend is required, and the same logic
+    // replays cleanly on reload.
+    private AgentActivityGroupViewModel? _currentGroup;
+    private MessageViewModel? _currentResult;
+
     public WorkspaceViewModel(AveliaServices services, IUiDispatcher dispatcher)
     {
         _services = services;
@@ -72,6 +91,16 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
     private bool _isLoading;
 
     /// <summary>
+    /// True from the moment the user sends a message until the agent produces
+    /// its first response event for that turn. Bound to a "Working…" indicator
+    /// above the composer so the app doesn't look hung during model latency.
+    /// Cleared by <see cref="ApplyMessageEvent"/> on the first agent-origin
+    /// event, by <see cref="LoadAsync"/> on (re)load, and on send failure.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isAgentWorking;
+
+    /// <summary>
     /// Threads in the pivot strip. Until multi-thread conversations land we
     /// expose a single thread per workspace; the strip still renders so the
     /// design's affordance is in place.
@@ -98,7 +127,11 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
 
         WorkspaceId = id;
         IsLoading = true;
+        IsAgentWorking = false;
         Messages.Clear();
+        _pendingUserEchoes.Clear();
+        _currentGroup = null;
+        _currentResult = null;
         Threads.Clear();
         ActiveThread = null;
         _conversationId = null;
@@ -147,8 +180,11 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
 
         foreach (var ev in conversation.Messages)
         {
-            Messages.Add(MessageViewModel.FromEvent(ev));
+            AppendProjected(MessageViewModel.FromEvent(ev));
         }
+        // A loaded conversation isn't actively running, so settle the last turn's
+        // activity block (drop its "working" spinner).
+        FinalizeCurrentTurn();
 
         // Single thread strip for now — design's pivot shows one active thread.
         var thread = new ChatThreadViewModel(
@@ -203,11 +239,38 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
         {
             return;
         }
-        // Clear composer optimistically; ObserveMessages echoes the new event.
+        // Clear the composer and surface the message immediately so the
+        // transcript updates the instant the user hits Send — independent of
+        // backend latency. The live ObserveMessages echo of this same message
+        // is suppressed in ApplyMessageEvent via _pendingUserEchoes. Flip the
+        // working indicator on now so the gap before the agent's first event
+        // doesn't read as a hang.
         ComposerText = string.Empty;
-        await _services
+        var optimistic = new UserMessageViewModel(
+            Guid.NewGuid(),
+            DateTimeOffset.Now,
+            text,
+            Array.Empty<string>()
+        );
+        _pendingUserEchoes.Add(optimistic);
+        AppendProjected(optimistic);
+        IsAgentWorking = true;
+
+        // ConfigureAwait(true): the rollback below touches UI-thread state, so
+        // resume on the captured context. The stub completes synchronously; the
+        // real backend resumes on the WinUI dispatcher.
+        var result = await _services
             .Conversations.PostUserMessageAsync(_conversationId, text, Array.Empty<string>(), ct)
-            .ConfigureAwait(false);
+            .ConfigureAwait(true);
+
+        if (!result.IsSuccess)
+        {
+            // The post never reached the agent, so no echo will arrive — undo
+            // the optimistic message and stop the spinner.
+            _pendingUserEchoes.Remove(optimistic);
+            Messages.Remove(optimistic);
+            IsAgentWorking = false;
+        }
     }
 
     // -------- Subscription lifecycle --------
@@ -235,7 +298,7 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
         try
         {
             await foreach (
-                var ev in _services
+                var update in _services
                     .Conversations.ObserveMessages(conversationId, token)
                     .ConfigureAwait(false)
             )
@@ -244,8 +307,7 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
                 {
                     break;
                 }
-                var vm = MessageViewModel.FromEvent(ev);
-                _dispatcher.Post(() => Messages.Add(vm));
+                _dispatcher.Post(() => ApplyUpdate(update));
             }
         }
         catch (OperationCanceledException)
@@ -263,6 +325,145 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
         }
     }
 
+<<<<<<< HEAD
+    /// <summary>
+    /// Apply one live conversation update on the UI thread (posted via
+    /// <see cref="_dispatcher"/>). A <c>TurnCompleted</c> marker settles the
+    /// in-flight turn; otherwise the wrapped transcript event is projected.
+    /// </summary>
+    private void ApplyUpdate(ConversationUpdate update)
+    {
+        if (update.IsTurnCompleted)
+        {
+            OnTurnCompleted();
+            return;
+        }
+        ApplyMessageEvent(update.Message);
+    }
+
+    /// <summary>
+    /// The agent finished the current turn. Stop the "working" affordances and
+    /// finalize the turn's activity group, then clear the trackers so the next
+    /// turn starts fresh. Driven by the backend's explicit turn signal rather
+    /// than inferred from message content.
+    /// </summary>
+    private void OnTurnCompleted()
+    {
+        IsAgentWorking = false;
+        FinalizeCurrentTurn();
+        _currentGroup = null;
+        _currentResult = null;
+    }
+
+    /// <summary>
+    /// Apply one live <see cref="MessageEvent"/> to the transcript. Runs on the
+    /// UI thread, so access to <see cref="Messages"/> and
+    /// <see cref="_pendingUserEchoes"/> is serialized. Suppresses the echo of a
+    /// message the user just sent (already shown optimistically).
+    /// </summary>
+    private void ApplyMessageEvent(MessageEvent ev)
+    {
+        var vm = MessageViewModel.FromEvent(ev);
+
+        if (
+            vm is UserMessageViewModel user
+            && _pendingUserEchoes.Count > 0
+            && _pendingUserEchoes[0].Text == user.Text
+        )
+        {
+            // Server echo of an optimistically-shown user message — drop it so
+            // the message isn't duplicated, keeping the instance already on screen.
+            _pendingUserEchoes.RemoveAt(0);
+            return;
+        }
+
+        AppendProjected(vm);
+    }
+
+    /// <summary>
+    /// Route a projected message VM into the transcript, collapsing a turn's
+    /// intermediate activity into a single grey group and surfacing only its
+    /// latest result. Runs on the UI thread (hydration, optimistic send, and the
+    /// dispatched live echo all call it), so the grouping trackers need no lock.
+    /// </summary>
+    private void AppendProjected(MessageViewModel vm)
+    {
+        switch (vm)
+        {
+            case UserMessageViewModel:
+                // New turn: settle the previous turn, then surface the user line.
+                FinalizeCurrentTurn();
+                _currentGroup = null;
+                _currentResult = null;
+                Messages.Add(vm);
+                break;
+
+            case AgentMessageViewModel
+            or AgentMarkdownViewModel
+            or AgentErrorViewModel:
+                // Result candidate. Demote any prior result into the group (it's
+                // no longer the turn's last word), then surface this one. The
+                // group stays "active" until the turn's explicit completion.
+                if (_currentResult is not null)
+                {
+                    DemoteResultIntoGroup();
+                }
+                _currentResult = vm;
+                Messages.Add(vm);
+                break;
+
+            default:
+                // Activity (tool batch / change note): always collapses. Any
+                // surfaced result is demoted first since activity now trails it.
+                if (_currentResult is not null)
+                {
+                    DemoteResultIntoGroup();
+                }
+                EnsureGroup();
+                _currentGroup!.Add(vm);
+                break;
+        }
+    }
+
+    private void EnsureGroup()
+    {
+        if (_currentGroup is null)
+        {
+            _currentGroup = new AgentActivityGroupViewModel();
+            Messages.Add(_currentGroup);
+        }
+    }
+
+    private void DemoteResultIntoGroup()
+    {
+        if (_currentResult is null)
+        {
+            return;
+        }
+        Messages.Remove(_currentResult);
+        EnsureGroup();
+        _currentGroup!.Add(_currentResult);
+        _currentResult = null;
+    }
+
+    private void FinalizeCurrentTurn()
+    {
+        if (_currentGroup is not null)
+        {
+            _currentGroup.IsActive = false;
+        }
+    }
+
+    private static string FormatModel(ModelChoice agent) =>
+        agent.Match<string>(
+            sonnet45: () => "Sonnet 4.5",
+            opus41: () => "Opus 4.1",
+            haiku45: () => "Haiku 4.5",
+            custom: name => name
+        );
+
+=======
+>>>>>>> origin/main
     private async Task StopObservingAsync()
     {
         if (_observeCts is null)

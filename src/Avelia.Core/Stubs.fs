@@ -146,18 +146,20 @@ type StubConversationService
     // events out to every subscriber's channel; subscribers remove themselves
     // when their cancellation token is signalled. The lock guards mutation of
     // <c>subscribers</c> across post and subscribe operations.
-    let subscribers = Dictionary<ConversationId, ResizeArray<Channel<MessageEvent>>>()
+    let subscribers =
+        Dictionary<ConversationId, ResizeArray<Channel<ConversationUpdate>>>()
+
     let gate = obj ()
 
-    let broadcast (conversationId: ConversationId) (event: MessageEvent) =
-        let snapshot: Channel<MessageEvent> array =
+    let broadcast (conversationId: ConversationId) (update: ConversationUpdate) =
+        let snapshot: Channel<ConversationUpdate> array =
             lock gate (fun () ->
                 match subscribers.TryGetValue conversationId with
                 | true, list -> list.ToArray()
                 | _ -> Array.empty)
 
         for ch in snapshot do
-            ch.Writer.TryWrite event |> ignore
+            ch.Writer.TryWrite update |> ignore
 
     interface IConversationService with
         member _.GetForWorkspaceAsync(workspaceId, ct) =
@@ -180,7 +182,7 @@ type StubConversationService
 
                 let event = UserMessageAppended msg
                 byId.[conversationId] <- Conversation.applyEvent conv event
-                broadcast conversationId event
+                broadcast conversationId (MessageAppended event)
                 Task.FromResult(Success msg)
             | _ -> Task.FromResult(notFound $"Conversation {conversationId}")
 
@@ -193,14 +195,14 @@ type StubConversationService
             let opts =
                 UnboundedChannelOptions(SingleReader = true, AllowSynchronousContinuations = true)
 
-            let channel = Channel.CreateUnbounded<MessageEvent>(opts)
+            let channel = Channel.CreateUnbounded<ConversationUpdate>(opts)
 
             lock gate (fun () ->
                 let list =
                     match subscribers.TryGetValue conversationId with
                     | true, l -> l
                     | _ ->
-                        let l = ResizeArray<Channel<MessageEvent>>()
+                        let l = ResizeArray<Channel<ConversationUpdate>>()
                         subscribers.[conversationId] <- l
                         l
 

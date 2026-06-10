@@ -37,6 +37,34 @@ type IWorkspaceService =
 
     abstract ArchiveAsync: id: WorkspaceId * CancellationToken -> Task<OperationResult<unit>>
 
+/// A live update on a conversation stream: either a newly-appended transcript
+/// event, or a turn-lifecycle marker.
+///
+/// Only <c>MessageAppended</c> carries persisted state — it wraps the
+/// event-sourced <c>MessageEvent</c> that was appended to the conversation log.
+/// <c>TurnCompleted</c> is an ephemeral control signal (not persisted): the
+/// agent finished responding to the latest prompt. A consumer uses it to settle
+/// the in-flight turn — stop the "working" affordance and lock in the final
+/// result — without guessing from message content.
+type ConversationUpdate =
+    | MessageAppended of event: MessageEvent
+    | TurnCompleted
+
+    /// The appended transcript event. Throws if this is a <c>TurnCompleted</c>
+    /// marker — guard with the auto-generated <c>IsTurnCompleted</c> first.
+    member this.Message =
+        match this with
+        | MessageAppended e -> e
+        | TurnCompleted -> invalidOp "ConversationUpdate is TurnCompleted; check IsTurnCompleted first."
+
+    /// C#-friendly visitor over the two cases.
+    member this.Match<'TResult>
+        (onMessage: System.Func<MessageEvent, 'TResult>, onTurnCompleted: System.Func<'TResult>)
+        : 'TResult =
+        match this with
+        | MessageAppended e -> onMessage.Invoke e
+        | TurnCompleted -> onTurnCompleted.Invoke()
+
 type IConversationService =
     abstract GetForWorkspaceAsync: workspaceId: WorkspaceId * CancellationToken -> Task<OperationResult<Conversation>>
 
@@ -44,9 +72,14 @@ type IConversationService =
         conversationId: ConversationId * text: string * refs: string array * CancellationToken ->
             Task<OperationResult<UserMessage>>
 
-    /// Stream of events appended to the conversation *after* the subscription
+    /// Stream of updates appended to the conversation *after* the subscription
     /// starts. Pairs with <c>GetForWorkspaceAsync</c> for the initial snapshot.
     /// The enumerator completes when the cancellation token is signalled.
+    ///
+    /// Each update is either a newly-appended transcript event
+    /// (<c>MessageAppended</c>) or a turn-lifecycle marker
+    /// (<c>TurnCompleted</c>), delivered in order so a consumer can group a
+    /// turn's events and know exactly when the turn settles.
     ///
     /// <para>Threading contract: the shell consumes this on the UI thread (no
     /// <c>Task.Run</c> wrapping the iteration) so that synchronous channel
@@ -56,7 +89,7 @@ type IConversationService =
     /// <c>MoveNextAsync</c> must yield promptly. Real backends with sync I/O
     /// (database setup, file watcher registration) should hop to a worker
     /// thread internally and surface the stream as a non-blocking enumerable.</para>
-    abstract ObserveMessages: conversationId: ConversationId * CancellationToken -> IAsyncEnumerable<MessageEvent>
+    abstract ObserveMessages: conversationId: ConversationId * CancellationToken -> IAsyncEnumerable<ConversationUpdate>
 
 type IDiffService =
     abstract GetWorkspaceDiffAsync: workspaceId: WorkspaceId * CancellationToken -> Task<IReadOnlyList<DiffFile>>
