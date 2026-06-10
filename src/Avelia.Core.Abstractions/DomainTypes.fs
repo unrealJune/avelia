@@ -17,6 +17,10 @@ type WorkspaceStatus =
     | Conflict
     | Archived
     | Open
+    /// The agent is mid-run, or has produced changes that haven't been merged
+    /// yet. Surfaced as a yellow status dot in the shell and held until the
+    /// workspace's pull request is merged.
+    | Working
 
 /// Which Claude model the workspace's agent is running.
 type ModelChoice =

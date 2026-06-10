@@ -6,15 +6,60 @@
     xmlns:conv="using:Avelia.Shell.Windows.Converters"
 >
     <UserControl.Resources>
-        <conv:WorkspaceStatusToBrushConverter x:Key="StatusBrush" />
         <conv:WorkspaceStatusToLabelConverter x:Key="StatusLabel" />
     </UserControl.Resources>
 
-    <Ellipse
-        x:Name="Dot"
-        Width="8"
-        Height="8"
-        Fill="{x:Bind Status, Converter={StaticResource StatusBrush}, Mode=OneWay}"
-        ToolTipService.ToolTip="{x:Bind Status, Converter={StaticResource StatusLabel}, Mode=OneWay}"
-    />
+    <!--
+        The dot colour is driven by visual states (toggled from code-behind on
+        Status change) rather than a brush-resolving converter: a converter that
+        reads Application.Current.Resources can't see brushes that live in a
+        merged dictionary's ThemeDictionaries (Tokens.xaml), so it always fell
+        back to grey. {ThemeResource} setters resolve against the element's live
+        theme and re-resolve on Light/Dark switch.
+    -->
+    <Grid>
+        <VisualStateManager.VisualStateGroups>
+            <VisualStateGroup x:Name="StatusStates">
+                <!-- Draft / Archived: the Ellipse's default tertiary fill. -->
+                <VisualState x:Name="DraftState" />
+                <VisualState x:Name="ArchivedState" />
+                <VisualState x:Name="ActiveState">
+                    <VisualState.Setters>
+                        <Setter
+                            Target="Dot.Fill"
+                            Value="{ThemeResource AveliaAccentDefaultBrush}"
+                        />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="WorkingState">
+                    <VisualState.Setters>
+                        <Setter Target="Dot.Fill" Value="{ThemeResource AveliaWarningBrush}" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="ReadyState">
+                    <VisualState.Setters>
+                        <Setter Target="Dot.Fill" Value="{ThemeResource AveliaSuccessBrush}" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="ConflictState">
+                    <VisualState.Setters>
+                        <Setter Target="Dot.Fill" Value="{ThemeResource AveliaDangerBrush}" />
+                    </VisualState.Setters>
+                </VisualState>
+                <VisualState x:Name="OpenState">
+                    <VisualState.Setters>
+                        <Setter Target="Dot.Fill" Value="{ThemeResource AveliaInfoBrush}" />
+                    </VisualState.Setters>
+                </VisualState>
+            </VisualStateGroup>
+        </VisualStateManager.VisualStateGroups>
+
+        <Ellipse
+            x:Name="Dot"
+            Width="8"
+            Height="8"
+            Fill="{ThemeResource AveliaTextTertiaryBrush}"
+            ToolTipService.ToolTip="{x:Bind Status, Converter={StaticResource StatusLabel}, Mode=OneWay}"
+        />
+    </Grid>
 </UserControl>

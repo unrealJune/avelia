@@ -42,7 +42,8 @@ module Gen =
               WorkspaceStatus.Ready
               WorkspaceStatus.Conflict
               WorkspaceStatus.Archived
-              WorkspaceStatus.Open ]
+              WorkspaceStatus.Open
+              WorkspaceStatus.Working ]
 
     let modelChoice: Gen<ModelChoice> = Gen.elements [ Sonnet45; Opus41; Haiku45 ]
 

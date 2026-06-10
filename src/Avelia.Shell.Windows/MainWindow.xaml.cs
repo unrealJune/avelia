@@ -55,6 +55,16 @@ public sealed partial class MainWindow : Window
 
     public MainViewModel ViewModel { get; }
 
+    /// <summary>
+    /// The workspace VM the shell is currently relaying "agent working" / merge
+    /// events from, plus its handlers — so a renavigation can detach the old
+    /// page's VM before attaching the new one. The page Frame builds a fresh
+    /// <see cref="WorkspacePage"/> (and VM) per navigation.
+    /// </summary>
+    private WorkspaceViewModel? _wiredWorkspaceViewModel;
+    private EventHandler<bool>? _workspaceWorkingHandler;
+    private EventHandler? _workspaceMergedHandler;
+
     public MainWindow(ThemeService themeService, AveliaServices services)
     {
         _themeService = themeService;
@@ -198,6 +208,7 @@ public sealed partial class MainWindow : Window
         var active = ViewModel.ActiveTab;
         if (active is null)
         {
+            DetachWorkspaceStatusRelay();
             ContentFrame.Navigate(
                 typeof(PlaceholderPage),
                 new PlaceholderPageArgs(
@@ -210,6 +221,56 @@ public sealed partial class MainWindow : Window
 
         var args = new WorkspacePageArgs(active.Id, _services, _uiDispatcher, _notifications);
         ContentFrame.Navigate(typeof(WorkspacePage), args, new DrillInNavigationTransitionInfo());
+
+        // The page creates its WorkspaceViewModel synchronously in OnNavigatedTo
+        // (before its first await), so it's available now. Relay its live
+        // "agent working" + merge signals onto the workspace's tab/rail dot.
+        AttachWorkspaceStatusRelay(ContentFrame.Content as WorkspacePage, active.Id);
+    }
+
+    /// <summary>
+    /// Subscribe to the active page VM's working/merge events and forward them
+    /// to the <see cref="MainViewModel"/> so the tab + rail status dot tracks
+    /// the agent's progress and the merge that ends it.
+    /// </summary>
+    private void AttachWorkspaceStatusRelay(WorkspacePage? page, WorkspaceId id)
+    {
+        DetachWorkspaceStatusRelay();
+
+        var vm = page?.ViewModel;
+        if (vm is null)
+        {
+            return;
+        }
+
+        _workspaceWorkingHandler = (_, working) => ViewModel.SetWorkspaceAgentWorking(id, working);
+        _workspaceMergedHandler = (_, _) => ViewModel.SetWorkspaceMerged(id);
+
+        vm.AgentWorkingChanged += _workspaceWorkingHandler;
+        vm.WorkMerged += _workspaceMergedHandler;
+        _wiredWorkspaceViewModel = vm;
+
+        // Seed the current state in case the agent is already mid-run.
+        ViewModel.SetWorkspaceAgentWorking(id, vm.IsAgentWorking);
+    }
+
+    private void DetachWorkspaceStatusRelay()
+    {
+        if (_wiredWorkspaceViewModel is null)
+        {
+            return;
+        }
+        if (_workspaceWorkingHandler is not null)
+        {
+            _wiredWorkspaceViewModel.AgentWorkingChanged -= _workspaceWorkingHandler;
+        }
+        if (_workspaceMergedHandler is not null)
+        {
+            _wiredWorkspaceViewModel.WorkMerged -= _workspaceMergedHandler;
+        }
+        _wiredWorkspaceViewModel = null;
+        _workspaceWorkingHandler = null;
+        _workspaceMergedHandler = null;
     }
 
     private void ApplyRailDisplayMode()

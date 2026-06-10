@@ -94,6 +94,21 @@ public class PrPaneViewModelTests
     }
 
     [Fact]
+    public async Task MergeCommand_OnSuccess_RaisesMergedEvent()
+    {
+        var (vm, _) = MakeVm();
+        await vm.LoadAsync(DesignData.archiveWorkspaceId);
+
+        var merged = 0;
+        vm.Merged += (_, _) => merged++;
+
+        Assert.True(vm.MergeCommand.CanExecute(null));
+        await vm.MergeCommand.ExecuteAsync(null);
+
+        Assert.Equal(1, merged);
+    }
+
+    [Fact]
     public async Task MergeCommand_OnSuccess_MarksMergedAndFlipsMergeReady()
     {
         var (vm, _) = MakeVm();

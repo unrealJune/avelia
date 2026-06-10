@@ -41,6 +41,29 @@ public class WorkspaceViewModelTests
     }
 
     [Fact]
+    public async Task AgentWorkingChanged_FiresOnSendAndTurnCompleted()
+    {
+        var fake = new FakeConversationService(DesignData.archiveConversation);
+        var vm = new WorkspaceViewModel(ServicesWith(fake), new ImmediateUiDispatcher());
+        await vm.LoadAsync(DesignData.archiveWorkspaceId);
+
+        var transitions = new List<bool>();
+        vm.AgentWorkingChanged += (_, working) => transitions.Add(working);
+
+        vm.ComposerText = "hi";
+        await vm.SendMessageCommand.ExecuteAsync(null);
+        Assert.Equal(new[] { true }, transitions);
+
+        // Mid-turn replies don't end the turn, so no further transitions fire.
+        fake.PushAgentMessage("on it");
+        Assert.Equal(new[] { true }, transitions);
+
+        // Turn completion flips it back off — the spinner stops.
+        fake.PushTurnCompleted();
+        Assert.Equal(new[] { true, false }, transitions);
+    }
+
+    [Fact]
     public async Task LoadAsync_GroupsTurnsAndSurfacesFinalResult()
     {
         var vm = MakeVm();

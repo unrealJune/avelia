@@ -358,6 +358,72 @@ public partial class MainViewModel : ObservableObject
     }
 
     /// <summary>
+    /// Reflect the active workspace's live "agent working" state onto its tab +
+    /// rail dot. When work starts the dot goes yellow (<c>Working</c>) and a
+    /// spinner shows; the yellow dot is sticky and is <em>not</em> cleared when
+    /// the turn ends (only the spinner stops) — it persists until the PR merges
+    /// (see <see cref="SetWorkspaceMerged"/>).
+    /// </summary>
+    public void SetWorkspaceAgentWorking(WorkspaceId id, bool working)
+    {
+        var item = FindRailItem(id);
+        if (item is not null)
+        {
+            item.IsAgentWorking = working;
+            if (working)
+            {
+                item.Status = WorkspaceStatus.Working;
+            }
+        }
+
+        var tab = OpenTabs.FirstOrDefault(t => t.Id.Equals(id));
+        if (tab is not null)
+        {
+            tab.IsAgentWorking = working;
+            if (working)
+            {
+                tab.Status = WorkspaceStatus.Working;
+            }
+        }
+    }
+
+    /// <summary>
+    /// The workspace's pull request merged: drop the sticky yellow "working"
+    /// dot and the spinner, settling the dot to <c>Ready</c> (green).
+    /// </summary>
+    public void SetWorkspaceMerged(WorkspaceId id)
+    {
+        var item = FindRailItem(id);
+        if (item is not null)
+        {
+            item.IsAgentWorking = false;
+            item.Status = WorkspaceStatus.Ready;
+        }
+
+        var tab = OpenTabs.FirstOrDefault(t => t.Id.Equals(id));
+        if (tab is not null)
+        {
+            tab.IsAgentWorking = false;
+            tab.Status = WorkspaceStatus.Ready;
+        }
+    }
+
+    private WorkspaceItemViewModel? FindRailItem(WorkspaceId id)
+    {
+        foreach (var group in RepoGroups)
+        {
+            foreach (var item in group.Workspaces)
+            {
+                if (item.Id.Equals(id))
+                {
+                    return item;
+                }
+            }
+        }
+        return null;
+    }
+
+    /// <summary>
     /// Map a live <see cref="WorktreeStatus"/> to the status-dot vocabulary:
     /// conflicted files → Conflict; any uncommitted change → Active; clean but
     /// ahead of upstream → Ready; otherwise the workspace's stored status.
@@ -392,6 +458,13 @@ public partial class MainViewModel : ObservableObject
         {
             foreach (var item in group.Workspaces.ToList())
             {
+                // A workspace showing the sticky "working" dot (agent ran, not
+                // yet merged) keeps it until the merge lands — the git sweep
+                // must not downgrade it back to a diff-derived colour.
+                if (item.Status.IsWorking)
+                {
+                    continue;
+                }
                 try
                 {
                     var result = await _services

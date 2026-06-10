@@ -45,13 +45,20 @@ module Workspace =
     /// (but reversible via un-archive into Active).
     let canTransition (from: WorkspaceStatus) (to': WorkspaceStatus) : bool =
         match from, to' with
-        | WorkspaceStatus.Draft, WorkspaceStatus.Active -> true
+        | WorkspaceStatus.Draft, (WorkspaceStatus.Active | WorkspaceStatus.Working) -> true
         | WorkspaceStatus.Active,
-          (WorkspaceStatus.Ready | WorkspaceStatus.Conflict | WorkspaceStatus.Archived | WorkspaceStatus.Open) -> true
+          (WorkspaceStatus.Ready | WorkspaceStatus.Conflict | WorkspaceStatus.Archived | WorkspaceStatus.Open | WorkspaceStatus.Working) ->
+            true
         | WorkspaceStatus.Open,
-          (WorkspaceStatus.Ready | WorkspaceStatus.Conflict | WorkspaceStatus.Archived | WorkspaceStatus.Active) -> true
-        | WorkspaceStatus.Ready, (WorkspaceStatus.Active | WorkspaceStatus.Archived | WorkspaceStatus.Open) -> true
-        | WorkspaceStatus.Conflict, (WorkspaceStatus.Active | WorkspaceStatus.Archived) -> true
+          (WorkspaceStatus.Ready | WorkspaceStatus.Conflict | WorkspaceStatus.Archived | WorkspaceStatus.Active | WorkspaceStatus.Working) ->
+            true
+        | WorkspaceStatus.Ready,
+          (WorkspaceStatus.Active | WorkspaceStatus.Archived | WorkspaceStatus.Open | WorkspaceStatus.Working) -> true
+        | WorkspaceStatus.Conflict, (WorkspaceStatus.Active | WorkspaceStatus.Archived | WorkspaceStatus.Working) ->
+            true
+        | WorkspaceStatus.Working,
+          (WorkspaceStatus.Ready | WorkspaceStatus.Conflict | WorkspaceStatus.Open | WorkspaceStatus.Active | WorkspaceStatus.Archived) ->
+            true
         | WorkspaceStatus.Archived, WorkspaceStatus.Active -> true
         | a, b when a = b -> true // idempotent: re-asserting current state is allowed
         | _ -> false

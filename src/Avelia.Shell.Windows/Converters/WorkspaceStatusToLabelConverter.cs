@@ -26,6 +26,8 @@ public sealed class WorkspaceStatusToLabelConverter : IValueConverter
             return "Draft";
         if (status.IsActive)
             return "Active";
+        if (status.IsWorking)
+            return "Working";
         if (status.IsOpen)
             return "Open";
         return "";

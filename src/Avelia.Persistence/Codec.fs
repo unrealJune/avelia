@@ -95,6 +95,7 @@ module Codec =
         | WorkspaceStatus.Conflict -> "conflict"
         | WorkspaceStatus.Archived -> "archived"
         | WorkspaceStatus.Open -> "open"
+        | WorkspaceStatus.Working -> "working"
 
     let statusOfString (s: string) : WorkspaceStatus =
         match s with
@@ -103,6 +104,7 @@ module Codec =
         | "conflict" -> WorkspaceStatus.Conflict
         | "archived" -> WorkspaceStatus.Archived
         | "open" -> WorkspaceStatus.Open
+        | "working" -> WorkspaceStatus.Working
         | _ -> WorkspaceStatus.Draft
 
     // -- DateTimeOffset (round-trip "o") -------------------------------------
