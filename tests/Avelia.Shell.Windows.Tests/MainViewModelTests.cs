@@ -1,6 +1,7 @@
 using System.Linq;
 using Avelia.Core;
 using Avelia.Core.Abstractions;
+using Avelia.Shell.Windows.Services;
 using Avelia.Shell.Windows.ViewModels;
 using Xunit;
 using Task = System.Threading.Tasks.Task;
@@ -10,6 +11,46 @@ namespace Avelia.Shell.Windows.Tests;
 public class MainViewModelTests
 {
     private static MainViewModel MakeVm() => new(Composition.buildStubServices());
+
+    /// <summary>
+    /// Clone the stub service graph but swap in a custom conversation service so
+    /// a test can drive title-rename events into the rail's observe stream.
+    /// </summary>
+    private static AveliaServices ServicesWith(IConversationService conversations)
+    {
+        var s = Composition.buildStubServices();
+        return new AveliaServices(
+            s.Repositories,
+            s.Workspaces,
+            conversations,
+            s.Diffs,
+            s.PullRequests,
+            s.Runs,
+            s.Inbox,
+            s.Settings,
+            s.ModelCatalog,
+            s.Agents,
+            s.Terminals
+        );
+    }
+
+    [Fact]
+    public async Task TitleChanged_RenamesRailWorkspaceLabel()
+    {
+        var fake = new FakeConversationService(DesignData.archiveConversation);
+        var vm = new MainViewModel(ServicesWith(fake), new ImmediateUiDispatcher());
+        await vm.InitializeAsync();
+
+        var item = vm
+            .RepoGroups.SelectMany(g => g.Workspaces)
+            .First(w => w.Id.Equals(DesignData.archiveWorkspaceId));
+
+        // The Haiku auto-rename arrives over the live conversation stream and
+        // replaces the auto-generated branch label in the nav rail.
+        fake.PushTitleChanged("Add Login Flow");
+
+        Assert.Equal("Add Login Flow", item.DisplayName);
+    }
 
     [Fact]
     public void Title_DefaultsToAvelia()

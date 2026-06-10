@@ -21,6 +21,7 @@ public partial class WorkspaceItemViewModel : ObservableObject
     {
         Id = id;
         _branch = branch;
+        _displayName = branch;
         _status = status;
         _add = add;
         _del = del;
@@ -30,6 +31,15 @@ public partial class WorkspaceItemViewModel : ObservableObject
 
     [ObservableProperty]
     private string _branch;
+
+    /// <summary>
+    /// Label shown in the nav rail. Defaults to the (auto-generated) branch
+    /// name and is replaced by the conversation's auto-renamed title once the
+    /// Haiku summariser produces one. Kept in sync by <c>MainViewModel</c>'s
+    /// per-workspace title watcher.
+    /// </summary>
+    [ObservableProperty]
+    private string _displayName;
 
     [ObservableProperty]
     private WorkspaceStatus _status;

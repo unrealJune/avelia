@@ -95,7 +95,9 @@ public class WorkspaceViewModelTests
 
         Assert.Single(vm.Threads);
         Assert.NotNull(vm.ActiveThread);
-        Assert.Equal("Main", vm.ActiveThread!.Title);
+        // The single thread mirrors the conversation title so the auto-rename
+        // surfaces in the pivot strip.
+        Assert.Equal(DesignData.archiveConversation.Title, vm.ActiveThread!.Title);
     }
 
     [Fact]
@@ -284,6 +286,23 @@ public class WorkspaceViewModelTests
         // the conversation title.
         fake.PushTurnCompleted();
         Assert.Equal(new[] { vm.Title }, notifications.Notified);
+    }
+
+    [Fact]
+    public async Task TitleChanged_RenamesConversationAndPivotThread()
+    {
+        var fake = new FakeConversationService(DesignData.archiveConversation);
+        var vm = new WorkspaceViewModel(ServicesWith(fake), new ImmediateUiDispatcher());
+        await vm.LoadAsync(DesignData.archiveWorkspaceId);
+
+        // The auto-rename arrives as a TitleChanged update over the live stream.
+        fake.PushTitleChanged("Add Login Flow");
+
+        // It updates both the conversation title and the visible pivot label,
+        // and never leaks into the transcript as a chat bubble.
+        Assert.Equal("Add Login Flow", vm.Title);
+        Assert.NotNull(vm.ActiveThread);
+        Assert.Equal("Add Login Flow", vm.ActiveThread!.Title);
     }
 
     [Fact]
@@ -480,6 +499,9 @@ internal sealed class FakeConversationService : IConversationService
         );
         Broadcast(MessageEvent.NewToolBatchAppended(batch));
     }
+
+    /// <summary>Emit a Haiku-style display-title rename.</summary>
+    public void PushTitleChanged(string title) => Broadcast(MessageEvent.NewTitleChanged(title));
 
     /// <summary>Signal the end of the agent's turn (what the real service emits
     /// when the headless session's send completes).</summary>
