@@ -291,6 +291,64 @@ public sealed partial class MainWindow : Window
         }
     }
 
+    // The TabView's "+" button starts a new workspace. It first lets the user
+    // pick which repository to branch from; with no repos added yet there is
+    // nothing to choose, so it falls back to the Add repository flow.
+    private void OnAddTabButtonClick(TabView sender, object args)
+    {
+        _ = NewWorkspaceFromPickerAsync();
+    }
+
+    /// <summary>
+    /// Prompt the user to choose one of the added repositories, then create and
+    /// open a fresh workspace on it. When no repositories exist yet the picker
+    /// has nothing to offer, so we route to the Add repository dialog instead.
+    /// </summary>
+    private async Task NewWorkspaceFromPickerAsync()
+    {
+        if (ViewModel.RepoGroups.Count == 0)
+        {
+            ViewModel.OpenAddRepoDialogCommand.Execute(null);
+            return;
+        }
+
+        try
+        {
+            var picker = new ComboBox
+            {
+                ItemsSource = ViewModel.RepoGroups,
+                DisplayMemberPath = nameof(RepoGroupViewModel.Name),
+                SelectedIndex = 0,
+                HorizontalAlignment = HorizontalAlignment.Stretch,
+            };
+            AutomationProperties.SetName(picker, "Repository");
+
+            var dialog = new ContentDialog
+            {
+                Title = "New workspace",
+                Content = picker,
+                PrimaryButtonText = "Create",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Primary,
+                XamlRoot = Content.XamlRoot,
+            };
+
+            if (await dialog.ShowAsync() != ContentDialogResult.Primary)
+            {
+                return;
+            }
+
+            if (picker.SelectedItem is RepoGroupViewModel group)
+            {
+                await CreateAndOpenWorkspaceAsync(group.Id);
+            }
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[MainWindow] New-workspace picker failed: {ex}");
+        }
+    }
+
     // Ctrl+Tab / Ctrl+Shift+Tab cycle the active workspace tab. (Alt+Tab is
     // reserved by Windows for the system task switcher and never reaches the
     // app, so we use the standard Ctrl+Tab convention instead.)

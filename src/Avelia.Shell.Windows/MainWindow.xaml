@@ -61,6 +61,7 @@
                 TabItemsSource="{x:Bind ViewModel.OpenTabs, Mode=OneWay}"
                 SelectedItem="{x:Bind ViewModel.ActiveTab, Mode=TwoWay}"
                 TabCloseRequested="OnTabCloseRequested"
+                AddTabButtonClick="OnAddTabButtonClick"
             >
                 <TabView.TabItemTemplate>
                     <DataTemplate x:DataType="vm:WorkspaceTabViewModel">
