@@ -7,9 +7,6 @@
     xmlns:vm="using:Avelia.Shell.Windows.ViewModels"
     xmlns:conv="using:Avelia.Shell.Windows.Converters"
 >
-    <UserControl.Resources>
-        <conv:BoolToVisibilityConverter x:Key="BoolToVisibility" />
-    </UserControl.Resources>
     <!--
         TabViewItem content. Mirrors the design's pattern from styles-v2.css ::
         .tab — status dot + branch name. The base branch is shown for the
@@ -24,18 +21,13 @@
         </Grid.ColumnDefinitions>
 
         <Grid Grid.Column="0" Width="14" Height="14">
+            <!-- The dot pulses while the agent runs (StatusDot.IsBusy); no
+                 separate spinner overlay (a 14px ProgressRing renders invisibly). -->
             <local:StatusDot
                 HorizontalAlignment="Center"
                 VerticalAlignment="Center"
                 Status="{x:Bind Tab.Status, Mode=OneWay, FallbackValue={x:Null}}"
-            />
-            <!-- Overlays the dot while the agent runs; hidden (no layout shift) otherwise. -->
-            <ProgressRing
-                Width="14"
-                Height="14"
-                IsActive="{x:Bind Tab.IsAgentWorking, Mode=OneWay}"
-                Visibility="{x:Bind Tab.IsAgentWorking, Mode=OneWay, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}"
-                Foreground="{ThemeResource AveliaWarningBrush}"
+                IsBusy="{x:Bind Tab.IsAgentWorking, Mode=OneWay}"
             />
         </Grid>
 

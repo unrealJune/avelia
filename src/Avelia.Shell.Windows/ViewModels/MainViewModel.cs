@@ -359,9 +359,9 @@ public partial class MainViewModel : ObservableObject
 
     /// <summary>
     /// Reflect the active workspace's live "agent working" state onto its tab +
-    /// rail dot. When work starts the dot goes yellow (<c>Working</c>) and a
-    /// spinner shows; the yellow dot is sticky and is <em>not</em> cleared when
-    /// the turn ends (only the spinner stops) — it persists until the PR merges
+    /// rail dot. When work starts the dot goes yellow (<c>Working</c>) and
+    /// pulses; the yellow dot is sticky and is <em>not</em> cleared when
+    /// the turn ends (only the pulse stops) — it persists until the PR merges
     /// (see <see cref="SetWorkspaceMerged"/>).
     /// </summary>
     public void SetWorkspaceAgentWorking(WorkspaceId id, bool working)
@@ -389,7 +389,7 @@ public partial class MainViewModel : ObservableObject
 
     /// <summary>
     /// The workspace's pull request merged: drop the sticky yellow "working"
-    /// dot and the spinner, settling the dot to <c>Ready</c> (green).
+    /// dot and stop the pulse, settling the dot to <c>Ready</c> (green).
     /// </summary>
     public void SetWorkspaceMerged(WorkspaceId id)
     {

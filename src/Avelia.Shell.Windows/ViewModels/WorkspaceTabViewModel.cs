@@ -41,9 +41,9 @@ public partial class WorkspaceTabViewModel : ObservableObject
     private WorkspaceStatus _status;
 
     /// <summary>
-    /// The workspace's agent is mid-run. Drives a small spinner next to the
-    /// tab's status dot; set/cleared by <see cref="MainViewModel"/> from the
-    /// active workspace's live conversation stream.
+    /// The workspace's agent is mid-run. Drives a pulse on the tab's status dot;
+    /// set/cleared by <see cref="MainViewModel"/> from the active workspace's
+    /// live conversation stream.
     /// </summary>
     [ObservableProperty]
     private bool _isAgentWorking;
