@@ -13,10 +13,15 @@ open Avelia.Core.Abstractions
 [<RequireQualifiedAccess>]
 module CopilotConfig =
 
+    // The CLI requires every MCP server to declare which of its tools to expose;
+    // an omitted/empty list makes it reject the server ("No tools specified for
+    // server"). We surface all of a server's tools, so request the wildcard.
+    let private allTools () = ResizeArray [ "*" ]
+
     let private mcpServer (m: McpServerConfig) : GitHub.Copilot.McpServerConfig =
         match m with
         | McpServerConfig.Stdio(command, args, env) ->
-            let stdio = McpStdioServerConfig(Command = command)
+            let stdio = McpStdioServerConfig(Command = command, Tools = allTools ())
 
             if args.Length > 0 then
                 stdio.Args <- ResizeArray args
@@ -27,7 +32,7 @@ module CopilotConfig =
             stdio :> GitHub.Copilot.McpServerConfig
 
         | McpServerConfig.Http(url, headers) ->
-            let http = McpHttpServerConfig(Url = url)
+            let http = McpHttpServerConfig(Url = url, Tools = allTools ())
 
             if headers.Count > 0 then
                 http.Headers <- Dictionary headers
