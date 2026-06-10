@@ -76,7 +76,14 @@ let private collect (n: int) (stream: IAsyncEnumerable<ConversationUpdate>) =
     }
 
 let private mk (factory: IAgentSessionFactory) (stores: Stores) =
-    new AgentConversationService(factory, stores.Conversations, stores.Workspaces, stores.Settings, epoch)
+    new AgentConversationService(
+        factory,
+        stores.Conversations,
+        stores.Workspaces,
+        stores.Settings,
+        FakeModelCatalog(),
+        epoch
+    )
 
 [<Fact>]
 let ``no session starts until the first message`` () =
@@ -162,6 +169,105 @@ let ``agent conversation events are mapped to the stream and persisted`` () =
     // Both events are persisted in the conversation.
     let conv = (stores.Conversations.GetAsync(convId, ct)).Result.Value
     Assert.Equal(2, conv.Messages.Length)
+
+[<Fact>]
+let ``REPRO haiku auto-rename emits a TitleChanged`` () =
+    let stores = InMemoryStores.create DesignData.defaultAppearance
+    let _, convId = seed stores
+    let factory = FakeAgentSessionFactory()
+    let svc = mk factory stores
+    let isvc = svc :> IConversationService
+    use cts = new CancellationTokenSource()
+    isvc.ObserveMessages(convId, cts.Token) |> ignore
+
+    (isvc.PostUserMessageAsync(convId, "please add login", [||], ct)).Result
+    |> ignore
+
+    Assert.True(waitUntil (fun () -> factory.Sessions.Count = 1) 2000)
+
+    // First assistant reply on the main session -> should trigger the rename,
+    // which starts a SECOND headless session.
+    factory.Sessions.[0]
+        .Emit(
+            AgentEvent.Conversation(
+                AgentMessageAppended
+                    { Id = MessageId.create ()
+                      Text = "on it"
+                      Timestamp = DateTimeOffset.UnixEpoch }
+            )
+        )
+
+    Assert.True(waitUntil (fun () -> factory.Sessions.Count = 2) 2000)
+
+    // The rename session produces a title.
+    factory.Sessions.[1]
+        .Emit(
+            AgentEvent.Conversation(
+                AgentMessageAppended
+                    { Id = MessageId.create ()
+                      Text = "Add Login Flow"
+                      Timestamp = DateTimeOffset.UnixEpoch }
+            )
+        )
+
+    Assert.True(
+        waitUntil (fun () -> (stores.Conversations.GetAsync(convId, ct)).Result.Value.Title = "Add Login Flow") 2000
+    )
+
+[<Fact>]
+let ``auto-rename runs Haiku at the cheapest supported thinking level`` () =
+    let stores = InMemoryStores.create DesignData.defaultAppearance
+    let _, convId = seed stores
+    let factory = FakeAgentSessionFactory()
+
+    // Catalog where Haiku offers "high" and "off"; the rename should prefer the
+    // cheapest (Off) — a title needs no reasoning — not the hardcoded High.
+    let catalog =
+        FakeModelCatalog(
+            models =
+                [ { Id = ModelCatalog.HaikuId
+                    DisplayName = "Haiku 4.5"
+                    Description = ""
+                    ReasoningEfforts = [| "high"; "off" |] :> IReadOnlyList<_> } ]
+        )
+
+    let svc =
+        new AgentConversationService(
+            factory,
+            stores.Conversations,
+            stores.Workspaces,
+            stores.Settings,
+            (catalog :> IModelCatalogService),
+            epoch
+        )
+
+    let isvc = svc :> IConversationService
+    use cts = new CancellationTokenSource()
+    isvc.ObserveMessages(convId, cts.Token) |> ignore
+
+    (isvc.PostUserMessageAsync(convId, "please add login", [||], ct)).Result
+    |> ignore
+
+    Assert.True(waitUntil (fun () -> factory.Sessions.Count = 1) 2000)
+
+    // First assistant reply triggers the one-shot rename -> a second session.
+    factory.Sessions.[0]
+        .Emit(
+            AgentEvent.Conversation(
+                AgentMessageAppended
+                    { Id = MessageId.create ()
+                      Text = "on it"
+                      Timestamp = DateTimeOffset.UnixEpoch }
+            )
+        )
+
+    Assert.True(waitUntil (fun () -> factory.Sessions.Count = 2) 2000)
+
+    // The rename session (the last headless start) runs Haiku, Off, Default.
+    let cfg = factory.LastHeadlessConfig.Value
+    Assert.Equal(Haiku45, cfg.Model)
+    Assert.Equal(ReasoningEffort.Off, cfg.ReasoningEffort)
+    Assert.Equal(ContextTier.Default, cfg.ContextTier)
 
 [<Fact>]
 let ``multiple subscribers all receive the broadcast`` () =
