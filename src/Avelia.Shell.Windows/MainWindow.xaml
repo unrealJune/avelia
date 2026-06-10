@@ -13,6 +13,14 @@
         support Mica. Setting it here would override that fallback.
     -->
     <Grid x:Name="RootGrid">
+        <Grid.KeyboardAccelerators>
+            <KeyboardAccelerator Modifiers="Control" Key="Tab" Invoked="OnNextTabAccelerator" />
+            <KeyboardAccelerator
+                Modifiers="Control,Shift"
+                Key="Tab"
+                Invoked="OnPreviousTabAccelerator"
+            />
+        </Grid.KeyboardAccelerators>
         <Grid.RowDefinitions>
             <RowDefinition Height="40" />
             <RowDefinition Height="*" />

@@ -277,6 +277,32 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Cycle the active workspace tab. <paramref name="forward"/> moves to the
+    /// next tab (Ctrl+Tab); <c>false</c> moves to the previous one
+    /// (Ctrl+Shift+Tab). Selection wraps around at either end. No-op when there
+    /// are fewer than two open tabs.
+    /// </summary>
+    [RelayCommand]
+    private void CycleTab(bool forward)
+    {
+        var count = OpenTabs.Count;
+        if (count < 2)
+        {
+            return;
+        }
+
+        var idx = ActiveTab is null ? -1 : OpenTabs.IndexOf(ActiveTab);
+        if (idx < 0)
+        {
+            ActiveTab = OpenTabs[0];
+            return;
+        }
+
+        var next = forward ? (idx + 1) % count : (idx - 1 + count) % count;
+        ActiveTab = OpenTabs[next];
+    }
+
     [RelayCommand]
     private void NavigateSection(NavRailSection section)
     {

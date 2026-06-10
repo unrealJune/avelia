@@ -154,4 +154,63 @@ public class MainViewModelTests
         vm.NavigateSectionCommand.Execute(NavRailSection.Inbox);
         Assert.Equal(NavRailSection.Inbox, vm.ActiveSection);
     }
+
+    [Fact]
+    public async Task CycleTab_ForwardAdvancesAndWrapsAround()
+    {
+        var vm = MakeVm();
+        await vm.InitializeAsync();
+
+        // Ensure at least two tabs are open.
+        var second = DesignData.workspaces.First(w => vm.OpenTabs.All(t => !t.Id.Equals(w.Id)));
+        await vm.OpenWorkspaceCommand.ExecuteAsync(second.Id);
+
+        Assert.True(vm.OpenTabs.Count >= 2);
+
+        // Start from the first tab and walk forward through every tab, ending
+        // back where we started (wrap-around).
+        vm.ActiveTab = vm.OpenTabs[0];
+        for (var i = 1; i < vm.OpenTabs.Count; i++)
+        {
+            vm.CycleTabCommand.Execute(true);
+            Assert.Equal(vm.OpenTabs[i], vm.ActiveTab);
+        }
+
+        vm.CycleTabCommand.Execute(true);
+        Assert.Equal(vm.OpenTabs[0], vm.ActiveTab);
+    }
+
+    [Fact]
+    public async Task CycleTab_BackwardFromFirstWrapsToLast()
+    {
+        var vm = MakeVm();
+        await vm.InitializeAsync();
+
+        var second = DesignData.workspaces.First(w => vm.OpenTabs.All(t => !t.Id.Equals(w.Id)));
+        await vm.OpenWorkspaceCommand.ExecuteAsync(second.Id);
+
+        vm.ActiveTab = vm.OpenTabs[0];
+        vm.CycleTabCommand.Execute(false);
+
+        Assert.Equal(vm.OpenTabs[^1], vm.ActiveTab);
+    }
+
+    [Fact]
+    public async Task CycleTab_SingleTabIsNoOp()
+    {
+        var vm = MakeVm();
+        await vm.InitializeAsync();
+
+        while (vm.OpenTabs.Count > 1)
+        {
+            vm.CloseTabCommand.Execute(vm.OpenTabs[^1]);
+        }
+
+        var active = vm.ActiveTab;
+        vm.CycleTabCommand.Execute(true);
+        Assert.Equal(active, vm.ActiveTab);
+
+        vm.CycleTabCommand.Execute(false);
+        Assert.Equal(active, vm.ActiveTab);
+    }
 }
