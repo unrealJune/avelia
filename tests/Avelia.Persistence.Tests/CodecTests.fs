@@ -48,7 +48,7 @@ let ``reasoning effort and context tier round-trip through string`` () =
 
 [<Fact>]
 let ``unknown reasoning/context strings degrade to safe defaults`` () =
-    Assert.Equal(ReasoningEffort.Medium, Codec.reasoningEffortOfString "mystery")
+    Assert.Equal(ReasoningEffort.High, Codec.reasoningEffortOfString "mystery")
     Assert.Equal(ContextTier.Default, Codec.contextTierOfString "mystery")
 
 // -- MessageEvent JSON round-trips (one per case) ----------------------------

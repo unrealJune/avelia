@@ -36,9 +36,14 @@ module Codec =
 
     let reasoningEffortOfString (s: string) : ReasoningEffort =
         match s with
-        | "low" -> ReasoningEffort.Low
+        | "off" -> ReasoningEffort.Off
+        | "extra_high" -> ReasoningEffort.ExtraHigh
+        | "max" -> ReasoningEffort.Max
         | "high" -> ReasoningEffort.High
-        | _ -> ReasoningEffort.Medium
+        // Legacy tokens persisted before the thinking-mode vocabulary changed.
+        | "low" -> ReasoningEffort.Off
+        | "medium" -> ReasoningEffort.High
+        | _ -> ReasoningEffort.High
 
     // -- ContextTier ---------------------------------------------------------
 

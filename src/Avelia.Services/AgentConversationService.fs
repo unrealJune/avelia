@@ -126,7 +126,7 @@ type AgentConversationService
                 let config: AgentSessionConfig =
                     { Workspace = record.WorktreePath
                       Model = Haiku45
-                      ReasoningEffort = ReasoningEffort.Medium
+                      ReasoningEffort = ReasoningEffort.High
                       ContextTier = ContextTier.Default
                       SystemPromptAppend = ""
                       AllowedTools = [||]

@@ -9,7 +9,7 @@ open Avelia.Agent.Copilot
 let private config =
     { Workspace = RepoPath.Create "C:/work/repo"
       Model = Sonnet45
-      ReasoningEffort = ReasoningEffort.Medium
+      ReasoningEffort = ReasoningEffort.High
       ContextTier = ContextTier.Default
       SystemPromptAppend = ""
       AllowedTools = [||]

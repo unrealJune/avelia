@@ -16,10 +16,12 @@ namespace Avelia.Shell.Windows.ViewModels;
 public partial class AgentsSubpageViewModel : ObservableObject
 {
     private readonly ISettingsService _settings;
+    private readonly IModelCatalogService _models;
 
     public AgentsSubpageViewModel(AveliaServices services)
     {
         _settings = services.Settings;
+        _models = services.ModelCatalog;
         ModelBar.ModelChanged = model =>
             FireAndForget(
                 _settings.SetDefaultModelAsync(model, CancellationToken.None),
@@ -62,6 +64,21 @@ public partial class AgentsSubpageViewModel : ObservableObject
     public async Task LoadAsync(CancellationToken ct = default)
     {
         var snapshot = await _settings.GetAsync(ct).ConfigureAwait(true);
+
+        IsLoadingModels = true;
+        try
+        {
+            var catalog = await _models.ListModelsAsync(ct).ConfigureAwait(true);
+            if (catalog.IsSuccess)
+            {
+                ModelBar.SetCatalog(catalog.Value);
+            }
+        }
+        finally
+        {
+            IsLoadingModels = false;
+        }
+
         ModelBar.SetSelections(
             snapshot.DefaultModel,
             snapshot.ReasoningEffort,

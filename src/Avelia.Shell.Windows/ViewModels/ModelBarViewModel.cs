@@ -66,6 +66,39 @@ public partial class ModelBarViewModel : ObservableObject
     public ObservableCollection<ModelBarOption> ReasoningOptions { get; } = new();
     public ObservableCollection<ModelBarOption> ContextOptions { get; } = new();
 
+    /// <summary>
+    /// Replace the model dropdown with the live Copilot catalog. Each
+    /// <see cref="ModelInfo"/> id is mapped back to a <see cref="ModelChoice"/>
+    /// (a catalog id outside the three presets becomes a <c>CustomModel</c>), so
+    /// the picked value still round-trips through the persisted setting. A blank
+    /// or empty catalog is ignored, leaving the built-in presets in place so the
+    /// dropdown is never empty. Does not fire the change callbacks; callers
+    /// typically follow with <see cref="SetSelections"/>.
+    /// </summary>
+    public void SetCatalog(IReadOnlyList<ModelInfo> models)
+    {
+        if (models is null || models.Count == 0)
+        {
+            return;
+        }
+
+        _suppress = true;
+        try
+        {
+            ModelOptions.Clear();
+            foreach (var m in models)
+            {
+                var choice = ModelCatalog.ChoiceOfId(m.Id);
+                var display = string.IsNullOrWhiteSpace(m.DisplayName) ? m.Id : m.DisplayName;
+                ModelOptions.Add(new ModelBarOption(display, choice));
+            }
+        }
+        finally
+        {
+            _suppress = false;
+        }
+    }
+
     [ObservableProperty]
     private ModelBarOption? _selectedModel;
 

@@ -282,9 +282,9 @@ public class AgentsSubpageViewModelTests
         await vm.LoadAsync();
 
         Assert.NotNull(vm.ModelBar.SelectedModel);
-        // Defaults per DesignData.defaultAppearance: Sonnet45 / Medium / Default.
+        // Defaults per DesignData.defaultAppearance: Sonnet45 / High / Default.
         Assert.Equal(ModelChoice.Sonnet45, vm.ModelBar.SelectedModel!.Value);
-        Assert.Equal(ReasoningEffort.Medium, vm.ModelBar.SelectedReasoning!.Value);
+        Assert.Equal(ReasoningEffort.High, vm.ModelBar.SelectedReasoning!.Value);
         Assert.Equal(ContextTier.Default, vm.ModelBar.SelectedContext!.Value);
     }
 

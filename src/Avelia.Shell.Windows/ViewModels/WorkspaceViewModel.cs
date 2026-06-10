@@ -151,6 +151,11 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
         if (workspaceResult.IsSuccess)
         {
             var settings = await _services.Settings.GetAsync(ct).ConfigureAwait(true);
+            var catalog = await _services.ModelCatalog.ListModelsAsync(ct).ConfigureAwait(true);
+            if (catalog.IsSuccess)
+            {
+                ModelBar.SetCatalog(catalog.Value);
+            }
             ModelBar.SetSelections(
                 workspaceResult.Value.Agent,
                 settings.ReasoningEffort,

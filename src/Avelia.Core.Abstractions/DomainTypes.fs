@@ -40,41 +40,49 @@ type ModelChoice =
         | Haiku45 -> haiku45.Invoke()
         | CustomModel name -> custom.Invoke name
 
-/// How hard the agent reasons before answering. Mirrors the Copilot SDK's
-/// per-model <c>ReasoningEffort</c> string vocabulary (<c>low</c> / <c>medium</c>
-/// / <c>high</c>); <see cref="ApiValue"/> is the exact wire token the SDK expects.
-/// Surfaced in the composer's model bar and Settings → Agents.
+/// How hard the agent reasons ("thinking mode") before answering. Mirrors the
+/// thinking levels Copilot surfaces in VS Code — <c>Off</c> / <c>High</c> /
+/// <c>Extra High</c> / <c>Max</c>; <see cref="ApiValue"/> is the exact wire token
+/// the SDK expects. Surfaced in the composer's model bar and Settings → Agents.
 type ReasoningEffort =
-    | Low
-    | Medium
+    | Off
     | High
+    | ExtraHigh
+    | Max
 
     /// Wire token the Copilot SDK's <c>SessionConfig.ReasoningEffort</c> takes.
     member this.ApiValue: string =
         match this with
-        | Low -> "low"
-        | Medium -> "medium"
+        | Off -> "off"
         | High -> "high"
+        | ExtraHigh -> "extra_high"
+        | Max -> "max"
 
     /// Title-case label for the picker.
     member this.Label: string =
         match this with
-        | Low -> "Low"
-        | Medium -> "Medium"
+        | Off -> "Off"
         | High -> "High"
+        | ExtraHigh -> "Extra High"
+        | Max -> "Max"
 
     /// Visitor over the union — the C# binding point. Same pattern as
     /// <c>ModelChoice.Match</c>.
     member this.Match<'TResult>
-        (low: System.Func<'TResult>, medium: System.Func<'TResult>, high: System.Func<'TResult>)
-        : 'TResult =
+        (
+            off: System.Func<'TResult>,
+            high: System.Func<'TResult>,
+            extraHigh: System.Func<'TResult>,
+            max: System.Func<'TResult>
+        ) : 'TResult =
         match this with
-        | Low -> low.Invoke()
-        | Medium -> medium.Invoke()
+        | Off -> off.Invoke()
         | High -> high.Invoke()
+        | ExtraHigh -> extraHigh.Invoke()
+        | Max -> max.Invoke()
 
     /// All efforts in display order (lowest → highest).
-    static member All: ReasoningEffort array = [| Low; Medium; High |]
+    static member All: ReasoningEffort array = [| Off; High; ExtraHigh; Max |]
 
 /// Context-window tier the agent runs with. Mirrors the Copilot SDK's
 /// <c>ContextTier</c> (<c>default</c> / <c>long_context</c>); <see cref="ApiValue"/>
@@ -151,9 +159,10 @@ module ModelCatalog =
 
     /// Reasoning-effort levels offered for the built-in presets when the live
     /// catalog is unavailable. The live catalog reports each model's actual
-    /// supported set; this is the offline fallback.
+    /// supported set; this is the offline fallback. Mirrors the thinking modes
+    /// Copilot surfaces in VS Code (Off / High / Extra High / Max).
     let defaultReasoningEfforts: IReadOnlyList<string> =
-        [| "low"; "medium"; "high" |] :> IReadOnlyList<_>
+        [| "off"; "high"; "extra_high"; "max" |] :> IReadOnlyList<_>
 
     /// <c>ModelChoice</c> → catalog id. <c>CustomModel</c> passes through; a
     /// blank custom name yields <c>""</c> so the SDK picks its own default.

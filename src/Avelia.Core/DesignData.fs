@@ -344,7 +344,7 @@ module DesignData =
           Transparency = true
           OpenWithRightPanel = true
           DefaultModel = Sonnet45
-          ReasoningEffort = ReasoningEffort.Medium
+          ReasoningEffort = ReasoningEffort.High
           ContextTier = ContextTier.Default }
 
     // ----- Inbox -----
