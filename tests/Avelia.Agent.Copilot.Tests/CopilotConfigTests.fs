@@ -120,6 +120,7 @@ let ``mcp servers map to stdio config with command, args and env`` () =
         Assert.Equal("node", stdio.Command)
         Assert.Equal<string list>([ "server.js"; "--port=3000" ], List.ofSeq (nonNull stdio.Args))
         Assert.Equal("abc", (nonNull stdio.Env).["TOKEN"])
+        Assert.Equal<string list>([ "*" ], List.ofSeq (nonNull stdio.Tools))
     | other -> failwithf "expected stdio config, got %A" other
 
 [<Fact>]
@@ -140,6 +141,7 @@ let ``mcp servers map http config with url and headers`` () =
     | :? McpHttpServerConfig as http ->
         Assert.Equal("http://127.0.0.1:5005/mcp/abc", http.Url)
         Assert.Equal("abc", (nonNull http.Headers).["X-Avelia-Workspace"])
+        Assert.Equal<string list>([ "*" ], List.ofSeq (nonNull http.Tools))
     | other -> failwithf "expected http config, got %A" other
 
 [<Fact>]
