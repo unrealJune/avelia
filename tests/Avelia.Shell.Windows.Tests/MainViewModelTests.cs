@@ -12,6 +12,71 @@ public class MainViewModelTests
     private static MainViewModel MakeVm() => new(Composition.buildStubServices());
 
     [Fact]
+    public async Task SetWorkspaceAgentWorking_MarksTabAndRailWorkingWithSpinner()
+    {
+        var vm = MakeVm();
+        await vm.InitializeAsync();
+        var id = vm.OpenTabs[0].Id;
+        var tab = vm.OpenTabs[0];
+        var item = vm.RepoGroups.SelectMany(g => g.Workspaces).First(w => w.Id.Equals(id));
+
+        vm.SetWorkspaceAgentWorking(id, true);
+
+        Assert.True(tab.IsAgentWorking);
+        Assert.True(item.IsAgentWorking);
+        Assert.Equal(WorkspaceStatus.Working, tab.Status);
+        Assert.Equal(WorkspaceStatus.Working, item.Status);
+    }
+
+    [Fact]
+    public async Task SetWorkspaceAgentWorking_False_KeepsYellowDotButStopsSpinner()
+    {
+        var vm = MakeVm();
+        await vm.InitializeAsync();
+        var id = vm.OpenTabs[0].Id;
+        var tab = vm.OpenTabs[0];
+
+        vm.SetWorkspaceAgentWorking(id, true);
+        vm.SetWorkspaceAgentWorking(id, false);
+
+        // Turn ended → spinner off, but the dot stays Working (yellow) until merge.
+        Assert.False(tab.IsAgentWorking);
+        Assert.Equal(WorkspaceStatus.Working, tab.Status);
+    }
+
+    [Fact]
+    public async Task SetWorkspaceMerged_ClearsWorkingDotAndSpinner()
+    {
+        var vm = MakeVm();
+        await vm.InitializeAsync();
+        var id = vm.OpenTabs[0].Id;
+        var tab = vm.OpenTabs[0];
+        var item = vm.RepoGroups.SelectMany(g => g.Workspaces).First(w => w.Id.Equals(id));
+
+        vm.SetWorkspaceAgentWorking(id, true);
+        vm.SetWorkspaceMerged(id);
+
+        Assert.False(tab.IsAgentWorking);
+        Assert.False(item.IsAgentWorking);
+        Assert.Equal(WorkspaceStatus.Ready, tab.Status);
+        Assert.Equal(WorkspaceStatus.Ready, item.Status);
+    }
+
+    [Fact]
+    public async Task RefreshWorkspaceStatuses_DoesNotClobberWorkingDot()
+    {
+        var vm = MakeVm();
+        await vm.InitializeAsync();
+        var id = vm.OpenTabs[0].Id;
+        var item = vm.RepoGroups.SelectMany(g => g.Workspaces).First(w => w.Id.Equals(id));
+
+        vm.SetWorkspaceAgentWorking(id, true);
+        await vm.RefreshWorkspaceStatusesAsync(System.Threading.CancellationToken.None);
+
+        Assert.Equal(WorkspaceStatus.Working, item.Status);
+    }
+
+    [Fact]
     public void Title_DefaultsToAvelia()
     {
         var vm = MakeVm();

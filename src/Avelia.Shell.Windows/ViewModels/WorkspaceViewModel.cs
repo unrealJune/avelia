@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using Avelia.Core;
@@ -62,6 +63,7 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
         _dispatcher = dispatcher;
         _notifications = notifications ?? new NullNotificationService();
         PrPane = new PrPaneViewModel(services);
+        PrPane.Merged += (_, _) => WorkMerged?.Invoke(this, EventArgs.Empty);
         Terminal = new TerminalPanelViewModel();
         ModelBar = new ModelBarViewModel();
         // Staging an attachment (or removing the last one) flips whether an
@@ -114,14 +116,33 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
     private bool _isLoading;
 
     /// <summary>
-    /// True from the moment the user sends a message until the agent produces
-    /// its first response event for that turn. Bound to a "Working…" indicator
-    /// above the composer so the app doesn't look hung during model latency.
-    /// Cleared by <see cref="ApplyMessageEvent"/> on the first agent-origin
-    /// event, by <see cref="LoadAsync"/> on (re)load, and on send failure.
+    /// True from the moment the user sends a message until the agent signals the
+    /// turn is complete (<c>ConversationUpdate.TurnCompleted</c>). Bound to a
+    /// "Working…" indicator above the composer (and relayed to the tab/rail dot
+    /// via <see cref="AgentWorkingChanged"/>) so the app shows continuous
+    /// progress for the whole turn, not just the pre-first-token gap. Cleared by
+    /// <see cref="OnTurnCompleted"/>, by <see cref="LoadAsync"/> on (re)load, and
+    /// on send failure.
     /// </summary>
     [ObservableProperty]
     private bool _isAgentWorking;
+
+    /// <summary>
+    /// Raised whenever <see cref="IsAgentWorking"/> flips. The shell relays this
+    /// to the workspace's tab + rail dot so they show the "working" affordance
+    /// (yellow dot + spinner) while the agent runs, independent of which page is
+    /// on screen.
+    /// </summary>
+    public event EventHandler<bool>? AgentWorkingChanged;
+
+    /// <summary>
+    /// Raised after the workspace's pull request is merged (relayed from
+    /// <see cref="PrPane"/>). The shell uses it to clear the sticky "working"
+    /// status dot — the dot stays yellow from first send until the merge lands.
+    /// </summary>
+    public event EventHandler? WorkMerged;
+
+    partial void OnIsAgentWorkingChanged(bool value) => AgentWorkingChanged?.Invoke(this, value);
 
     /// <summary>
     /// Threads in the pivot strip. Until multi-thread conversations land we
@@ -317,6 +338,31 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
             _pendingUserEchoes.Remove(optimistic);
             Messages.Remove(optimistic);
             IsAgentWorking = false;
+            return;
+        }
+
+        // The agent now has unmerged work in flight. Persist the workspace as
+        // Working so the indicator survives a restart until the change merges.
+        // Best-effort and fire-and-forget — a persist failure must not disrupt
+        // the send, and the live in-memory dot is driven separately.
+        var workspaceId = WorkspaceId;
+        if (workspaceId is not null)
+        {
+            _ = PersistWorkingAsync(workspaceId, ct);
+        }
+    }
+
+    private async Task PersistWorkingAsync(WorkspaceId id, CancellationToken ct)
+    {
+        try
+        {
+            await _services
+                .Workspaces.UpdateStatusAsync(id, WorkspaceStatus.Working, ct)
+                .ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[WorkspaceViewModel] persist Working failed: {ex.Message}");
         }
     }
 

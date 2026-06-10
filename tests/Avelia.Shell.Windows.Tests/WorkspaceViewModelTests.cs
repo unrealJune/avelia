@@ -41,6 +41,29 @@ public class WorkspaceViewModelTests
     }
 
     [Fact]
+    public async Task AgentWorkingChanged_FiresOnSendAndTurnCompleted()
+    {
+        var fake = new FakeConversationService(DesignData.archiveConversation);
+        var vm = new WorkspaceViewModel(ServicesWith(fake), new ImmediateUiDispatcher());
+        await vm.LoadAsync(DesignData.archiveWorkspaceId);
+
+        var transitions = new List<bool>();
+        vm.AgentWorkingChanged += (_, working) => transitions.Add(working);
+
+        vm.ComposerText = "hi";
+        await vm.SendMessageCommand.ExecuteAsync(null);
+        Assert.Equal(new[] { true }, transitions);
+
+        // Mid-turn replies don't end the turn, so no further transitions fire.
+        fake.PushAgentMessage("on it");
+        Assert.Equal(new[] { true }, transitions);
+
+        // Turn completion flips it back off — the spinner stops.
+        fake.PushTurnCompleted();
+        Assert.Equal(new[] { true, false }, transitions);
+    }
+
+    [Fact]
     public async Task LoadAsync_GroupsTurnsAndSurfacesFinalResult()
     {
         var vm = MakeVm();
@@ -184,6 +207,22 @@ public class WorkspaceViewModelTests
         // No agent reply arrives on the stub path, so the indicator stays on
         // until a real agent event would clear it.
         Assert.True(vm.IsAgentWorking);
+    }
+
+    [Fact]
+    public async Task SendMessage_PersistsWorkspaceAsWorking()
+    {
+        var services = Composition.buildStubServices();
+        var vm = new WorkspaceViewModel(services, new ImmediateUiDispatcher());
+        await vm.LoadAsync(DesignData.archiveWorkspaceId);
+
+        vm.ComposerText = "do the thing";
+        await vm.SendMessageCommand.ExecuteAsync(null);
+
+        // A successful send marks the workspace Working so the unmerged-work
+        // indicator survives a restart (read back from the store).
+        var ws = (await services.Workspaces.GetAsync(DesignData.archiveWorkspaceId, default)).Value;
+        Assert.True(ws.Status.IsWorking);
     }
 
     [Fact]

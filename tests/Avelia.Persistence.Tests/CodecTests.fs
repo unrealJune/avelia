@@ -31,7 +31,8 @@ let ``accent, density and status round-trip through string`` () =
           WorkspaceStatus.Ready
           WorkspaceStatus.Conflict
           WorkspaceStatus.Archived
-          WorkspaceStatus.Open ] do
+          WorkspaceStatus.Open
+          WorkspaceStatus.Working ] do
         Assert.Equal(s, Codec.statusOfString (Codec.statusToString s))
 
 [<Fact>]

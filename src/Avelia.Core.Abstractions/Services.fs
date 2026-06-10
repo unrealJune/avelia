@@ -59,6 +59,15 @@ type IWorkspaceService =
         id: WorkspaceId * model: ModelChoice * reasoningEffort: string * contextTier: string * CancellationToken ->
             Task<OperationResult<Workspace>>
 
+    /// Persist a new <paramref name="status"/> for the workspace, guarded by the
+    /// status state machine (<c>Workspace.canTransition</c>). The shell uses this
+    /// to mark a workspace <c>Working</c> when its agent starts producing changes
+    /// so the "unmerged work" indicator survives a restart; the change is settled
+    /// back to <c>Ready</c> when the work merges. Returns the updated
+    /// shell-facing workspace, or a <c>Conflict</c> if the transition is illegal.
+    abstract UpdateStatusAsync:
+        id: WorkspaceId * status: WorkspaceStatus * CancellationToken -> Task<OperationResult<Workspace>>
+
 /// A live update on a conversation stream: either a newly-appended transcript
 /// event, or a turn-lifecycle marker.
 ///

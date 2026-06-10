@@ -34,6 +34,13 @@ public partial class WorkspaceItemViewModel : ObservableObject
     [ObservableProperty]
     private WorkspaceStatus _status;
 
+    /// <summary>
+    /// The workspace's agent is mid-run. Drives a small spinner next to the
+    /// rail item's status dot.
+    /// </summary>
+    [ObservableProperty]
+    private bool _isAgentWorking;
+
     [ObservableProperty]
     private int _add;
 

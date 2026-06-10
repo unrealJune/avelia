@@ -46,6 +46,13 @@ public partial class PrPaneViewModel : ObservableObject
         _services = services;
     }
 
+    /// <summary>
+    /// Raised after the workspace's pull request is successfully merged.
+    /// <see cref="WorkspaceViewModel"/> re-surfaces this so the shell can clear
+    /// the workspace's "working" status dot.
+    /// </summary>
+    public event System.EventHandler? Merged;
+
     // -------- PR header state --------
 
     [ObservableProperty]
@@ -370,6 +377,7 @@ public partial class PrPaneViewModel : ObservableObject
                 ErrorMessage = null;
                 MergeReady = false;
                 Status = PrStatus.Merged;
+                Merged?.Invoke(this, System.EventArgs.Empty);
             }
             else
             {

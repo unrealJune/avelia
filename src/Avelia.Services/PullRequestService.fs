@@ -178,5 +178,19 @@ type PullRequestService
                         match! resolveRepoContext record ct with
                         | Failure e -> return Failure e
                         | Success(coord, client) ->
-                            return! client.MergePullRequestAsync(coord, record.Workspace.PrNumber, method, ct)
+                            match! client.MergePullRequestAsync(coord, record.Workspace.PrNumber, method, ct) with
+                            | Failure e -> return Failure e
+                            | Success() ->
+                                // The work is now merged: settle the workspace back
+                                // to Ready so the "unmerged work" indicator clears
+                                // and survives a restart. Best-effort — a persist
+                                // failure must not mask a successful merge.
+                                let merged =
+                                    { record with
+                                        Workspace =
+                                            { record.Workspace with
+                                                Status = WorkspaceStatus.Ready } }
+
+                                let! _ = workspaces.UpsertAsync(merged, ct)
+                                return Success()
             }
