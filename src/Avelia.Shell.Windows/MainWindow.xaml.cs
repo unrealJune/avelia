@@ -33,6 +33,14 @@ public sealed partial class MainWindow : Window
     private readonly WindowsSystemDispatcherQueueHelper _dispatcherQueueHelper = new();
     private readonly AveliaServices _services;
     private readonly IUiDispatcher _uiDispatcher;
+    private readonly INotificationService _notifications;
+
+    /// <summary>
+    /// Whether this window is currently the foreground/active window. Tracked
+    /// via <see cref="Window.Activated"/> so the notification service can
+    /// suppress turn-complete toasts while the user is already watching.
+    /// </summary>
+    private bool _isWindowActive = true;
 
     /// <summary>
     /// Re-entry guard for the rail pane events. <see cref="ApplyRailDisplayMode"/>
@@ -55,6 +63,8 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
 
         _uiDispatcher = new DispatcherQueueUiDispatcher(DispatcherQueue);
+        _notifications = new WindowsAppNotificationService(() => _isWindowActive);
+        Activated += OnWindowActivated;
 
         _dispatcherQueueHelper.EnsureWindowsSystemDispatcherQueueController();
         ExtendsContentIntoTitleBar = true;
@@ -103,6 +113,15 @@ public sealed partial class MainWindow : Window
 
     // -------- Lifecycle --------
 
+    /// <summary>
+    /// Track foreground state so <see cref="WindowsAppNotificationService"/> can
+    /// suppress turn-complete toasts while the user is actively watching.
+    /// </summary>
+    private void OnWindowActivated(object sender, WindowActivatedEventArgs args)
+    {
+        _isWindowActive = args.WindowActivationState != WindowActivationState.Deactivated;
+    }
+
     private void OnClosed(object sender, WindowEventArgs args)
     {
         _themeService.ThemeChanged -= OnThemeChanged;
@@ -110,6 +129,7 @@ public sealed partial class MainWindow : Window
         ViewModel.RepoGroups.CollectionChanged -= OnRepoGroupsChanged;
         ViewModel.PropertyChanged -= OnViewModelPropertyChanged;
         ViewModel.OpenAddRepoDialogRequested -= OnOpenAddRepoDialogRequested;
+        Activated -= OnWindowActivated;
     }
 
     // -------- Add repository dialog --------
@@ -187,7 +207,7 @@ public sealed partial class MainWindow : Window
             return;
         }
 
-        var args = new WorkspacePageArgs(active.Id, _services, _uiDispatcher);
+        var args = new WorkspacePageArgs(active.Id, _services, _uiDispatcher, _notifications);
         ContentFrame.Navigate(typeof(WorkspacePage), args, new DrillInNavigationTransitionInfo());
     }
 

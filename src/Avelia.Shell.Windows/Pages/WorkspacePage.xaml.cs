@@ -45,7 +45,7 @@ public sealed partial class WorkspacePage : Page
 
         if (ViewModel is null)
         {
-            ViewModel = new WorkspaceViewModel(args.Services, args.Dispatcher);
+            ViewModel = new WorkspaceViewModel(args.Services, args.Dispatcher, args.Notifications);
             ViewModel.PrPane.FileOpened += OnPrPaneFileOpened;
             Bindings.Update();
         }
@@ -110,5 +110,6 @@ public sealed partial class WorkspacePage : Page
 public sealed record WorkspacePageArgs(
     WorkspaceId WorkspaceId,
     AveliaServices Services,
-    IUiDispatcher Dispatcher
+    IUiDispatcher Dispatcher,
+    INotificationService Notifications
 );
