@@ -5,6 +5,7 @@ using System.Linq;
 using System.Threading;
 using Avelia.Core;
 using Avelia.Core.Abstractions;
+using Avelia.Shell.Windows.Services;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using Task = System.Threading.Tasks.Task;
@@ -24,6 +25,14 @@ namespace Avelia.Shell.Windows.ViewModels;
 public partial class MainViewModel : ObservableObject
 {
     private readonly AveliaServices _services;
+    private readonly IUiDispatcher _dispatcher;
+
+    /// <summary>
+    /// Per-workspace conversation-title subscriptions, keyed by workspace id, so
+    /// the nav-rail label tracks the Haiku auto-rename live. Cancelled when the
+    /// workspace is deleted to avoid leaking observers.
+    /// </summary>
+    private readonly Dictionary<WorkspaceId, CancellationTokenSource> _titleWatchers = new();
 
     /// <summary>
     /// Parameterless constructor for design-time / fallback use only.
@@ -33,9 +42,10 @@ public partial class MainViewModel : ObservableObject
     public MainViewModel()
         : this(Composition.buildStubServices()) { }
 
-    public MainViewModel(AveliaServices services)
+    public MainViewModel(AveliaServices services, IUiDispatcher? dispatcher = null)
     {
         _services = services;
+        _dispatcher = dispatcher ?? new ImmediateUiDispatcher();
     }
 
     // -------- Observable state --------
@@ -172,7 +182,9 @@ public partial class MainViewModel : ObservableObject
             {
                 if (group.Id.Equals(repoId))
                 {
-                    group.Workspaces.Add(WorkspaceItemViewModel.FromWorkspace(ws));
+                    var item = WorkspaceItemViewModel.FromWorkspace(ws);
+                    group.Workspaces.Add(item);
+                    StartTitleWatch(item);
                     break;
                 }
             }
@@ -216,7 +228,9 @@ public partial class MainViewModel : ObservableObject
             {
                 if (group.Id.Equals(repoId))
                 {
-                    group.Workspaces.Add(WorkspaceItemViewModel.FromWorkspace(ws));
+                    var item = WorkspaceItemViewModel.FromWorkspace(ws);
+                    group.Workspaces.Add(item);
+                    StartTitleWatch(item);
                     break;
                 }
             }
@@ -237,6 +251,8 @@ public partial class MainViewModel : ObservableObject
         {
             return result.Error;
         }
+
+        StopTitleWatch(id);
 
         foreach (var group in RepoGroups)
         {
@@ -339,7 +355,9 @@ public partial class MainViewModel : ObservableObject
             {
                 foreach (var w in groupWorkspaces)
                 {
-                    group.Workspaces.Add(WorkspaceItemViewModel.FromWorkspace(w));
+                    var item = WorkspaceItemViewModel.FromWorkspace(w);
+                    group.Workspaces.Add(item);
+                    StartTitleWatch(item);
                 }
             }
             RepoGroups.Add(group);
@@ -418,6 +436,121 @@ public partial class MainViewModel : ObservableObject
             }
         }
     }
+
+    // -------- Conversation-title watch (nav-rail auto-rename) --------
+
+    /// <summary>
+    /// Begin tracking a workspace's conversation title so its nav-rail label
+    /// follows the Haiku auto-rename. Seeds the label from the persisted title
+    /// (source of truth across restarts), then observes the live stream for
+    /// <c>TitleChanged</c> updates. Idempotent per workspace.
+    /// </summary>
+    private void StartTitleWatch(WorkspaceItemViewModel item)
+    {
+        if (_titleWatchers.ContainsKey(item.Id))
+        {
+            return;
+        }
+        var cts = new CancellationTokenSource();
+        _titleWatchers[item.Id] = cts;
+        _ = WatchTitleAsync(item.Id, cts.Token);
+    }
+
+    private void StopTitleWatch(WorkspaceId id)
+    {
+        if (_titleWatchers.Remove(id, out var cts))
+        {
+            cts.Cancel();
+            cts.Dispose();
+        }
+    }
+
+    private async Task WatchTitleAsync(WorkspaceId workspaceId, CancellationToken ct)
+    {
+        try
+        {
+            var convResult = await _services
+                .Conversations.GetForWorkspaceAsync(workspaceId, ct)
+                .ConfigureAwait(false);
+            if (!convResult.IsSuccess)
+            {
+                return;
+            }
+
+            var conversation = convResult.Value;
+            // Reflect the persisted title immediately (covers an already-renamed
+            // conversation restored on startup).
+            _dispatcher.Post(() => ApplyDisplayName(workspaceId, conversation.Title));
+
+            await foreach (
+                var update in _services
+                    .Conversations.ObserveMessages(conversation.Id, ct)
+                    .ConfigureAwait(false)
+            )
+            {
+                if (ct.IsCancellationRequested)
+                {
+                    break;
+                }
+                var title = TitleChangeOf(update);
+                if (title is not null)
+                {
+                    _dispatcher.Post(() => ApplyDisplayName(workspaceId, title));
+                }
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Expected on workspace delete / shutdown.
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine(
+                $"[MainViewModel] title watch failed for {workspaceId}: {ex.Message}"
+            );
+        }
+    }
+
+    /// <summary>
+    /// Apply a workspace's display title to its rail item (and any open tab).
+    /// Blank titles are ignored so a rename never clears the label.
+    /// </summary>
+    private void ApplyDisplayName(WorkspaceId id, string title)
+    {
+        if (string.IsNullOrWhiteSpace(title))
+        {
+            return;
+        }
+        foreach (var group in RepoGroups)
+        {
+            var item = group.Workspaces.FirstOrDefault(w => w.Id.Equals(id));
+            if (item is not null)
+            {
+                item.DisplayName = title;
+                break;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Returns the new title when <paramref name="update"/> carries a
+    /// <c>TitleChanged</c> rename, else <c>null</c>. Goes through the F#
+    /// <c>Match</c> visitors so a new event kind forces a decision here.
+    /// </summary>
+    private static string? TitleChangeOf(ConversationUpdate update) =>
+        update.Match<string?>(
+            onMessage: ev =>
+                ev.Match<string?>(
+                    onUser: _ => null,
+                    onAgent: _ => null,
+                    onError: _ => null,
+                    onTool: _ => null,
+                    onChange: _ => null,
+                    onMarkdown: _ => null,
+                    onTitleChanged: t => t
+                ),
+            onTurnCompleted: () => null
+        );
 
     // -------- Helpers --------
 
