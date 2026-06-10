@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.Linq;
 using System.Threading;
 using Avelia.Core;
 using Avelia.Core.Abstractions;
@@ -62,7 +64,13 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
         PrPane = new PrPaneViewModel(services);
         Terminal = new TerminalPanelViewModel();
         ModelBar = new ModelBarViewModel();
+        // Staging an attachment (or removing the last one) flips whether an
+        // otherwise-empty composer can send, so re-evaluate the send command.
+        Attachments.CollectionChanged += OnAttachmentsChanged;
     }
+
+    private void OnAttachmentsChanged(object? sender, NotifyCollectionChangedEventArgs e) =>
+        SendMessageCommand.NotifyCanExecuteChanged();
 
     /// <summary>Right-pane PR header + workspace file list. Always present; <see cref="PrPaneViewModel.HasPullRequest"/> reflects whether a PR exists.</summary>
     public PrPaneViewModel PrPane { get; }
@@ -127,6 +135,14 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
 
     /// <summary>Projected message timeline driving the transcript ItemsRepeater.</summary>
     public ObservableCollection<MessageViewModel> Messages { get; } = new();
+
+    /// <summary>
+    /// Files staged in the composer to send with the next message — today,
+    /// images pasted from the clipboard (materialised to temp PNGs by the
+    /// composer). Their paths are passed to the agent as attachment refs on
+    /// send, then the collection is cleared.
+    /// </summary>
+    public ObservableCollection<ComposerAttachmentViewModel> Attachments { get; } = new();
 
     // -------- Public lifecycle --------
 
@@ -258,7 +274,8 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
     // -------- Commands --------
 
     private bool CanSendMessage() =>
-        !string.IsNullOrWhiteSpace(ComposerText) && _conversationId is not null;
+        (!string.IsNullOrWhiteSpace(ComposerText) || Attachments.Count > 0)
+        && _conversationId is not null;
 
     [RelayCommand(CanExecute = nameof(CanSendMessage))]
     private async Task SendMessage(CancellationToken ct)
@@ -268,7 +285,8 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
             return;
         }
         var text = ComposerText.Trim();
-        if (text.Length == 0)
+        var refs = Attachments.Select(a => a.Path).ToArray();
+        if (text.Length == 0 && refs.Length == 0)
         {
             return;
         }
@@ -279,12 +297,8 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
         // working indicator on now so the gap before the agent's first event
         // doesn't read as a hang.
         ComposerText = string.Empty;
-        var optimistic = new UserMessageViewModel(
-            Guid.NewGuid(),
-            DateTimeOffset.Now,
-            text,
-            Array.Empty<string>()
-        );
+        Attachments.Clear();
+        var optimistic = new UserMessageViewModel(Guid.NewGuid(), DateTimeOffset.Now, text, refs);
         _pendingUserEchoes.Add(optimistic);
         AppendProjected(optimistic);
         IsAgentWorking = true;
@@ -293,7 +307,7 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
         // resume on the captured context. The stub completes synchronously; the
         // real backend resumes on the WinUI dispatcher.
         var result = await _services
-            .Conversations.PostUserMessageAsync(_conversationId, text, Array.Empty<string>(), ct)
+            .Conversations.PostUserMessageAsync(_conversationId, text, refs, ct)
             .ConfigureAwait(true);
 
         if (!result.IsSuccess)

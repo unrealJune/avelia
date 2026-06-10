@@ -129,6 +129,49 @@ public class WorkspaceViewModelTests
     }
 
     [Fact]
+    public async Task SendMessage_WithAttachments_ThreadsRefsThroughAndClearsThem()
+    {
+        var fake = new FakeConversationService(
+            FakeConversationService.EmptyFor(DesignData.archiveWorkspaceId)
+        );
+        var vm = new WorkspaceViewModel(ServicesWith(fake), new ImmediateUiDispatcher());
+        await vm.LoadAsync(DesignData.archiveWorkspaceId);
+
+        vm.ComposerText = "look at this";
+        vm.Attachments.Add(new ComposerAttachmentViewModel(@"C:\tmp\paste-1.png"));
+        vm.Attachments.Add(new ComposerAttachmentViewModel(@"C:\tmp\paste-2.png"));
+
+        await vm.SendMessageCommand.ExecuteAsync(null);
+
+        // The attachment paths are posted as refs and surfaced on the optimistic
+        // message, then the staging area is cleared.
+        Assert.Equal(new[] { @"C:\tmp\paste-1.png", @"C:\tmp\paste-2.png" }, fake.LastRefs);
+        var user = Assert.IsType<UserMessageViewModel>(vm.Messages.Last());
+        Assert.Equal(new[] { @"C:\tmp\paste-1.png", @"C:\tmp\paste-2.png" }, user.Refs);
+        Assert.Empty(vm.Attachments);
+    }
+
+    [Fact]
+    public async Task SendMessage_AttachmentOnlyWithNoText_IsEnabledAndSends()
+    {
+        var fake = new FakeConversationService(
+            FakeConversationService.EmptyFor(DesignData.archiveWorkspaceId)
+        );
+        var vm = new WorkspaceViewModel(ServicesWith(fake), new ImmediateUiDispatcher());
+        await vm.LoadAsync(DesignData.archiveWorkspaceId);
+
+        // No text — staging an image alone must still enable Send.
+        Assert.False(vm.SendMessageCommand.CanExecute(null));
+        vm.Attachments.Add(new ComposerAttachmentViewModel(@"C:\tmp\paste.png"));
+        Assert.True(vm.SendMessageCommand.CanExecute(null));
+
+        await vm.SendMessageCommand.ExecuteAsync(null);
+
+        Assert.Equal(new[] { @"C:\tmp\paste.png" }, fake.LastRefs);
+        Assert.Empty(vm.Attachments);
+    }
+
+    [Fact]
     public async Task SendMessage_TurnsOnTheWorkingIndicator()
     {
         var vm = MakeVm();
@@ -375,6 +418,7 @@ internal sealed class FakeConversationService : IConversationService
         CancellationToken ct
     )
     {
+        LastRefs = refs;
         var msg = new UserMessage(
             MessageId.NewMessageId(Guid.NewGuid()),
             text,
@@ -384,6 +428,9 @@ internal sealed class FakeConversationService : IConversationService
         Broadcast(MessageEvent.NewUserMessageAppended(msg));
         return Task.FromResult(OperationResult<UserMessage>.NewSuccess(msg));
     }
+
+    /// <summary>Refs supplied to the most recent <see cref="PostUserMessageAsync"/> call.</summary>
+    public string[]? LastRefs { get; private set; }
 
     public IAsyncEnumerable<ConversationUpdate> ObserveMessages(
         ConversationId conversationId,

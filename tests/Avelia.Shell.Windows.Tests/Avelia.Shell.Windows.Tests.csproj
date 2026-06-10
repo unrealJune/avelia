@@ -64,6 +64,10 @@
             Link="ViewModels\MessageViewModel.cs"
         />
         <Compile
+            Include="..\..\src\Avelia.Shell.Windows\ViewModels\ComposerAttachmentViewModel.cs"
+            Link="ViewModels\ComposerAttachmentViewModel.cs"
+        />
+        <Compile
             Include="..\..\src\Avelia.Shell.Windows\ViewModels\WorkspaceViewModel.cs"
             Link="ViewModels\WorkspaceViewModel.cs"
         />

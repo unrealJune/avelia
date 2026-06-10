@@ -10,6 +10,7 @@
     <Page.Resources>
         <ResourceDictionary>
             <conv:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+            <conv:PathToImageSourceConverter x:Key="PathToImageSource" />
 
             <!-- ============================================================
                  Conversation message templates (one per MessageViewModel kind)
@@ -177,6 +178,30 @@
                             TextWrapping="Wrap"
                             SourceText="{x:Bind Text, FallbackValue=''}"
                         />
+                        <!-- Image attachments sent with the message. -->
+                        <ItemsControl ItemsSource="{x:Bind Refs}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <StackPanel Orientation="Horizontal" Spacing="8" />
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate x:DataType="x:String">
+                                    <Border
+                                        BorderBrush="{ThemeResource AveliaSurfaceStrokeBrush}"
+                                        BorderThickness="1"
+                                        CornerRadius="{StaticResource AveliaCornerRadiusSmall}"
+                                    >
+                                        <Image
+                                            MaxWidth="240"
+                                            MaxHeight="240"
+                                            Stretch="Uniform"
+                                            Source="{x:Bind Converter={StaticResource PathToImageSource}}"
+                                        />
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
                     </StackPanel>
                 </Border>
             </DataTemplate>
@@ -406,6 +431,7 @@
                 AutomationProperties.AutomationId="Composer"
                 Text="{x:Bind ViewModel.ComposerText, Mode=TwoWay}"
                 SendCommand="{x:Bind ViewModel.SendMessageCommand}"
+                Attachments="{x:Bind ViewModel.Attachments, Mode=OneWay}"
                 ModelBar="{x:Bind ViewModel.ModelBar, Mode=OneWay}"
             />
         </Grid>
