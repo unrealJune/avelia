@@ -39,7 +39,9 @@ let ``StartAsync launches an interactive session in the workspace worktree`` () 
     let stores = InMemoryStores.create DesignData.defaultAppearance
     let wsId = seedWorkspace stores "C:/wt/abc"
     let factory = FakeAgentSessionFactory()
-    let svc = InteractiveTerminalService(stores.Workspaces, factory) :> ITerminalLaunchService
+
+    let svc =
+        InteractiveTerminalService(stores.Workspaces, stores.Settings, factory) :> ITerminalLaunchService
 
     match (svc.StartAsync(wsId, ct)).Result with
     | Success session ->
@@ -50,8 +52,41 @@ let ``StartAsync launches an interactive session in the workspace worktree`` () 
 [<Fact>]
 let ``StartAsync fails for an unknown workspace`` () =
     let stores = InMemoryStores.create DesignData.defaultAppearance
-    let svc = InteractiveTerminalService(stores.Workspaces, FakeAgentSessionFactory()) :> ITerminalLaunchService
+
+    let svc =
+        InteractiveTerminalService(stores.Workspaces, stores.Settings, FakeAgentSessionFactory())
+        :> ITerminalLaunchService
 
     match (svc.StartAsync(WorkspaceId.create (), ct)).Result with
     | Failure(AveliaError.NotFound _) -> ()
     | other -> failwithf "unexpected %A" other
+
+[<Fact>]
+let ``StartAsync threads the settings reasoning effort and context tier into the session config`` () =
+    let stores = InMemoryStores.create DesignData.defaultAppearance
+    let wsId = seedWorkspace stores "C:/wt/abc"
+
+    let appearance = (stores.Settings.LoadAsync ct).Result
+
+    (stores.Settings.SaveAsync(
+        { appearance with
+            ReasoningEffort = ReasoningEffort.High
+            ContextTier = ContextTier.LongContext },
+        ct
+    ))
+        .Result
+    |> ignore
+
+    let factory = FakeAgentSessionFactory()
+
+    let svc =
+        InteractiveTerminalService(stores.Workspaces, stores.Settings, factory) :> ITerminalLaunchService
+
+    match (svc.StartAsync(wsId, ct)).Result with
+    | Success _ ->
+        match factory.LastInteractiveConfig with
+        | Some config ->
+            Assert.Equal(ReasoningEffort.High, config.ReasoningEffort)
+            Assert.Equal(ContextTier.LongContext, config.ContextTier)
+        | None -> failwith "expected the factory to capture the session config"
+    | Failure e -> failwithf "expected success, got %A" e

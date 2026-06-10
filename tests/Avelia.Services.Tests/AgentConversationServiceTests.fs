@@ -39,7 +39,10 @@ let private seed (stores: Stores) =
           ConversationId = convId }
 
     (stores.Workspaces.UpsertAsync(record, ct)).Result |> ignore
-    (stores.Conversations.CreateAsync(Conversation.empty convId wsId "t", ct)).Result |> ignore
+
+    (stores.Conversations.CreateAsync(Conversation.empty convId wsId "t", ct)).Result
+    |> ignore
+
     wsId, convId
 
 let private waitUntil (cond: unit -> bool) (timeoutMs: int) =
@@ -71,7 +74,7 @@ let private collect (n: int) (stream: IAsyncEnumerable<MessageEvent>) =
     }
 
 let private mk (factory: IAgentSessionFactory) (stores: Stores) =
-    new AgentConversationService(factory, stores.Conversations, stores.Workspaces, epoch)
+    new AgentConversationService(factory, stores.Conversations, stores.Workspaces, stores.Settings, epoch)
 
 [<Fact>]
 let ``no session starts until the first message`` () =
@@ -145,7 +148,11 @@ let ``multiple subscribers all receive the broadcast`` () =
 
     (isvc.PostUserMessageAsync(convId, "fanout", [||], ct)).Result |> ignore
 
-    let isUser = function [ UserMessageAppended m ] -> m.Text = "fanout" | _ -> false
+    let isUser =
+        function
+        | [ UserMessageAppended m ] -> m.Text = "fanout"
+        | _ -> false
+
     Assert.True(isUser a.Result)
     Assert.True(isUser b.Result)
 

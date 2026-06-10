@@ -262,15 +262,15 @@ public class AppearanceSubpageViewModelTests
 public class AgentsSubpageViewModelTests
 {
     [Fact]
-    public void Models_LoadsThreeDesignModels()
+    public void ModelBar_LoadsThreeDesignModels()
     {
         var services = Composition.buildStubServices();
         var vm = new AgentsSubpageViewModel(services);
 
-        Assert.Equal(3, vm.Models.Count);
-        Assert.Contains(vm.Models, m => Equals(m.Choice, ModelChoice.Sonnet45));
-        Assert.Contains(vm.Models, m => Equals(m.Choice, ModelChoice.Opus41));
-        Assert.Contains(vm.Models, m => Equals(m.Choice, ModelChoice.Haiku45));
+        Assert.Equal(3, vm.ModelBar.ModelOptions.Count);
+        Assert.Contains(vm.ModelBar.ModelOptions, m => Equals(m.Value, ModelChoice.Sonnet45));
+        Assert.Contains(vm.ModelBar.ModelOptions, m => Equals(m.Value, ModelChoice.Opus41));
+        Assert.Contains(vm.ModelBar.ModelOptions, m => Equals(m.Value, ModelChoice.Haiku45));
     }
 
     [Fact]
@@ -281,20 +281,22 @@ public class AgentsSubpageViewModelTests
 
         await vm.LoadAsync();
 
-        Assert.NotNull(vm.SelectedModel);
-        // Default per DesignData.defaultAppearance is Sonnet45.
-        Assert.Equal(ModelChoice.Sonnet45, vm.SelectedModel!.Choice);
+        Assert.NotNull(vm.ModelBar.SelectedModel);
+        // Defaults per DesignData.defaultAppearance: Sonnet45 / Medium / Default.
+        Assert.Equal(ModelChoice.Sonnet45, vm.ModelBar.SelectedModel!.Value);
+        Assert.Equal(ReasoningEffort.Medium, vm.ModelBar.SelectedReasoning!.Value);
+        Assert.Equal(ContextTier.Default, vm.ModelBar.SelectedContext!.Value);
     }
 
     [Fact]
-    public async Task SettingSelectedModel_PersistsToSettingsService()
+    public async Task SettingDefaultModel_PersistsToSettingsService()
     {
         var services = Composition.buildStubServices();
         var vm = new AgentsSubpageViewModel(services);
         await vm.LoadAsync();
 
-        var opus = vm.Models.First(m => Equals(m.Choice, ModelChoice.Opus41));
-        vm.SelectedModel = opus;
+        var opus = vm.ModelBar.ModelOptions.First(m => Equals(m.Value, ModelChoice.Opus41));
+        vm.ModelBar.SelectedModel = opus;
 
         await System.Threading.Tasks.Task.Yield();
         var snapshot = await services.Settings.GetAsync(CancellationToken.None);
@@ -302,17 +304,35 @@ public class AgentsSubpageViewModelTests
     }
 
     [Fact]
-    public async Task SettingExtendedThinking_PersistsToSettingsService()
+    public async Task SettingReasoningEffort_PersistsToSettingsService()
     {
         var services = Composition.buildStubServices();
         var vm = new AgentsSubpageViewModel(services);
         await vm.LoadAsync();
 
-        vm.ExtendedThinking = true;
+        var high = vm.ModelBar.ReasoningOptions.First(o => Equals(o.Value, ReasoningEffort.High));
+        vm.ModelBar.SelectedReasoning = high;
 
         await System.Threading.Tasks.Task.Yield();
         var snapshot = await services.Settings.GetAsync(CancellationToken.None);
-        Assert.True(snapshot.ExtendedThinking);
+        Assert.Equal(ReasoningEffort.High, snapshot.ReasoningEffort);
+    }
+
+    [Fact]
+    public async Task SettingContextTier_PersistsToSettingsService()
+    {
+        var services = Composition.buildStubServices();
+        var vm = new AgentsSubpageViewModel(services);
+        await vm.LoadAsync();
+
+        var longCtx = vm.ModelBar.ContextOptions.First(o =>
+            Equals(o.Value, ContextTier.LongContext)
+        );
+        vm.ModelBar.SelectedContext = longCtx;
+
+        await System.Threading.Tasks.Task.Yield();
+        var snapshot = await services.Settings.GetAsync(CancellationToken.None);
+        Assert.Equal(ContextTier.LongContext, snapshot.ContextTier);
     }
 
     [Fact]

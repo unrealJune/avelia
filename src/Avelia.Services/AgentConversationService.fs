@@ -37,6 +37,7 @@ type AgentConversationService
         factory: IAgentSessionFactory,
         conversations: IConversationStore,
         workspaces: IWorkspaceStore,
+        settings: ISettingsStore,
         now: unit -> DateTimeOffset
     ) =
 
@@ -79,7 +80,12 @@ type AgentConversationService
     /// Pump one session's events into the store + observers. The only consumer
     /// of <c>session.Events</c>. On exit (normal or fault) it clears
     /// <c>state.Session</c> so the next post restarts cleanly.
-    let runPump (convId: ConversationId) (state: ConvState) (session: IHeadlessAgentSession) (token: CancellationToken) =
+    let runPump
+        (convId: ConversationId)
+        (state: ConvState)
+        (session: IHeadlessAgentSession)
+        (token: CancellationToken)
+        =
         task {
             try
                 for ev in session.Events token do
@@ -111,9 +117,13 @@ type AgentConversationService
             match! workspaces.GetAsync(workspaceId, lifetime.Token) with
             | Failure e -> return Error e
             | Success record ->
+                let! appearance = settings.LoadAsync lifetime.Token
+
                 let config: AgentSessionConfig =
                     { Workspace = record.WorktreePath
                       Model = record.Workspace.Agent
+                      ReasoningEffort = appearance.ReasoningEffort
+                      ContextTier = appearance.ContextTier
                       SystemPromptAppend = ""
                       AllowedTools = [||]
                       PermissionMode = PermissionMode.AcceptEdits
@@ -222,7 +232,9 @@ type AgentConversationService
                 state.Session <- None
 
                 let channels = lock state.SubGate (fun () -> state.Subscribers.ToArray())
-                for ch in channels do ch.Writer.TryComplete() |> ignore
+
+                for ch in channels do
+                    ch.Writer.TryComplete() |> ignore
             | _ -> ()
         }
 

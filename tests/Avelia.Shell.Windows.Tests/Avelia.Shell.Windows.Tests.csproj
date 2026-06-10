@@ -96,6 +96,10 @@
             Link="ViewModels\AgentsSubpageViewModel.cs"
         />
         <Compile
+            Include="..\..\src\Avelia.Shell.Windows\ViewModels\ModelBarViewModel.cs"
+            Link="ViewModels\ModelBarViewModel.cs"
+        />
+        <Compile
             Include="..\..\src\Avelia.Shell.Windows\ViewModels\ProfileSubpageViewModel.cs"
             Link="ViewModels\ProfileSubpageViewModel.cs"
         />

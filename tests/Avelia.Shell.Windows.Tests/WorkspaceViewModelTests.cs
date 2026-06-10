@@ -100,19 +100,18 @@ public class WorkspaceViewModelTests
     }
 
     [Fact]
-    public async Task LoadAsync_UnknownWorkspace_ClearsTerminalAndModelName()
+    public async Task LoadAsync_UnknownWorkspace_ClearsTerminal()
     {
         var vm = MakeVm();
         // Hydrate with a real workspace first so we can verify the reset path
         // actually clears existing state (not just "stayed empty").
         await vm.LoadAsync(DesignData.archiveWorkspaceId);
         Assert.NotEqual(string.Empty, vm.Terminal.PromptLine);
-        Assert.NotEqual(string.Empty, vm.ModelName);
+        Assert.NotNull(vm.ModelBar.SelectedModel);
 
         var bogus = WorkspaceId.NewWorkspaceId(System.Guid.NewGuid());
         await vm.LoadAsync(bogus);
 
-        Assert.Equal(string.Empty, vm.ModelName);
         Assert.Equal(string.Empty, vm.Terminal.PromptLine);
         Assert.Equal(string.Empty, vm.Terminal.Branch);
         Assert.Equal(string.Empty, vm.Terminal.Base);
