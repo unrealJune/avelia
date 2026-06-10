@@ -29,7 +29,7 @@ namespace Avelia.Shell.Windows.ViewModels;
 public partial class PrPaneViewModel : ObservableObject
 {
     private readonly AveliaServices _services;
-    private PullRequestId? _prId;
+    private WorkspaceId? _workspaceId;
 
     /// <summary>
     /// Lifecycle token for the current <see cref="LoadAsync"/> invocation. A
@@ -50,7 +50,9 @@ public partial class PrPaneViewModel : ObservableObject
 
     [ObservableProperty]
     [NotifyPropertyChangedFor(nameof(NumberDisplay))]
+    [NotifyPropertyChangedFor(nameof(ShowCreatePr))]
     [NotifyCanExecuteChangedFor(nameof(MergeCommand))]
+    [NotifyCanExecuteChangedFor(nameof(CreatePrCommand))]
     private bool _hasPullRequest;
 
     [ObservableProperty]
@@ -126,6 +128,43 @@ public partial class PrPaneViewModel : ObservableObject
 
     public bool HasError => !string.IsNullOrEmpty(ErrorMessage);
 
+    // -------- Create-PR state --------
+
+    /// <summary>
+    /// True once a workspace has been loaded. Combined with
+    /// <see cref="HasPullRequest"/> it drives <see cref="ShowCreatePr"/> — the
+    /// "open a pull request" affordance shown when the workspace has no PR yet.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyPropertyChangedFor(nameof(ShowCreatePr))]
+    [NotifyCanExecuteChangedFor(nameof(CreatePrCommand))]
+    private bool _workspaceLoaded;
+
+    /// <summary>Title for a not-yet-created PR. Bound to the create-PR TextBox.</summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(CreatePrCommand))]
+    private string _newPrTitle = string.Empty;
+
+    /// <summary>Optional body/description for a not-yet-created PR.</summary>
+    [ObservableProperty]
+    private string _newPrBody = string.Empty;
+
+    /// <summary>Open the new PR as a draft.</summary>
+    [ObservableProperty]
+    private bool _newPrIsDraft;
+
+    /// <summary>
+    /// True while a create / merge round-trip is in flight. Disables the
+    /// command buttons and surfaces a progress affordance.
+    /// </summary>
+    [ObservableProperty]
+    [NotifyCanExecuteChangedFor(nameof(CreatePrCommand))]
+    [NotifyCanExecuteChangedFor(nameof(MergeCommand))]
+    private bool _isBusy;
+
+    /// <summary>Show the create-PR composer: a workspace is loaded but has no PR.</summary>
+    public bool ShowCreatePr => WorkspaceLoaded && !HasPullRequest;
+
     // -------- File list --------
 
     public ObservableCollection<DiffFileViewModel> Files { get; } = new();
@@ -165,7 +204,8 @@ public partial class PrPaneViewModel : ObservableObject
         var token = _loadCts.Token;
 
         Files.Clear();
-        _prId = null;
+        _workspaceId = workspaceId;
+        WorkspaceLoaded = true;
         HasPullRequest = false;
         ErrorMessage = null;
 
@@ -176,25 +216,7 @@ public partial class PrPaneViewModel : ObservableObject
                 .ConfigureAwait(true);
             if (prResult.IsSuccess)
             {
-                var pr = prResult.Value;
-                _prId = pr.Id;
-                HasPullRequest = true;
-                Number = pr.Number;
-                Title = pr.Title;
-                Branch = pr.Branch.Value;
-                Base = pr.Base.Value;
-                Status = pr.Status;
-                MergeReady = pr.MergeReady;
-                ChecksTotal = pr.Checks.Length;
-                var passed = 0;
-                for (var i = 0; i < pr.Checks.Length; i++)
-                {
-                    if (pr.Checks[i].Status.IsPassed)
-                    {
-                        passed++;
-                    }
-                }
-                ChecksPassed = passed;
+                ApplyPr(prResult.Value);
             }
             else
             {
@@ -204,14 +226,7 @@ public partial class PrPaneViewModel : ObservableObject
                 {
                     ErrorMessage = FormatError(prResult.Error);
                 }
-                Number = 0;
-                Title = string.Empty;
-                Branch = string.Empty;
-                Base = string.Empty;
-                Status = PrStatus.Draft;
-                MergeReady = false;
-                ChecksTotal = 0;
-                ChecksPassed = 0;
+                ClearPrHeader();
             }
 
             var files = await _services
@@ -281,30 +296,140 @@ public partial class PrPaneViewModel : ObservableObject
 
     // -------- Commands --------
 
-    [RelayCommand(CanExecute = nameof(CanMerge))]
-    private async Task Merge(CancellationToken ct)
+    /// <summary>
+    /// Open a pull request for the loaded workspace. On success the header
+    /// flips to the live PR (the create composer collapses). Failures surface
+    /// in the InfoBar.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanCreatePr))]
+    private async Task CreatePr(CancellationToken ct)
     {
-        if (_prId is null)
+        if (_workspaceId is not { } workspaceId)
         {
             return;
         }
-        var result = await _services.PullRequests.MergeAsync(_prId, ct).ConfigureAwait(true);
-        if (result.IsSuccess)
+
+        IsBusy = true;
+        try
         {
-            ErrorMessage = null;
-            MergeReady = false;
-            Status = PrStatus.Merged;
+            var result = await _services
+                .PullRequests.CreateForWorkspaceAsync(
+                    workspaceId,
+                    NewPrTitle.Trim(),
+                    NewPrBody,
+                    NewPrIsDraft,
+                    ct
+                )
+                .ConfigureAwait(true);
+            if (result.IsSuccess)
+            {
+                ErrorMessage = null;
+                NewPrTitle = string.Empty;
+                NewPrBody = string.Empty;
+                NewPrIsDraft = false;
+                ApplyPr(result.Value);
+            }
+            else
+            {
+                ErrorMessage = FormatError(result.Error);
+            }
         }
-        else
+        finally
         {
-            // Surface the failure as UI rather than letting the merge button
-            // go silently inert. Real backends will hit network / conflict
-            // failures here regularly.
-            ErrorMessage = FormatError(result.Error);
+            IsBusy = false;
         }
     }
 
-    private bool CanMerge() => HasPullRequest && MergeReady;
+    private bool CanCreatePr() =>
+        _workspaceId is not null
+        && !HasPullRequest
+        && !IsBusy
+        && !string.IsNullOrWhiteSpace(NewPrTitle);
+
+    /// <summary>
+    /// Merge the loaded workspace's PR. <paramref name="method"/> is the
+    /// strategy name ("Merge" / "Squash" / "Rebase") supplied by the merge
+    /// button's flyout; a null/empty value defaults to a merge commit.
+    /// </summary>
+    [RelayCommand(CanExecute = nameof(CanMerge))]
+    private async Task Merge(string? method, CancellationToken ct)
+    {
+        if (_workspaceId is not { } workspaceId)
+        {
+            return;
+        }
+
+        IsBusy = true;
+        try
+        {
+            var result = await _services
+                .PullRequests.MergeForWorkspaceAsync(workspaceId, ParseMergeMethod(method), ct)
+                .ConfigureAwait(true);
+            if (result.IsSuccess)
+            {
+                ErrorMessage = null;
+                MergeReady = false;
+                Status = PrStatus.Merged;
+            }
+            else
+            {
+                // Surface the failure as UI rather than letting the merge button
+                // go silently inert. Real backends will hit network / conflict
+                // failures here regularly.
+                ErrorMessage = FormatError(result.Error);
+            }
+        }
+        finally
+        {
+            IsBusy = false;
+        }
+    }
+
+    private bool CanMerge() => HasPullRequest && MergeReady && !IsBusy;
+
+    private static PrMergeMethod ParseMergeMethod(string? method) =>
+        method switch
+        {
+            "Squash" => PrMergeMethod.Squash,
+            "Rebase" => PrMergeMethod.Rebase,
+            _ => PrMergeMethod.Merge,
+        };
+
+    // -------- Header application --------
+
+    private void ApplyPr(PullRequest pr)
+    {
+        HasPullRequest = true;
+        Number = pr.Number;
+        Title = pr.Title;
+        Branch = pr.Branch.Value;
+        Base = pr.Base.Value;
+        Status = pr.Status;
+        MergeReady = pr.MergeReady;
+        ChecksTotal = pr.Checks.Length;
+        var passed = 0;
+        for (var i = 0; i < pr.Checks.Length; i++)
+        {
+            if (pr.Checks[i].Status.IsPassed)
+            {
+                passed++;
+            }
+        }
+        ChecksPassed = passed;
+    }
+
+    private void ClearPrHeader()
+    {
+        HasPullRequest = false;
+        Number = 0;
+        Title = string.Empty;
+        Branch = string.Empty;
+        Base = string.Empty;
+        Status = PrStatus.Draft;
+        MergeReady = false;
+        ChecksTotal = 0;
+        ChecksPassed = 0;
+    }
 
     private static string FormatError(AveliaError error) =>
         error.Match<string>(

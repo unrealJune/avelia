@@ -17,6 +17,8 @@ open Octokit.Internal
 type private OctokitClient = Octokit.GitHubClient
 type private OctokitApiOptions = Octokit.ApiOptions
 type private OctokitNewPullRequest = Octokit.NewPullRequest
+type private OctokitMergePullRequest = Octokit.MergePullRequest
+type private OctokitPullRequestMergeMethod = Octokit.PullRequestMergeMethod
 type private OctokitNotificationsRequest = Octokit.NotificationsRequest
 type private OctokitItemState = Octokit.ItemState
 type private OctokitApiException = Octokit.ApiException
@@ -60,6 +62,14 @@ type IGitHubClient =
     abstract ListPrsForUserAsync: CancellationToken -> Task<OperationResult<IReadOnlyList<PullRequest>>>
 
     abstract CreatePullRequestAsync: request: CreatePrRequest * CancellationToken -> Task<OperationResult<PullRequest>>
+
+    /// Merge an open pull request using the given strategy. Maps to Octokit's
+    /// <c>PullRequest.Merge</c>; a <c>Conflict</c>/<c>Validation</c> error
+    /// surfaces when the PR isn't mergeable (failing required checks, conflicts,
+    /// branch protection). Idempotency is GitHub's concern — re-merging an
+    /// already-merged PR returns a validation failure we map through verbatim.
+    abstract MergePullRequestAsync:
+        repo: RepoCoordinate * prNumber: int * method: PrMergeMethod * CancellationToken -> Task<OperationResult<unit>>
 
     /// Post a comment to a pull request's conversation thread.
     abstract CommentAsync:
@@ -456,6 +466,41 @@ type GitHubClient
                     match result with
                     | Failure e -> Failure e
                     | Success pr -> Success(toPullRequest pr)
+            }
+
+        member _.MergePullRequestAsync
+            (repo: RepoCoordinate, prNumber: int, method: PrMergeMethod, ct: CancellationToken)
+            =
+            task {
+                let octokitMethod =
+                    method.Match(
+                        (fun () -> OctokitPullRequestMergeMethod.Merge),
+                        (fun () -> OctokitPullRequestMergeMethod.Squash),
+                        (fun () -> OctokitPullRequestMergeMethod.Rebase)
+                    )
+
+                let mergeRequest =
+                    OctokitMergePullRequest(MergeMethod = System.Nullable octokitMethod)
+
+                let! result = invoke (fun () -> client.PullRequest.Merge(repo.Owner, repo.Name, prNumber, mergeRequest))
+
+                return
+                    match result with
+                    | Failure e -> Failure e
+                    | Success merge ->
+                        if merge.Merged then
+                            Success()
+                        else
+                            // GitHub accepted the call but declined the merge
+                            // (e.g. not mergeable). Surface the reason rather
+                            // than claiming success.
+                            let why =
+                                if String.IsNullOrWhiteSpace merge.Message then
+                                    "GitHub declined the merge."
+                                else
+                                    merge.Message
+
+                            Failure(AveliaError.Conflict why)
             }
 
         member _.CommentAsync(repo: RepoCoordinate, prNumber: int, body: string, ct: CancellationToken) =

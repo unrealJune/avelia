@@ -68,13 +68,16 @@ type FakeGitInspection(?statusResult: OperationResult<WorktreeStatus>, ?remoteUr
         member _.DiffAsync(_worktree, _ct) =
             Task.FromResult(Success(([||]: DiffFile[]) :> IReadOnlyList<_>))
 
-/// A configurable <c>IGitOperations</c> recording the last worktree-add request
-/// and returning a scripted result.
-type FakeGitOperations(?worktreeAddResult: OperationResult<Worktree>) =
+/// A configurable <c>IGitOperations</c> recording the last worktree-add and
+/// push requests and returning scripted results.
+type FakeGitOperations(?worktreeAddResult: OperationResult<Worktree>, ?pushResult: OperationResult<unit>) =
+    let push = defaultArg pushResult (Success())
     member val LastWorktreeRepo = "" with get, set
     member val LastWorktreeBranch = "" with get, set
     member val LastWorktreePath = "" with get, set
     member val WorktreeAddCalls = 0 with get, set
+    member val PushCalls = 0 with get, set
+    member val LastPushWorktree = "" with get, set
 
     interface IGitOperations with
         member this.WorktreeAddAsync(repo, branch, worktree, _ct) =
@@ -99,7 +102,11 @@ type FakeGitOperations(?worktreeAddResult: OperationResult<Worktree>) =
         member _.CommitAsync(_worktree, _msg, _ct) =
             Task.FromResult(Success(CommitId.Create(System.String('b', 40))))
 
-        member _.PushAsync(_worktree, _remote, _ct) = Task.FromResult(Success())
+        member this.PushAsync(worktree, _remote, _ct) =
+            this.PushCalls <- this.PushCalls + 1
+            this.LastPushWorktree <- worktree.Value
+            Task.FromResult push
+
         member _.FetchAsync(_worktree, _remote, _ct) = Task.FromResult(Success())
         member _.CheckoutAsync(_worktree, _branch, _ct) = Task.FromResult(Success())
         member _.BranchCreateAsync(_repo, _branch, _baseRef, _ct) = Task.FromResult(Success())

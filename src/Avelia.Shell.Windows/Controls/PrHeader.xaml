@@ -20,6 +20,7 @@
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
 
         <!-- Caption -->
@@ -62,6 +63,38 @@
                 <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
                     <FontIcon FontFamily="Segoe Fluent Icons" FontSize="12" Glyph="&#xE8AB;" />
                     <TextBlock Text="Merge" />
+                    <DropDownButton
+                        Padding="2,0"
+                        AutomationProperties.AutomationId="MergeMethodButton"
+                        AutomationProperties.Name="Choose merge method"
+                    >
+                        <DropDownButton.Content>
+                            <FontIcon
+                                FontFamily="Segoe Fluent Icons"
+                                FontSize="10"
+                                Glyph="&#xE70D;"
+                            />
+                        </DropDownButton.Content>
+                        <DropDownButton.Flyout>
+                            <MenuFlyout>
+                                <MenuFlyoutItem
+                                    Text="Create a merge commit"
+                                    Command="{x:Bind ViewModel.MergeCommand, Mode=OneWay}"
+                                    CommandParameter="Merge"
+                                />
+                                <MenuFlyoutItem
+                                    Text="Squash and merge"
+                                    Command="{x:Bind ViewModel.MergeCommand, Mode=OneWay}"
+                                    CommandParameter="Squash"
+                                />
+                                <MenuFlyoutItem
+                                    Text="Rebase and merge"
+                                    Command="{x:Bind ViewModel.MergeCommand, Mode=OneWay}"
+                                    CommandParameter="Rebase"
+                                />
+                            </MenuFlyout>
+                        </DropDownButton.Flyout>
+                    </DropDownButton>
                 </StackPanel>
             </Button>
         </Grid>
@@ -131,10 +164,60 @@
             />
         </StackPanel>
 
-        <!-- Error surface (merge / load failures). Hidden when there's no
-             pending error so it doesn't take vertical space in the common path. -->
-        <InfoBar
+        <!-- Create-PR composer: shown when the workspace has no PR yet. Title +
+             optional body + draft toggle + create button. Collapses the moment
+             a PR exists. -->
+        <StackPanel
             Grid.Row="4"
+            Spacing="8"
+            Visibility="{x:Bind ViewModel.ShowCreatePr, Mode=OneWay, FallbackValue=Collapsed}"
+        >
+            <TextBox
+                AutomationProperties.AutomationId="NewPrTitle"
+                AutomationProperties.Name="Pull request title"
+                PlaceholderText="Pull request title"
+                Text="{x:Bind ViewModel.NewPrTitle, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+            />
+            <TextBox
+                AutomationProperties.AutomationId="NewPrBody"
+                AutomationProperties.Name="Pull request description"
+                AcceptsReturn="True"
+                Height="64"
+                PlaceholderText="Description (optional)"
+                TextWrapping="Wrap"
+                Text="{x:Bind ViewModel.NewPrBody, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+            />
+            <Grid ColumnSpacing="10">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <CheckBox
+                    Grid.Column="0"
+                    VerticalAlignment="Center"
+                    AutomationProperties.AutomationId="NewPrIsDraft"
+                    Content="Open as draft"
+                    IsChecked="{x:Bind ViewModel.NewPrIsDraft, Mode=TwoWay}"
+                />
+                <Button
+                    Grid.Column="1"
+                    AutomationProperties.AutomationId="CreatePrButton"
+                    AutomationProperties.Name="Create pull request"
+                    Style="{StaticResource AveliaMergeButtonStyle}"
+                    Command="{x:Bind ViewModel.CreatePrCommand, Mode=OneWay}"
+                >
+                    <StackPanel Orientation="Horizontal" Spacing="6" VerticalAlignment="Center">
+                        <FontIcon FontFamily="Segoe Fluent Icons" FontSize="12" Glyph="&#xE710;" />
+                        <TextBlock Text="Create PR" />
+                    </StackPanel>
+                </Button>
+            </Grid>
+        </StackPanel>
+
+        <!-- Error surface (create / merge / load failures). Hidden when there's
+             no pending error so it doesn't take vertical space in the common path. -->
+        <InfoBar
+            Grid.Row="5"
             AutomationProperties.AutomationId="PrPaneError"
             IsClosable="False"
             IsOpen="{x:Bind ViewModel.HasError, Mode=OneWay, FallbackValue=False}"

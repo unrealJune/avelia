@@ -129,6 +129,54 @@ public class PrPaneViewModelTests
     }
 
     [Fact]
+    public async Task ShowCreatePr_TrueForWorkspaceWithoutPr_FalseWhenPrExists()
+    {
+        var (vm, _) = MakeVm();
+
+        await vm.LoadAsync(DesignData.trayWorkspaceId);
+        Assert.False(vm.HasPullRequest);
+        Assert.True(vm.ShowCreatePr);
+
+        await vm.LoadAsync(DesignData.archiveWorkspaceId);
+        Assert.True(vm.HasPullRequest);
+        Assert.False(vm.ShowCreatePr);
+    }
+
+    [Fact]
+    public async Task CreatePrCommand_RequiresANonBlankTitle()
+    {
+        var (vm, _) = MakeVm();
+        await vm.LoadAsync(DesignData.trayWorkspaceId);
+
+        vm.NewPrTitle = "   ";
+        Assert.False(vm.CreatePrCommand.CanExecute(null));
+
+        vm.NewPrTitle = "Add feature";
+        Assert.True(vm.CreatePrCommand.CanExecute(null));
+    }
+
+    [Fact]
+    public async Task CreatePrCommand_OnSuccess_FlipsToLivePrAndClearsComposer()
+    {
+        var (vm, _) = MakeVm();
+        await vm.LoadAsync(DesignData.trayWorkspaceId);
+
+        vm.NewPrTitle = "Add feature";
+        vm.NewPrBody = "details";
+        Assert.True(vm.CreatePrCommand.CanExecute(null));
+
+        await vm.CreatePrCommand.ExecuteAsync(null);
+
+        Assert.True(vm.HasPullRequest);
+        Assert.False(vm.ShowCreatePr);
+        Assert.Equal("Add feature", vm.Title);
+        // Composer is reset so it can't re-submit the now-created PR.
+        Assert.Equal(string.Empty, vm.NewPrTitle);
+        Assert.Equal(string.Empty, vm.NewPrBody);
+        Assert.False(vm.HasError);
+    }
+
+    [Fact]
     public void ActiveTab_DefaultsToChanges()
     {
         var (vm, _) = MakeVm();
