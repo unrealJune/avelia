@@ -1,6 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using Avelia.Core.Abstractions;
 
 namespace Avelia.Shell.Windows.ViewModels;
@@ -229,4 +232,100 @@ public sealed class AgentMarkdownListItem
     public string Bold { get; }
 
     public string Detail { get; }
+}
+
+/// <summary>
+/// Collapses one turn's intermediate activity — tool batches, change notes, and
+/// superseded agent messages — into a single grey, minimized-by-default block.
+/// Only the turn's final result stays surfaced in the transcript; everything
+/// that led up to it lives here, expandable on demand.
+///
+/// Unlike the other (immutable) message VMs this one is observable: the grouping
+/// projection in <c>WorkspaceViewModel</c> appends to <see cref="Items"/> live
+/// and toggles <see cref="IsActive"/> as the turn progresses, and the user can
+/// flip <see cref="IsExpanded"/>. INPC is hand-rolled because the type must
+/// derive from <see cref="MessageViewModel"/> (so it fits the transcript
+/// collection) and can't also inherit a toolkit base.
+/// </summary>
+public sealed class AgentActivityGroupViewModel : MessageViewModel, INotifyPropertyChanged
+{
+    public AgentActivityGroupViewModel()
+        : base(Guid.NewGuid(), DateTimeOffset.Now) { }
+
+    /// <summary>The collapsed intermediate events, in arrival order.</summary>
+    public ObservableCollection<MessageViewModel> Items { get; } = new();
+
+    private bool _isExpanded;
+
+    /// <summary>Minimized by default; the user expands to inspect the steps.</summary>
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        set => Set(ref _isExpanded, value);
+    }
+
+    private bool _isActive = true;
+
+    /// <summary>
+    /// True while the agent is still working through this turn (activity is the
+    /// trailing content and no final result has been surfaced yet). Drives a
+    /// small spinner in the block header. Finalized to false once the turn ends.
+    /// </summary>
+    public bool IsActive
+    {
+        get => _isActive;
+        set => Set(ref _isActive, value);
+    }
+
+    private string _summary = "Activity";
+
+    /// <summary>Header line, e.g. <c>"13 tools · 1 edit · 2 messages"</c>.</summary>
+    public string Summary
+    {
+        get => _summary;
+        private set => Set(ref _summary, value);
+    }
+
+    /// <summary>Append a collapsed step and refresh the summary line.</summary>
+    public void Add(MessageViewModel item)
+    {
+        Items.Add(item);
+        Summary = BuildSummary();
+    }
+
+    private string BuildSummary()
+    {
+        var tools = Items.OfType<ToolBatchViewModel>().Sum(t => t.ToolCount);
+        var edits = Items.OfType<ChangeNoteViewModel>().Count();
+        var messages = Items.Count(i =>
+            i is AgentMessageViewModel or AgentMarkdownViewModel or AgentErrorViewModel
+        );
+
+        var parts = new List<string>();
+        if (tools > 0)
+        {
+            parts.Add($"{tools} tool{(tools == 1 ? "" : "s")}");
+        }
+        if (edits > 0)
+        {
+            parts.Add($"{edits} edit{(edits == 1 ? "" : "s")}");
+        }
+        if (messages > 0)
+        {
+            parts.Add($"{messages} message{(messages == 1 ? "" : "s")}");
+        }
+        return parts.Count == 0 ? "Activity" : string.Join(" · ", parts);
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+
+    private void Set<T>(ref T field, T value, [CallerMemberName] string? name = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(field, value))
+        {
+            return;
+        }
+        field = value;
+        PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(name));
+    }
 }

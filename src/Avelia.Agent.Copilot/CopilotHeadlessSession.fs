@@ -75,6 +75,10 @@ type internal CopilotHeadlessSession
                 try
                     if isNull refs || refs.Length = 0 then
                         let! _ = session.SendAsync(text, ct)
+                        // The send completes when the agent's turn is done; mark
+                        // it on the same ordered channel so the pump sees it
+                        // after the turn's content events.
+                        channel.Writer.TryWrite AgentEvent.TurnEnded |> ignore
                         return Success()
                     else
                         let opts = MessageOptions(Prompt = text)
@@ -86,6 +90,7 @@ type internal CopilotHeadlessSession
 
                         opts.Attachments <- attachments
                         let! _ = session.SendAsync(opts, ct)
+                        channel.Writer.TryWrite AgentEvent.TurnEnded |> ignore
                         return Success()
                 with ex ->
                     return Failure(AveliaError.External("copilot", ex.Message))
@@ -122,7 +127,8 @@ type internal CopilotHeadlessSession
                         // Release any in-flight permission callbacks so the SDK
                         // doesn't hang on a TCS that will never be answered.
                         for kv in pending do
-                            kv.Value.TrySetResult(Rpc.PermissionDecision.Reject("Session disposed.")) |> ignore
+                            kv.Value.TrySetResult(Rpc.PermissionDecision.Reject("Session disposed."))
+                            |> ignore
 
                         pending.Clear()
 

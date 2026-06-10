@@ -116,6 +116,7 @@ let ``AgentEvent.Match routes each variant`` () =
           AgentEvent.PermissionRequired permReq, "perm"
           AgentEvent.RetryAttempt(1, 100, "rate"), "retry"
           AgentEvent.Warning "deprecated tool", "warn"
+          AgentEvent.TurnEnded, "turn"
           AgentEvent.Ended(0, snapshot), "end" ]
 
     for event, expected in cases do
@@ -127,6 +128,7 @@ let ``AgentEvent.Match routes each variant`` () =
                 onPermission = Func<_, _>(fun _ -> "perm"),
                 onRetry = Func<_, _, _, _>(fun _ _ _ -> "retry"),
                 onWarning = Func<_, _>(fun _ -> "warn"),
+                onTurnEnded = Func<_>(fun () -> "turn"),
                 onEnded = Func<_, _, _>(fun _ _ -> "end")
             )
 
@@ -144,6 +146,7 @@ let ``AgentEvent.Initialized carries the session id and model through Match`` ()
             onPermission = Func<_, _>(fun _ -> "", ModelChoice.Sonnet45),
             onRetry = Func<_, _, _, _>(fun _ _ _ -> "", ModelChoice.Sonnet45),
             onWarning = Func<_, _>(fun _ -> "", ModelChoice.Sonnet45),
+            onTurnEnded = Func<_>(fun () -> "", ModelChoice.Sonnet45),
             onEnded = Func<_, _, _>(fun _ _ -> "", ModelChoice.Sonnet45)
         )
 

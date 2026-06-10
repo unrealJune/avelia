@@ -24,6 +24,8 @@ public sealed class MessageTemplateSelector : DataTemplateSelector
 
     public DataTemplate? AgentMarkdownTemplate { get; set; }
 
+    public DataTemplate? ActivityGroupTemplate { get; set; }
+
     protected override DataTemplate? SelectTemplateCore(object item) =>
         item switch
         {
@@ -33,6 +35,7 @@ public sealed class MessageTemplateSelector : DataTemplateSelector
             ToolBatchViewModel => ToolBatchTemplate,
             ChangeNoteViewModel => ChangeNoteTemplate,
             AgentMarkdownViewModel => AgentMarkdownTemplate,
+            AgentActivityGroupViewModel => ActivityGroupTemplate,
             _ => null,
         };
 

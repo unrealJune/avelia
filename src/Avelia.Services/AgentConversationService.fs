@@ -14,7 +14,7 @@ open Avelia.Core.Abstractions
 /// that keep session start/stop single-flighted.
 type private ConvState() =
     /// Live observers; mutated under <c>SubGate</c>.
-    member val Subscribers = ResizeArray<Channel<MessageEvent>>()
+    member val Subscribers = ResizeArray<Channel<ConversationUpdate>>()
     member val SubGate = obj ()
     /// Serializes session start + message send so two near-simultaneous posts
     /// can't double-start, and sends stay ordered.
@@ -47,11 +47,11 @@ type AgentConversationService
     let stateFor (convId: ConversationId) =
         states.GetOrAdd(convId, fun _ -> ConvState())
 
-    let broadcast (state: ConvState) (event: MessageEvent) =
+    let broadcast (state: ConvState) (update: ConversationUpdate) =
         let snapshot = lock state.SubGate (fun () -> state.Subscribers.ToArray())
 
         for ch in snapshot do
-            ch.Writer.TryWrite event |> ignore
+            ch.Writer.TryWrite update |> ignore
 
     let describe (e: AveliaError) =
         match e with
@@ -73,20 +73,26 @@ type AgentConversationService
                       Timestamp = now () }
 
             let! _ = conversations.AppendEventAsync(convId, ev, lifetime.Token)
-            broadcast state ev
+            broadcast state (MessageAppended ev)
         }
 
     /// Pump one session's events into the store + observers. The only consumer
     /// of <c>session.Events</c>. On exit (normal or fault) it clears
     /// <c>state.Session</c> so the next post restarts cleanly.
-    let runPump (convId: ConversationId) (state: ConvState) (session: IHeadlessAgentSession) (token: CancellationToken) =
+    let runPump
+        (convId: ConversationId)
+        (state: ConvState)
+        (session: IHeadlessAgentSession)
+        (token: CancellationToken)
+        =
         task {
             try
                 for ev in session.Events token do
                     match ev with
                     | AgentEvent.Conversation msgEvent ->
                         let! _ = conversations.AppendEventAsync(convId, msgEvent, token)
-                        broadcast state msgEvent
+                        broadcast state (MessageAppended msgEvent)
+                    | AgentEvent.TurnEnded -> broadcast state TurnCompleted
                     | AgentEvent.Warning w -> do! pushError convId state w
                     | AgentEvent.Ended(code, _) when code <> 0 ->
                         do! pushError convId state (sprintf "Agent exited with code %d." code)
@@ -144,7 +150,7 @@ type AgentConversationService
 
                     let! _ = conversations.AppendEventAsync(conversationId, UserMessageAppended userMsg, ct)
                     let state = stateFor conversationId
-                    broadcast state (UserMessageAppended userMsg)
+                    broadcast state (MessageAppended(UserMessageAppended userMsg))
 
                     // Drive the agent on a worker with the service lifetime token
                     // (not the post's ct, which dies with the UI action), so the
@@ -184,7 +190,7 @@ type AgentConversationService
             let state = stateFor conversationId
 
             let channel =
-                Channel.CreateUnbounded<MessageEvent>(
+                Channel.CreateUnbounded<ConversationUpdate>(
                     UnboundedChannelOptions(SingleReader = true, AllowSynchronousContinuations = false)
                 )
 
@@ -222,7 +228,9 @@ type AgentConversationService
                 state.Session <- None
 
                 let channels = lock state.SubGate (fun () -> state.Subscribers.ToArray())
-                for ch in channels do ch.Writer.TryComplete() |> ignore
+
+                for ch in channels do
+                    ch.Writer.TryComplete() |> ignore
             | _ -> ()
         }
 
