@@ -219,6 +219,48 @@ public class WorkspaceViewModelTests
     }
 
     [Fact]
+    public async Task TurnCompleted_RaisesOsNotificationWithConversationTitle()
+    {
+        var fake = new FakeConversationService(DesignData.archiveConversation);
+        var notifications = new RecordingNotificationService();
+        var vm = new WorkspaceViewModel(
+            ServicesWith(fake),
+            new ImmediateUiDispatcher(),
+            notifications
+        );
+        await vm.LoadAsync(DesignData.archiveWorkspaceId);
+
+        vm.ComposerText = "hi";
+        await vm.SendMessageCommand.ExecuteAsync(null);
+
+        // Mid-turn agent activity must not raise a notification.
+        fake.PushAgentMessage("on it");
+        Assert.Empty(notifications.Notified);
+
+        // The turn-completed signal raises exactly one notification, carrying
+        // the conversation title.
+        fake.PushTurnCompleted();
+        Assert.Equal(new[] { vm.Title }, notifications.Notified);
+    }
+
+    [Fact]
+    public async Task LoadAsync_DoesNotRaiseNotificationForHydratedHistory()
+    {
+        var notifications = new RecordingNotificationService();
+        var vm = new WorkspaceViewModel(
+            Composition.buildStubServices(),
+            new ImmediateUiDispatcher(),
+            notifications
+        );
+
+        // Replaying a finished conversation's transcript must stay silent — only
+        // a live turn-completed signal notifies.
+        await vm.LoadAsync(DesignData.archiveWorkspaceId);
+
+        Assert.Empty(notifications.Notified);
+    }
+
+    [Fact]
     public async Task LoadAsync_AlsoLoadsPrPaneAndTerminal()
     {
         var vm = MakeVm();
@@ -410,4 +452,16 @@ internal sealed class FakeConversationService : IConversationService
             ch.Writer.TryWrite(update);
         }
     }
+}
+
+/// <summary>
+/// Recording <see cref="INotificationService"/> that captures the conversation
+/// titles passed to <see cref="NotifyTurnCompleted"/> so tests can assert on
+/// when (and with what) a turn-complete notification was raised.
+/// </summary>
+internal sealed class RecordingNotificationService : INotificationService
+{
+    public List<string> Notified { get; } = new();
+
+    public void NotifyTurnCompleted(string conversationTitle) => Notified.Add(conversationTitle);
 }

@@ -25,6 +25,7 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
 {
     private readonly AveliaServices _services;
     private readonly IUiDispatcher _dispatcher;
+    private readonly INotificationService _notifications;
     private CancellationTokenSource? _observeCts;
     private Task? _observeTask;
     private ConversationId? _conversationId;
@@ -49,10 +50,15 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
     private AgentActivityGroupViewModel? _currentGroup;
     private MessageViewModel? _currentResult;
 
-    public WorkspaceViewModel(AveliaServices services, IUiDispatcher dispatcher)
+    public WorkspaceViewModel(
+        AveliaServices services,
+        IUiDispatcher dispatcher,
+        INotificationService? notifications = null
+    )
     {
         _services = services;
         _dispatcher = dispatcher;
+        _notifications = notifications ?? new NullNotificationService();
         PrPane = new PrPaneViewModel(services);
         Terminal = new TerminalPanelViewModel();
         ModelBar = new ModelBarViewModel();
@@ -421,6 +427,10 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
         FinalizeCurrentTurn();
         _currentGroup = null;
         _currentResult = null;
+        // Surface an OS notification so the user knows the agent is done even
+        // when the app isn't focused. The service suppresses it when the app
+        // is already in the foreground.
+        _notifications.NotifyTurnCompleted(Title);
     }
 
     /// <summary>

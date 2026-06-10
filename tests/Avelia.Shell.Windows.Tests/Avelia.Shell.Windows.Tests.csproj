@@ -56,6 +56,10 @@
             Link="Services\IUiDispatcher.cs"
         />
         <Compile
+            Include="..\..\src\Avelia.Shell.Windows\Services\INotificationService.cs"
+            Link="Services\INotificationService.cs"
+        />
+        <Compile
             Include="..\..\src\Avelia.Shell.Windows\ViewModels\MessageViewModel.cs"
             Link="ViewModels\MessageViewModel.cs"
         />

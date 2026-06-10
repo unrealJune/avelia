@@ -5,6 +5,7 @@ using Avelia.Shell.Windows.Services;
 using Avelia.Shell.Windows.Terminal;
 using global::Windows.UI.ViewManagement;
 using Microsoft.UI.Xaml;
+using Microsoft.Windows.AppNotifications;
 
 namespace Avelia.Shell.Windows;
 
@@ -48,6 +49,12 @@ public partial class App : Application
 
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
+        // Register for OS toast notifications (turn-complete alerts). Must be
+        // called before any AppNotificationManager.Show; unregistered on exit.
+        AppNotificationManager.Default.Register();
+        AppDomain.CurrentDomain.ProcessExit += (_, _) =>
+            AppNotificationManager.Default.Unregister();
+
         _mainWindow = new MainWindow(ThemeService, Services);
         _mainWindow.Activate();
     }
