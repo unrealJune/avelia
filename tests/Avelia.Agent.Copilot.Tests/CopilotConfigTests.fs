@@ -101,9 +101,11 @@ let ``resume session id is carried through`` () =
 [<Fact>]
 let ``mcp servers map to stdio config with command, args and env`` () =
     let mcp =
-        { Command = "node"
-          Args = [| "server.js"; "--port=3000" |]
-          Env = dict [ "TOKEN", "abc" ] |> Dictionary :> IReadOnlyDictionary<_, _> }
+        McpServerConfig.Stdio(
+            "node",
+            [| "server.js"; "--port=3000" |],
+            dict [ "TOKEN", "abc" ] |> Dictionary :> IReadOnlyDictionary<_, _>
+        )
 
     let servers =
         dict [ "fs", mcp ] |> Dictionary :> IReadOnlyDictionary<string, Avelia.Core.Abstractions.McpServerConfig>
@@ -119,6 +121,44 @@ let ``mcp servers map to stdio config with command, args and env`` () =
         Assert.Equal<string list>([ "server.js"; "--port=3000" ], List.ofSeq (nonNull stdio.Args))
         Assert.Equal("abc", (nonNull stdio.Env).["TOKEN"])
     | other -> failwithf "expected stdio config, got %A" other
+
+[<Fact>]
+let ``mcp servers map http config with url and headers`` () =
+    let mcp =
+        McpServerConfig.Http(
+            "http://127.0.0.1:5005/mcp/abc",
+            dict [ "X-Avelia-Workspace", "abc" ] |> Dictionary :> IReadOnlyDictionary<_, _>
+        )
+
+    let servers =
+        dict [ "avelia", mcp ] |> Dictionary :> IReadOnlyDictionary<string, Avelia.Core.Abstractions.McpServerConfig>
+
+    let c =
+        CopilotConfig.build { baseConfig with McpServers = servers } noEvent noPermission
+
+    match (nonNull c.McpServers).["avelia"] with
+    | :? McpHttpServerConfig as http ->
+        Assert.Equal("http://127.0.0.1:5005/mcp/abc", http.Url)
+        Assert.Equal("abc", (nonNull http.Headers).["X-Avelia-Workspace"])
+    | other -> failwithf "expected http config, got %A" other
+
+[<Fact>]
+let ``empty system prompt append leaves the system message unset`` () =
+    let c = CopilotConfig.build baseConfig noEvent noPermission
+    Assert.Null(c.SystemMessage)
+
+[<Fact>]
+let ``non-empty system prompt append maps to an Append system message`` () =
+    let c =
+        CopilotConfig.build
+            { baseConfig with
+                SystemPromptAppend = "Call the avelia tools." }
+            noEvent
+            noPermission
+
+    let sm = nonNull c.SystemMessage
+    Assert.Equal(Nullable SystemMessageMode.Append, sm.Mode)
+    Assert.Equal("Call the avelia tools.", sm.Content)
 
 [<Fact>]
 let ``callbacks are wired onto the config`` () =

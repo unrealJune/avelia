@@ -14,26 +14,31 @@ open Avelia.Core.Abstractions
 module CopilotConfig =
 
     let private mcpServer (m: McpServerConfig) : GitHub.Copilot.McpServerConfig =
-        let stdio = McpStdioServerConfig(Command = m.Command)
+        match m with
+        | McpServerConfig.Stdio(command, args, env) ->
+            let stdio = McpStdioServerConfig(Command = command)
 
-        if m.Args.Length > 0 then
-            stdio.Args <- ResizeArray m.Args
+            if args.Length > 0 then
+                stdio.Args <- ResizeArray args
 
-        if m.Env.Count > 0 then
-            stdio.Env <- Dictionary m.Env
+            if env.Count > 0 then
+                stdio.Env <- Dictionary env
 
-        stdio :> GitHub.Copilot.McpServerConfig
+            stdio :> GitHub.Copilot.McpServerConfig
+
+        | McpServerConfig.Http(url, headers) ->
+            let http = McpHttpServerConfig(Url = url)
+
+            if headers.Count > 0 then
+                http.Headers <- Dictionary headers
+
+            http :> GitHub.Copilot.McpServerConfig
 
     /// Map our session config onto an SDK <c>SessionConfig</c>.
     ///
     /// <para>Mapped: working directory, model, reasoning effort, context tier,
-    /// allowed-tools filter, MCP servers, the resume session id, plus the
-    /// event/permission callbacks.</para>
-    ///
-    /// <para>Not yet mapped (B-8 scope): <c>SystemPromptAppend</c> — the SDK's
-    /// system-message override is a structured section/transform model that
-    /// warrants its own wiring; the field is carried through the contract but
-    /// ignored here until a later chunk needs it.</para>
+    /// allowed-tools filter, MCP servers, an appended system message, the resume
+    /// session id, plus the event/permission callbacks.</para>
     let build
         (config: AgentSessionConfig)
         (onEvent: Action<SessionEvent>)
@@ -70,6 +75,12 @@ module CopilotConfig =
                 dict.[kv.Key] <- mcpServer kv.Value
 
             c.McpServers <- dict
+
+        // Append (not replace) our guidance onto the agent's built-in system
+        // prompt — Append mode keeps Copilot's default instructions intact.
+        if not (String.IsNullOrWhiteSpace config.SystemPromptAppend) then
+            c.SystemMessage <-
+                SystemMessageConfig(Mode = Nullable SystemMessageMode.Append, Content = config.SystemPromptAppend)
 
         if not (String.IsNullOrEmpty config.ResumeSessionId) then
             c.SessionId <- config.ResumeSessionId

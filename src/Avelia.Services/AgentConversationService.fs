@@ -30,6 +30,41 @@ type private ConvState() =
     member _.TryClaimRename() =
         System.Threading.Interlocked.Exchange(&renameClaimed, 1) = 0
 
+/// System-prompt guidance appended (not replacing the agent's defaults) to every
+/// real workspace session, telling the agent how to drive Avelia's own MCP tools.
+[<RequireQualifiedAccess>]
+module internal SystemPrompts =
+
+    /// Teaches the agent the two Avelia MCP tools and when to use them. Kept
+    /// short and imperative: the agent already has its full default prompt, this
+    /// only layers Avelia-specific behaviour on top. The tools are bound to the
+    /// current workspace by the MCP server, so the agent never passes ids.
+    let workspace =
+        String.concat
+            "\n"
+            [ "# Avelia workspace"
+              ""
+              "You are running inside Avelia, which manages each task in its own git worktree (\"workspace\")."
+              "An MCP server named \"avelia\" gives you two tools that act on the current workspace — you never"
+              "need to supply a workspace or conversation id."
+              ""
+              "## Naming the workspace"
+              "As soon as you understand what the task is about (typically after the user's first message), call"
+              "the `rename_workspace` tool once with a concise 3-6 word title in Title Case (no quotes, no"
+              "trailing punctuation), e.g. \"Add MCP Server For Naming\" or \"Fix Status Dot Rendering\". This"
+              "renames only the Avelia tab/title, not the git branch. Do it proactively without asking, and only"
+              "rename again if the task's focus changes substantially."
+              ""
+              "## Opening a pull request"
+              "When the user asks you to open/create a PR, or when the work is complete and ready for review,"
+              "call the `create_pull_request` tool. Provide a clear `title` and a concise `body` (a short summary"
+              "of what changed and why; markdown is fine). The tool pushes the workspace branch to origin for you,"
+              "so you do not need to push or run `gh` yourself. Set `draft: true` if the work is still in progress."
+              "Do not call it if the workspace already has a pull request, and do not invent a PR the user did not ask for"
+              "unless the task is genuinely finished."
+              ""
+              "Prefer these tools over shelling out to `git push` or `gh` for naming and PR creation." ]
+
 /// Real <c>IConversationService</c>: drives a per-workspace headless Copilot
 /// session and projects its <c>AgentEvent</c> stream into the conversation's
 /// event-sourced message stream.
@@ -46,7 +81,8 @@ type AgentConversationService
         workspaces: IWorkspaceStore,
         settings: ISettingsStore,
         catalog: IModelCatalogService,
-        now: unit -> DateTimeOffset
+        now: unit -> DateTimeOffset,
+        mcpServersFor: WorkspaceId -> IReadOnlyDictionary<string, McpServerConfig>
     ) =
 
     let states = ConcurrentDictionary<ConversationId, ConvState>()
@@ -291,10 +327,10 @@ type AgentConversationService
                       Model = record.Workspace.Agent
                       ReasoningEffort = appearance.ReasoningEffort
                       ContextTier = appearance.ContextTier
-                      SystemPromptAppend = ""
+                      SystemPromptAppend = SystemPrompts.workspace
                       AllowedTools = [||]
                       PermissionMode = PermissionMode.AcceptEdits
-                      McpServers = emptyMcp
+                      McpServers = mcpServersFor workspaceId
                       ResumeSessionId = "" }
 
                 match! factory.StartHeadlessAsync(config, lifetime.Token) with
@@ -380,6 +416,34 @@ type AgentConversationService
             |> ignore
 
             channel.Reader.ReadAllAsync ct
+
+    /// Set a workspace's conversation display title: append a
+    /// <c>TitleChanged</c> event and broadcast it to live observers (so the UI
+    /// retitles immediately). Backs the MCP <c>rename_workspace</c> tool, which
+    /// lets the agent name its own workspace. The raw title is cleaned through
+    /// the same <c>sanitizeTitle</c> the Haiku auto-rename uses; an empty result
+    /// is rejected as <c>Validation</c>.
+    member _.SetTitleForWorkspaceAsync
+        (workspaceId: WorkspaceId, title: string, ct: CancellationToken)
+        : Task<OperationResult<unit>> =
+        task {
+            let clean = sanitizeTitle title
+
+            if String.IsNullOrWhiteSpace clean then
+                return Failure(AveliaError.Validation "A non-empty title is required.")
+            else
+                match! workspaces.GetAsync(workspaceId, ct) with
+                | Failure e -> return Failure e
+                | Success record ->
+                    let convId = record.ConversationId
+
+                    match! conversations.AppendEventAsync(convId, TitleChanged clean, ct) with
+                    | Failure e -> return Failure e
+                    | Success _ ->
+                        let state = stateFor convId
+                        broadcast state (MessageAppended(TitleChanged clean))
+                        return Success()
+        }
 
     /// Tear down the agent session for a conversation (archive flow). Idempotent.
     member _.DisposeConversationAsync(conversationId: ConversationId) : Task<unit> =

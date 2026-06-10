@@ -142,12 +142,22 @@ type CostSnapshot =
       OutputTokens: int
       CostMicroUsd: int64 }
 
-/// Configuration for an MCP server the agent should attach to. Mirrors the
-/// shape the Claude / Copilot SDKs expect on session start.
+/// Configuration for an MCP server the agent should attach to. Mirrors the two
+/// transports the Claude / Copilot SDKs expect on session start: a subprocess
+/// the agent launches and talks to over stdio, or a streamable-HTTP endpoint
+/// the agent connects to. A DU (rather than a record with optional fields) so
+/// an HTTP server can't carry a stray <c>Command</c> nor a stdio server a
+/// stray <c>Url</c> — illegal states are unrepresentable.
 type McpServerConfig =
-    { Command: string
-      Args: string array
-      Env: IReadOnlyDictionary<string, string> }
+    /// A subprocess MCP server: the agent spawns <paramref name="command"/>
+    /// (with <paramref name="args"/> / <paramref name="env"/>) and speaks
+    /// JSON-RPC over its stdio.
+    | Stdio of command: string * args: string array * env: IReadOnlyDictionary<string, string>
+    /// A streamable-HTTP MCP server the agent connects to at
+    /// <paramref name="url"/> (with optional request <paramref name="headers"/>).
+    /// Used by Avelia's own in-process server, which binds a loopback port and
+    /// scopes each session to a workspace by URL path.
+    | Http of url: string * headers: IReadOnlyDictionary<string, string>
 
 /// Configuration handed to <c>IAgentSessionFactory</c> for either run mode.
 /// Sentinels per the project convention — no <c>'T option</c> in fields the

@@ -13,6 +13,7 @@
     <Compile Include="InteractiveTerminalService.fs" />
     <Compile Include="PullRequestService.fs" />
     <Compile Include="DiffService.fs" />
+    <Compile Include="AveliaMcpServer.fs" />
     <Compile Include="Composition.fs" />
   </ItemGroup>
 

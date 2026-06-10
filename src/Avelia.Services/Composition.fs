@@ -56,6 +56,21 @@ module RealComposition =
         let gitOps = GitCli() :> IGitOperations
 
         // Orchestrator first (the workspace service needs its teardown delegate).
+        // The MCP server is built after the PR service (below) but the
+        // orchestrator already needs to know how to attach it to a session, so
+        // its server map is resolved lazily through a late-bound reference
+        // (mirrors the disposeConversation delegate that breaks the
+        // orchestrator/workspace construction cycle).
+        let emptyMcp =
+            Dictionary<string, McpServerConfig>() :> IReadOnlyDictionary<string, McpServerConfig>
+
+        let mutable mcpServer: AveliaMcpServer option = None
+
+        let mcpServersFor (workspaceId: WorkspaceId) =
+            match mcpServer with
+            | Some server -> server.McpServersFor workspaceId
+            | None -> emptyMcp
+
         let conversations =
             new AgentConversationService(
                 agentFactory,
@@ -63,7 +78,8 @@ module RealComposition =
                 stores.Workspaces,
                 stores.Settings,
                 modelCatalog,
-                now
+                now,
+                mcpServersFor
             )
 
         let workspaces =
@@ -91,6 +107,20 @@ module RealComposition =
                 inspection,
                 gitOps
             )
+
+        // In-process MCP server exposing the naming + PR-creation tools to the
+        // agent. Attached to every real session via `mcpServersFor` above. Held
+        // alive for the app lifetime by the closure that captures `mcpServer`
+        // (the AgentConversationService keeps that closure); the OS reclaims the
+        // loopback port on exit, matching the store-connection lifetime model.
+        let mcpServerInstance =
+            new AveliaMcpServer(
+                (fun ws title ct -> conversations.SetTitleForWorkspaceAsync(ws, title, ct)),
+                (fun ws title body draft ct ->
+                    (pullRequests :> IPullRequestService).CreateForWorkspaceAsync(ws, title, body, draft, ct))
+            )
+
+        mcpServer <- Some mcpServerInstance
 
         { Repositories = RepositoryService(stores.Repositories, inspection) :> IRepositoryService
           Workspaces = workspaces :> IWorkspaceService
