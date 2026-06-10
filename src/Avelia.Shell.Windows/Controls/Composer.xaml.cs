@@ -1,4 +1,5 @@
 using System.Windows.Input;
+using Avelia.Shell.Windows.ViewModels;
 using Microsoft.UI.Input;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
@@ -35,11 +36,11 @@ public sealed partial class Composer : UserControl
         new PropertyMetadata(null)
     );
 
-    public static readonly DependencyProperty ModelNameProperty = DependencyProperty.Register(
-        nameof(ModelName),
-        typeof(string),
+    public static readonly DependencyProperty ModelBarProperty = DependencyProperty.Register(
+        nameof(ModelBar),
+        typeof(ModelBarViewModel),
         typeof(Composer),
-        new PropertyMetadata("Sonnet 4.5")
+        new PropertyMetadata(null)
     );
 
     public string Text
@@ -54,10 +55,10 @@ public sealed partial class Composer : UserControl
         set => SetValue(SendCommandProperty, value);
     }
 
-    public string ModelName
+    public ModelBarViewModel? ModelBar
     {
-        get => (string)GetValue(ModelNameProperty);
-        set => SetValue(ModelNameProperty, value);
+        get => (ModelBarViewModel?)GetValue(ModelBarProperty);
+        set => SetValue(ModelBarProperty, value);
     }
 
     private void OnInputPreviewKeyDown(object sender, KeyRoutedEventArgs e)

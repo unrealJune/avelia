@@ -24,15 +24,27 @@ type SettingsService(store: ISettingsStore, credentials: ICredentialStore, token
 
     interface ISettingsService with
         member _.GetAsync(ct) = store.LoadAsync ct
-        member _.SetAccentAsync(accent, ct) = update ct (fun s -> { s with Accent = accent })
-        member _.SetDensityAsync(density, ct) = update ct (fun s -> { s with Density = density })
-        member _.SetTransparencyAsync(enabled, ct) = update ct (fun s -> { s with Transparency = enabled })
+
+        member _.SetAccentAsync(accent, ct) =
+            update ct (fun s -> { s with Accent = accent })
+
+        member _.SetDensityAsync(density, ct) =
+            update ct (fun s -> { s with Density = density })
+
+        member _.SetTransparencyAsync(enabled, ct) =
+            update ct (fun s -> { s with Transparency = enabled })
 
         member _.SetOpenWithRightPanelAsync(enabled, ct) =
             update ct (fun s -> { s with OpenWithRightPanel = enabled })
 
-        member _.SetDefaultModelAsync(model, ct) = update ct (fun s -> { s with DefaultModel = model })
-        member _.SetExtendedThinkingAsync(enabled, ct) = update ct (fun s -> { s with ExtendedThinking = enabled })
+        member _.SetDefaultModelAsync(model, ct) =
+            update ct (fun s -> { s with DefaultModel = model })
+
+        member _.SetReasoningEffortAsync(effort, ct) =
+            update ct (fun s -> { s with ReasoningEffort = effort })
+
+        member _.SetContextTierAsync(tier, ct) =
+            update ct (fun s -> { s with ContextTier = tier })
 
         member _.SetGitHubTokenAsync(token, ct) =
             if String.IsNullOrWhiteSpace token then

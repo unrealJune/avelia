@@ -295,7 +295,7 @@
                 AutomationProperties.AutomationId="Composer"
                 Text="{x:Bind ViewModel.ComposerText, Mode=TwoWay}"
                 SendCommand="{x:Bind ViewModel.SendMessageCommand}"
-                ModelName="{x:Bind ViewModel.ModelName, Mode=OneWay, FallbackValue='Sonnet 4.5'}"
+                ModelBar="{x:Bind ViewModel.ModelBar, Mode=OneWay}"
             />
         </Grid>
 

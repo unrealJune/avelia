@@ -40,7 +40,7 @@ CREATE INDEX IF NOT EXISTS ix_conversations_ws ON conversations(workspace_id);
 CREATE TABLE IF NOT EXISTS settings (
   id INTEGER PRIMARY KEY CHECK (id = 1), accent TEXT NOT NULL, density TEXT NOT NULL,
   transparency INTEGER NOT NULL, open_with_right_panel INTEGER NOT NULL,
-  default_model TEXT NOT NULL, extended_thinking INTEGER NOT NULL);
+  default_model TEXT NOT NULL, reasoning_effort TEXT NOT NULL, context_tier TEXT NOT NULL);
 """
 
 /// Shared connection + lock. All store access funnels through <c>run</c>.
@@ -373,7 +373,7 @@ type private SqliteConversationStore(db: Db) =
 type private SqliteSettingsStore(db: Db, initial: AppearanceSettings) =
     let read (conn: SqliteConnection) : AppearanceSettings option =
         use cmd = conn.CreateCommand()
-        cmd.CommandText <- "SELECT accent,density,transparency,open_with_right_panel,default_model,extended_thinking FROM settings WHERE id = 1"
+        cmd.CommandText <- "SELECT accent,density,transparency,open_with_right_panel,default_model,reasoning_effort,context_tier FROM settings WHERE id = 1"
         use r = cmd.ExecuteReader()
 
         if r.Read() then
@@ -383,22 +383,24 @@ type private SqliteSettingsStore(db: Db, initial: AppearanceSettings) =
                   Transparency = r.GetInt32 2 <> 0
                   OpenWithRightPanel = r.GetInt32 3 <> 0
                   DefaultModel = Codec.modelOfString(r.GetString 4)
-                  ExtendedThinking = r.GetInt32 5 <> 0 }
+                  ReasoningEffort = Codec.reasoningEffortOfString(r.GetString 5)
+                  ContextTier = Codec.contextTierOfString(r.GetString 6) }
         else
             None
 
     let write (conn: SqliteConnection) (s: AppearanceSettings) =
         exec
             conn
-            "INSERT INTO settings (id,accent,density,transparency,open_with_right_panel,default_model,extended_thinking)
-             VALUES (1,$a,$d,$t,$o,$m,$e)
-             ON CONFLICT(id) DO UPDATE SET accent=$a,density=$d,transparency=$t,open_with_right_panel=$o,default_model=$m,extended_thinking=$e"
+            "INSERT INTO settings (id,accent,density,transparency,open_with_right_panel,default_model,reasoning_effort,context_tier)
+             VALUES (1,$a,$d,$t,$o,$m,$r,$c)
+             ON CONFLICT(id) DO UPDATE SET accent=$a,density=$d,transparency=$t,open_with_right_panel=$o,default_model=$m,reasoning_effort=$r,context_tier=$c"
             [ "$a", Codec.accentToString s.Accent :> obj
               "$d", Codec.densityToString s.Density :> obj
               "$t", boolToInt s.Transparency
               "$o", boolToInt s.OpenWithRightPanel
               "$m", Codec.modelToString s.DefaultModel :> obj
-              "$e", boolToInt s.ExtendedThinking ]
+              "$r", Codec.reasoningEffortToString s.ReasoningEffort :> obj
+              "$c", Codec.contextTierToString s.ContextTier :> obj ]
 
     // Seed the row from the initial defaults if the table is empty.
     do db.run (fun conn -> match read conn with Some _ -> () | None -> write conn initial)

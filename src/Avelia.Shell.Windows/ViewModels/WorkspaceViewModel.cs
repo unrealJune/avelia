@@ -35,6 +35,7 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
         _dispatcher = dispatcher;
         PrPane = new PrPaneViewModel(services);
         Terminal = new TerminalPanelViewModel();
+        ModelBar = new ModelBarViewModel();
     }
 
     /// <summary>Right-pane PR header + workspace file list. Always present; <see cref="PrPaneViewModel.HasPullRequest"/> reflects whether a PR exists.</summary>
@@ -42,6 +43,14 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
 
     /// <summary>Sticky bottom terminal panel — prompt line + tab strip.</summary>
     public TerminalPanelViewModel Terminal { get; }
+
+    /// <summary>
+    /// Unified composer model bar — model · reasoning effort · context tier.
+    /// The model is seeded from the workspace's <c>Agent</c>; reasoning and
+    /// context default to the user's Settings → Agents picks (per-conversation
+    /// overrides aren't persisted yet).
+    /// </summary>
+    public ModelBarViewModel ModelBar { get; }
 
     // -------- Observable state --------
 
@@ -52,14 +61,6 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
     /// <summary>Conversation title (e.g. "Debugging ReferenceError"). Empty until loaded.</summary>
     [ObservableProperty]
     private string _title = string.Empty;
-
-    /// <summary>
-    /// Human-readable model name shown on the composer's model badge
-    /// (e.g. "Sonnet 4.5"). Populated from the workspace's <c>Agent</c>
-    /// choice when <see cref="LoadAsync"/> completes.
-    /// </summary>
-    [ObservableProperty]
-    private string _modelName = string.Empty;
 
     /// <summary>Composer text. Bound two-way to the multi-line TextBox.</summary>
     [ObservableProperty]
@@ -109,12 +110,16 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
         var workspaceResult = await _services.Workspaces.GetAsync(id, ct).ConfigureAwait(true);
         if (workspaceResult.IsSuccess)
         {
-            ModelName = FormatModel(workspaceResult.Value.Agent);
+            var settings = await _services.Settings.GetAsync(ct).ConfigureAwait(true);
+            ModelBar.SetSelections(
+                workspaceResult.Value.Agent,
+                settings.ReasoningEffort,
+                settings.ContextTier
+            );
             Terminal.Load(workspaceResult.Value);
         }
         else
         {
-            ModelName = string.Empty;
             // Without this, the terminal would keep showing the previous
             // workspace's prompt — the right pane would look stale rather
             // than empty.
@@ -249,14 +254,6 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
             );
         }
     }
-
-    private static string FormatModel(ModelChoice agent) =>
-        agent.Match<string>(
-            sonnet45: () => "Sonnet 4.5",
-            opus41: () => "Opus 4.1",
-            haiku45: () => "Haiku 4.5",
-            custom: name => name
-        );
 
     private async Task StopObservingAsync()
     {

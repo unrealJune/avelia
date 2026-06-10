@@ -39,6 +39,70 @@ type ModelChoice =
         | Haiku45 -> haiku45.Invoke()
         | CustomModel name -> custom.Invoke name
 
+/// How hard the agent reasons before answering. Mirrors the Copilot SDK's
+/// per-model <c>ReasoningEffort</c> string vocabulary (<c>low</c> / <c>medium</c>
+/// / <c>high</c>); <see cref="ApiValue"/> is the exact wire token the SDK expects.
+/// Surfaced in the composer's model bar and Settings → Agents.
+type ReasoningEffort =
+    | Low
+    | Medium
+    | High
+
+    /// Wire token the Copilot SDK's <c>SessionConfig.ReasoningEffort</c> takes.
+    member this.ApiValue: string =
+        match this with
+        | Low -> "low"
+        | Medium -> "medium"
+        | High -> "high"
+
+    /// Title-case label for the picker.
+    member this.Label: string =
+        match this with
+        | Low -> "Low"
+        | Medium -> "Medium"
+        | High -> "High"
+
+    /// Visitor over the union — the C# binding point. Same pattern as
+    /// <c>ModelChoice.Match</c>.
+    member this.Match<'TResult>
+        (low: System.Func<'TResult>, medium: System.Func<'TResult>, high: System.Func<'TResult>)
+        : 'TResult =
+        match this with
+        | Low -> low.Invoke()
+        | Medium -> medium.Invoke()
+        | High -> high.Invoke()
+
+    /// All efforts in display order (lowest → highest).
+    static member All: ReasoningEffort array = [| Low; Medium; High |]
+
+/// Context-window tier the agent runs with. Mirrors the Copilot SDK's
+/// <c>ContextTier</c> (<c>default</c> / <c>long_context</c>); <see cref="ApiValue"/>
+/// is the exact wire token. Surfaced in the composer's model bar and Settings → Agents.
+type ContextTier =
+    | Default
+    | LongContext
+
+    /// Wire token the Copilot SDK's <c>SessionConfig.ContextTier</c> takes.
+    member this.ApiValue: string =
+        match this with
+        | Default -> "default"
+        | LongContext -> "long_context"
+
+    /// Label for the picker.
+    member this.Label: string =
+        match this with
+        | Default -> "Default"
+        | LongContext -> "Long context"
+
+    /// Visitor over the union — the C# binding point.
+    member this.Match<'TResult>(onDefault: System.Func<'TResult>, onLongContext: System.Func<'TResult>) : 'TResult =
+        match this with
+        | Default -> onDefault.Invoke()
+        | LongContext -> onLongContext.Invoke()
+
+    /// Both tiers in display order.
+    static member All: ContextTier array = [| Default; LongContext |]
+
 /// State of a pull request as Avelia tracks it.
 [<RequireQualifiedAccess>]
 type PrStatus =

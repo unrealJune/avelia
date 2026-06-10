@@ -13,7 +13,7 @@
         VerticalScrollBarVisibility="Auto"
     >
         <StackPanel Spacing="12">
-            <!-- Default model picker — one card with three radio cards. -->
+            <!-- Unified default picker: model · reasoning effort · context tier. -->
             <Border
                 Background="{ThemeResource AveliaCardBackgroundBrush}"
                 BorderBrush="{ThemeResource AveliaSurfaceStrokeBrush}"
@@ -30,65 +30,18 @@
                         <TextBlock
                             Style="{StaticResource AveliaCaptionTextStyle}"
                             Foreground="{ThemeResource AveliaTextSecondaryBrush}"
-                            Text="Initial pick for new conversations. Override per-conversation in the composer."
+                            Text="Model, reasoning effort, and context window for new conversations. Override per-conversation in the composer."
                             TextWrapping="Wrap"
                         />
                     </StackPanel>
 
-                    <ItemsControl
-                        x:Name="ModelList"
-                        AutomationProperties.AutomationId="AgentsModelList"
-                        ItemsSource="{x:Bind ViewModel.Models, Mode=OneWay}"
-                    >
-                        <ItemsControl.ItemsPanel>
-                            <ItemsPanelTemplate>
-                                <StackPanel Spacing="8" />
-                            </ItemsPanelTemplate>
-                        </ItemsControl.ItemsPanel>
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate x:DataType="vm:AgentModelOption">
-                                <RadioButton
-                                    IsChecked="{x:Bind IsSelected, Mode=TwoWay}"
-                                    GroupName="DefaultModel"
-                                    HorizontalAlignment="Stretch"
-                                    HorizontalContentAlignment="Stretch"
-                                    Padding="8,4"
-                                >
-                                    <StackPanel Spacing="2">
-                                        <TextBlock
-                                            Style="{StaticResource AveliaBodyStrongTextStyle}"
-                                            Text="{x:Bind DisplayName, Mode=OneTime}"
-                                        />
-                                        <TextBlock
-                                            Style="{StaticResource AveliaCaptionTextStyle}"
-                                            Foreground="{ThemeResource AveliaTextSecondaryBrush}"
-                                            Text="{x:Bind Description, Mode=OneTime}"
-                                            TextWrapping="Wrap"
-                                        />
-                                    </StackPanel>
-                                </RadioButton>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
+                    <controls:ModelBar
+                        AutomationProperties.AutomationId="AgentsModelBar"
+                        HorizontalAlignment="Left"
+                        ViewModel="{x:Bind ViewModel.ModelBar, Mode=OneWay}"
+                    />
                 </StackPanel>
             </Border>
-
-            <!-- Extended thinking toggle -->
-            <controls:SettingsCard
-                AutomationProperties.AutomationId="ExtendedThinkingCard"
-                Glyph="&#xEC4A;"
-                Title="Extended thinking"
-                Description="Lets the agent reason longer before responding. Slower but more deliberate."
-            >
-                <controls:SettingsCard.Action>
-                    <ToggleSwitch
-                        AutomationProperties.AutomationId="ExtendedThinkingToggle"
-                        IsOn="{x:Bind ViewModel.ExtendedThinking, Mode=TwoWay}"
-                        OnContent=""
-                        OffContent=""
-                    />
-                </controls:SettingsCard.Action>
-            </controls:SettingsCard>
 
             <!-- GitHub token (Copilot auth) -->
             <Border
