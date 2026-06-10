@@ -6,7 +6,7 @@ open Avelia.Core.Abstractions
 /// model from the store and starts an interactive agent session there (the
 /// agent factory hosts the CLI in a ConPTY). The shell binds
 /// <c>session.Terminal</c> to a <c>TerminalView</c>.
-type InteractiveTerminalService(workspaces: IWorkspaceStore, factory: IAgentSessionFactory) =
+type InteractiveTerminalService(workspaces: IWorkspaceStore, settings: ISettingsStore, factory: IAgentSessionFactory) =
 
     let emptyMcp =
         System.Collections.Generic.Dictionary<string, McpServerConfig>()
@@ -18,9 +18,13 @@ type InteractiveTerminalService(workspaces: IWorkspaceStore, factory: IAgentSess
                 match! workspaces.GetAsync(workspaceId, ct) with
                 | Failure e -> return Failure e
                 | Success record ->
+                    let! appearance = settings.LoadAsync ct
+
                     let config: AgentSessionConfig =
                         { Workspace = record.WorktreePath
                           Model = record.Workspace.Agent
+                          ReasoningEffort = appearance.ReasoningEffort
+                          ContextTier = appearance.ContextTier
                           SystemPromptAppend = ""
                           AllowedTools = [||]
                           PermissionMode = PermissionMode.AcceptEdits

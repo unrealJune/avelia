@@ -396,14 +396,19 @@ type StubSettingsService(initial: AppearanceSettings) =
             lock gate (fun () -> current <- { current with DefaultModel = model })
             Task.CompletedTask
 
-        member _.SetExtendedThinkingAsync(enabled, ct) =
+        member _.SetReasoningEffortAsync(effort, ct) =
             ct.ThrowIfCancellationRequested()
 
             lock gate (fun () ->
                 current <-
                     { current with
-                        ExtendedThinking = enabled })
+                        ReasoningEffort = effort })
 
+            Task.CompletedTask
+
+        member _.SetContextTierAsync(tier, ct) =
+            ct.ThrowIfCancellationRequested()
+            lock gate (fun () -> current <- { current with ContextTier = tier })
             Task.CompletedTask
 
         member _.SetGitHubTokenAsync(token, ct) =

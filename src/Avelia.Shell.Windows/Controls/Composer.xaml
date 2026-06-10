@@ -7,8 +7,8 @@
 >
     <!--
         Bottom-anchored composer. Multi-line TextBox up top (Shift+Enter for
-        newline, Enter submits via KeyDown handler), toolbar row below with
-        model badge, link button, attachments, tools, and the accent Send.
+        newline, Enter submits via KeyDown handler), toolbar row below with the
+        unified model bar, link button, attachments, tools, and the accent Send.
         Matches workspace-view.jsx :: composer.
     -->
     <Border
@@ -50,10 +50,11 @@
                     <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
 
-                <local:ModelBadge
+                <local:ModelBar
                     Grid.Column="0"
                     Margin="0,0,8,0"
-                    ModelName="{x:Bind ModelName, Mode=OneWay, FallbackValue='Sonnet 4.5'}"
+                    VerticalAlignment="Center"
+                    ViewModel="{x:Bind ModelBar, Mode=OneWay}"
                 />
 
                 <Button

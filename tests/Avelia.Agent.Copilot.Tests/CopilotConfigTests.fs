@@ -17,6 +17,8 @@ let private noPermission =
 let private baseConfig =
     { Workspace = RepoPath.Create "C:/work/repo"
       Model = Sonnet45
+      ReasoningEffort = ReasoningEffort.Medium
+      ContextTier = ContextTier.Default
       SystemPromptAppend = ""
       AllowedTools = [||]
       PermissionMode = PermissionMode.AcceptEdits
@@ -30,13 +32,54 @@ let ``maps workspace and model`` () =
     Assert.Equal("claude-sonnet-4.5", c.Model)
 
 [<Fact>]
+let ``maps reasoning effort onto the SDK wire token`` () =
+    let c =
+        CopilotConfig.build
+            { baseConfig with
+                ReasoningEffort = ReasoningEffort.High }
+            noEvent
+            noPermission
+
+    Assert.Equal("high", c.ReasoningEffort)
+
+[<Fact>]
+let ``maps context tier onto the SDK long-context tier`` () =
+    let c =
+        CopilotConfig.build
+            { baseConfig with
+                ContextTier = ContextTier.LongContext }
+            noEvent
+            noPermission
+
+    Assert.True(c.ContextTier.HasValue)
+    Assert.Equal(GitHub.Copilot.ContextTier.LongContext, c.ContextTier.Value)
+
+[<Fact>]
+let ``maps default context tier`` () =
+    let c = CopilotConfig.build baseConfig noEvent noPermission
+    Assert.True(c.ContextTier.HasValue)
+    Assert.Equal(GitHub.Copilot.ContextTier.Default, c.ContextTier.Value)
+
+[<Fact>]
 let ``blank mapped model leaves SDK Model unset`` () =
-    let c = CopilotConfig.build { baseConfig with Model = CustomModel "" } noEvent noPermission
+    let c =
+        CopilotConfig.build
+            { baseConfig with
+                Model = CustomModel "" }
+            noEvent
+            noPermission
+
     Assert.True(String.IsNullOrEmpty c.Model)
 
 [<Fact>]
 let ``allowed tools become the available-tools filter`` () =
-    let c = CopilotConfig.build { baseConfig with AllowedTools = [| "Edit"; "Read" |] } noEvent noPermission
+    let c =
+        CopilotConfig.build
+            { baseConfig with
+                AllowedTools = [| "Edit"; "Read" |] }
+            noEvent
+            noPermission
+
     Assert.Equal<string list>([ "Edit"; "Read" ], List.ofSeq c.AvailableTools)
 
 [<Fact>]
@@ -46,7 +89,13 @@ let ``empty allowed tools leaves the filter unset (SDK default)`` () =
 
 [<Fact>]
 let ``resume session id is carried through`` () =
-    let c = CopilotConfig.build { baseConfig with ResumeSessionId = "sess-123" } noEvent noPermission
+    let c =
+        CopilotConfig.build
+            { baseConfig with
+                ResumeSessionId = "sess-123" }
+            noEvent
+            noPermission
+
     Assert.Equal("sess-123", c.SessionId)
 
 [<Fact>]
@@ -59,7 +108,8 @@ let ``mcp servers map to stdio config with command, args and env`` () =
     let servers =
         dict [ "fs", mcp ] |> Dictionary :> IReadOnlyDictionary<string, Avelia.Core.Abstractions.McpServerConfig>
 
-    let c = CopilotConfig.build { baseConfig with McpServers = servers } noEvent noPermission
+    let c =
+        CopilotConfig.build { baseConfig with McpServers = servers } noEvent noPermission
 
     Assert.True(c.McpServers.ContainsKey "fs")
 

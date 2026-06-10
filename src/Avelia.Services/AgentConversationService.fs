@@ -37,6 +37,7 @@ type AgentConversationService
         factory: IAgentSessionFactory,
         conversations: IConversationStore,
         workspaces: IWorkspaceStore,
+        settings: ISettingsStore,
         now: unit -> DateTimeOffset
     ) =
 
@@ -117,9 +118,13 @@ type AgentConversationService
             match! workspaces.GetAsync(workspaceId, lifetime.Token) with
             | Failure e -> return Error e
             | Success record ->
+                let! appearance = settings.LoadAsync lifetime.Token
+
                 let config: AgentSessionConfig =
                     { Workspace = record.WorktreePath
                       Model = record.Workspace.Agent
+                      ReasoningEffort = appearance.ReasoningEffort
+                      ContextTier = appearance.ContextTier
                       SystemPromptAppend = ""
                       AllowedTools = [||]
                       PermissionMode = PermissionMode.AcceptEdits

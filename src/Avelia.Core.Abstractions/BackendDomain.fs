@@ -159,6 +159,10 @@ type AgentSessionConfig =
         /// Worktree root the agent runs against.
         Workspace: RepoPath
         Model: ModelChoice
+        /// Reasoning effort the agent runs with (the user's settings default).
+        ReasoningEffort: ReasoningEffort
+        /// Context-window tier the agent runs with (the user's settings default).
+        ContextTier: ContextTier
         SystemPromptAppend: string
         AllowedTools: string array
         PermissionMode: PermissionMode

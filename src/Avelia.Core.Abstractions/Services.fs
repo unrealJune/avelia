@@ -134,8 +134,10 @@ type AppearanceSettings =
         /// User's chosen default agent model. The composer can still override
         /// per-conversation; this is the initial selection.
         DefaultModel: ModelChoice
-        /// Extended-thinking toggle in Settings → Agents.
-        ExtendedThinking: bool
+        /// Default reasoning effort for new conversations (composer can override).
+        ReasoningEffort: ReasoningEffort
+        /// Default context-window tier for new conversations.
+        ContextTier: ContextTier
     }
 
 type ISettingsService =
@@ -146,7 +148,8 @@ type ISettingsService =
     abstract SetTransparencyAsync: enabled: bool * CancellationToken -> Task
     abstract SetOpenWithRightPanelAsync: enabled: bool * CancellationToken -> Task
     abstract SetDefaultModelAsync: model: ModelChoice * CancellationToken -> Task
-    abstract SetExtendedThinkingAsync: enabled: bool * CancellationToken -> Task
+    abstract SetReasoningEffortAsync: effort: ReasoningEffort * CancellationToken -> Task
+    abstract SetContextTierAsync: tier: ContextTier * CancellationToken -> Task
 
     /// Persist a manually-entered GitHub token (PAT) to the OS credential vault,
     /// or clear the saved PAT when <paramref name="token"/> is empty. The

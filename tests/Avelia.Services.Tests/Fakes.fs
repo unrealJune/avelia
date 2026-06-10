@@ -74,7 +74,10 @@ type FakeGitOperations(?worktreeAddResult: OperationResult<Worktree>) =
             Task.FromResult result
 
         member _.WorktreeRemoveAsync(_worktree, _force, _ct) = Task.FromResult(Success())
-        member _.CommitAsync(_worktree, _msg, _ct) = Task.FromResult(Success(CommitId.Create(System.String('b', 40))))
+
+        member _.CommitAsync(_worktree, _msg, _ct) =
+            Task.FromResult(Success(CommitId.Create(System.String('b', 40))))
+
         member _.PushAsync(_worktree, _remote, _ct) = Task.FromResult(Success())
         member _.FetchAsync(_worktree, _remote, _ct) = Task.FromResult(Success())
         member _.CheckoutAsync(_worktree, _branch, _ct) = Task.FromResult(Success())
@@ -114,8 +117,7 @@ module FakeAuthHelpers =
 /// A configurable <c>IGitHubAuth</c>: only the stored-account read paths are
 /// meaningful; the device-flow / PAT sign-in paths return Unauthorized.
 type FakeGitHubAuth(accounts: GitHubAccessToken list) =
-    let byLogin =
-        accounts |> List.map (fun t -> t.Account.Value, t) |> dict
+    let byLogin = accounts |> List.map (fun t -> t.Account.Value, t) |> dict
 
     interface IGitHubAuth with
         member _.ListStoredAccountsAsync(_ct) =
@@ -126,9 +128,15 @@ type FakeGitHubAuth(accounts: GitHubAccessToken list) =
             | true, t -> Task.FromResult(Success t)
             | _ -> Task.FromResult(Failure(AveliaError.NotFound("credential:" + login.Value)))
 
-        member _.BeginDeviceFlowAsync(_config, _ct) = Task.FromResult(Failure AveliaError.Unauthorized)
-        member _.CompleteDeviceFlowAsync(_config, _challenge, _ct) = Task.FromResult(Failure AveliaError.Unauthorized)
-        member _.SignInWithPatAsync(_config, _pat, _ct) = Task.FromResult(Failure AveliaError.Unauthorized)
+        member _.BeginDeviceFlowAsync(_config, _ct) =
+            Task.FromResult(Failure AveliaError.Unauthorized)
+
+        member _.CompleteDeviceFlowAsync(_config, _challenge, _ct) =
+            Task.FromResult(Failure AveliaError.Unauthorized)
+
+        member _.SignInWithPatAsync(_config, _pat, _ct) =
+            Task.FromResult(Failure AveliaError.Unauthorized)
+
         member _.SignOutAsync(_login, _ct) = Task.FromResult(Success())
 
 /// A driveable headless session: tests push <c>AgentEvent</c>s via <c>Emit</c>
@@ -145,7 +153,9 @@ type FakeHeadlessSession(sessionId: SessionId, workspace: RepoPath) =
         member _.SessionId = sessionId
         member _.Workspace = workspace
         member _.InterruptAsync(_ct) = Task.CompletedTask
-        member _.WaitForExitAsync(_ct) = Task.FromResult { ExitCode = 0; IsClean = true }
+
+        member _.WaitForExitAsync(_ct) =
+            Task.FromResult { ExitCode = 0; IsClean = true }
 
     interface IHeadlessAgentSession with
         member _.Events(ct) =
@@ -177,7 +187,9 @@ type FakeTerminalSessionMin() =
         member _.ReadAllAsync(_ct) = taskSeq { () }
         member _.ResizeAsync(_s, _ct) = Task.CompletedTask
         member _.SendInterruptAsync(_ct) = Task.CompletedTask
-        member _.WaitForExitAsync(_ct) = Task.FromResult { ExitCode = 0; IsClean = true }
+
+        member _.WaitForExitAsync(_ct) =
+            Task.FromResult { ExitCode = 0; IsClean = true }
 
     interface IAsyncDisposable with
         member _.DisposeAsync() = ValueTask.CompletedTask
@@ -189,7 +201,9 @@ type FakeInteractiveSession(workspace: RepoPath) =
         member _.SessionId = SessionId.create ()
         member _.Workspace = workspace
         member _.InterruptAsync(_ct) = Task.CompletedTask
-        member _.WaitForExitAsync(_ct) = Task.FromResult { ExitCode = 0; IsClean = true }
+
+        member _.WaitForExitAsync(_ct) =
+            Task.FromResult { ExitCode = 0; IsClean = true }
 
     interface IInteractiveAgentSession with
         member _.Terminal = terminal
@@ -204,10 +218,13 @@ type FakeAgentSessionFactory(?failure: AveliaError) =
     member val Sessions = ResizeArray<FakeHeadlessSession>()
     member val StartCount = 0 with get, set
     member val LastInteractiveWorkspace = "" with get, set
+    member val LastHeadlessConfig: AgentSessionConfig option = None with get, set
+    member val LastInteractiveConfig: AgentSessionConfig option = None with get, set
 
     interface IAgentSessionFactory with
         member this.StartHeadlessAsync(config, _ct) =
             this.StartCount <- this.StartCount + 1
+            this.LastHeadlessConfig <- Some config
 
             match failure with
             | Some e -> Task.FromResult(Failure e)
@@ -218,6 +235,7 @@ type FakeAgentSessionFactory(?failure: AveliaError) =
 
         member this.StartInteractiveAsync(config, _ct) =
             this.LastInteractiveWorkspace <- config.Workspace.Value
+            this.LastInteractiveConfig <- Some config
 
             match failure with
             | Some e -> Task.FromResult(Failure e)

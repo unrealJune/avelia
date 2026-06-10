@@ -74,7 +74,7 @@ let private collect (n: int) (stream: IAsyncEnumerable<ConversationUpdate>) =
     }
 
 let private mk (factory: IAgentSessionFactory) (stores: Stores) =
-    new AgentConversationService(factory, stores.Conversations, stores.Workspaces, epoch)
+    new AgentConversationService(factory, stores.Conversations, stores.Workspaces, stores.Settings, epoch)
 
 [<Fact>]
 let ``no session starts until the first message`` () =
@@ -175,7 +175,11 @@ let ``multiple subscribers all receive the broadcast`` () =
 
     let isUser =
         function
+<<<<<<< HEAD
         | [ MessageAppended(UserMessageAppended m) ] -> m.Text = "fanout"
+=======
+        | [ UserMessageAppended m ] -> m.Text = "fanout"
+>>>>>>> origin/main
         | _ -> false
 
     Assert.True(isUser a.Result)

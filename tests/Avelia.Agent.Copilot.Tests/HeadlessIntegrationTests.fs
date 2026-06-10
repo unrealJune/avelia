@@ -41,7 +41,9 @@ let ``real headless run streams a conversation event`` () =
             // COPILOT_GITHUB_TOKEN set, and the `copilot` CLI installed.)
             return ()
         else
-            let work = Path.Combine(Path.GetTempPath(), "avelia-copilot-" + Guid.NewGuid().ToString("N"))
+            let work =
+                Path.Combine(Path.GetTempPath(), "avelia-copilot-" + Guid.NewGuid().ToString("N"))
+
             Directory.CreateDirectory work |> ignore
 
             try
@@ -52,6 +54,8 @@ let ``real headless run streams a conversation event`` () =
                 let config: AgentSessionConfig =
                     { Workspace = RepoPath.Create work
                       Model = Sonnet45
+                      ReasoningEffort = ReasoningEffort.Medium
+                      ContextTier = ContextTier.Default
                       SystemPromptAppend = ""
                       AllowedTools = [||]
                       PermissionMode = PermissionMode.AcceptEdits

@@ -26,8 +26,9 @@ module CopilotConfig =
 
     /// Map our session config onto an SDK <c>SessionConfig</c>.
     ///
-    /// <para>Mapped: working directory, model, allowed-tools filter, MCP
-    /// servers, the resume session id, plus the event/permission callbacks.</para>
+    /// <para>Mapped: working directory, model, reasoning effort, context tier,
+    /// allowed-tools filter, MCP servers, the resume session id, plus the
+    /// event/permission callbacks.</para>
     ///
     /// <para>Not yet mapped (B-8 scope): <c>SystemPromptAppend</c> — the SDK's
     /// system-message override is a structured section/transform model that
@@ -46,6 +47,18 @@ module CopilotConfig =
 
         if model <> "" then
             c.Model <- model
+
+        // Reasoning + context are always set: the DUs carry a definite choice
+        // (the user's settings default), mapped onto the SDK's wire vocabulary.
+        c.ReasoningEffort <- config.ReasoningEffort.ApiValue
+
+        let sdkTier =
+            config.ContextTier.Match(
+                (fun () -> GitHub.Copilot.ContextTier.Default),
+                (fun () -> GitHub.Copilot.ContextTier.LongContext)
+            )
+
+        c.ContextTier <- Nullable sdkTier
 
         if not (isNull config.AllowedTools) && config.AllowedTools.Length > 0 then
             c.AvailableTools <- ResizeArray config.AllowedTools

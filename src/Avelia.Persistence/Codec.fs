@@ -30,6 +30,25 @@ module Codec =
         | _ when s.StartsWith "custom:" -> CustomModel(s.Substring 7)
         | other -> CustomModel other
 
+    // -- ReasoningEffort -----------------------------------------------------
+
+    let reasoningEffortToString (e: ReasoningEffort) : string = e.ApiValue
+
+    let reasoningEffortOfString (s: string) : ReasoningEffort =
+        match s with
+        | "low" -> ReasoningEffort.Low
+        | "high" -> ReasoningEffort.High
+        | _ -> ReasoningEffort.Medium
+
+    // -- ContextTier ---------------------------------------------------------
+
+    let contextTierToString (t: ContextTier) : string = t.ApiValue
+
+    let contextTierOfString (s: string) : ContextTier =
+        match s with
+        | "long_context" -> ContextTier.LongContext
+        | _ -> ContextTier.Default
+
     // -- AccentChoice --------------------------------------------------------
 
     let accentToString (a: AccentChoice) : string =
@@ -105,8 +124,10 @@ module Codec =
 
     let private writeStrings (w: Utf8JsonWriter) (name: string) (xs: string[]) =
         w.WriteStartArray name
+
         for x in xs do
             w.WriteStringValue x
+
         w.WriteEndArray()
 
     let messageEventToJson (ev: MessageEvent) : string =
