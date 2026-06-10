@@ -14,6 +14,7 @@
     <Compile Include="DeviceFlowTests.fs" />
     <Compile Include="AuthTests.fs" />
     <Compile Include="CredentialStoreTests.fs" />
+    <Compile Include="CredentialKeyTests.fs" />
     <Compile Include="ResponseCacheTests.fs" />
     <Compile Include="RateLimitGuardTests.fs" />
     <Compile Include="ApiClientTests.fs" />
