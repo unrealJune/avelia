@@ -36,7 +36,15 @@ public sealed class CodeRefBlock : UserControl
     public CodeRefBlock()
     {
         IsTabStop = false;
-        _text = new TextBlock { TextWrapping = TextWrapping.Wrap };
+        _text = new TextBlock
+        {
+            TextWrapping = TextWrapping.Wrap,
+            // Allow the user to select and copy message text (Ctrl+C / the
+            // built-in selection context menu). The transcript ListView sets
+            // SelectionMode="None", so this is the copy affordance for user and
+            // error lines.
+            IsTextSelectionEnabled = true,
+        };
         Content = _text;
         ActualThemeChanged += OnActualThemeChanged;
     }
