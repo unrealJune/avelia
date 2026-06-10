@@ -106,7 +106,11 @@ type WorkspaceService
                     | Failure e -> return Failure e
                     | Success _ ->
                         let! current = settings.LoadAsync ct
-                        let title = sprintf "%s / %s" repo.Name branch.Value
+                        // The conversation Title doubles as the workspace's
+                        // display name in the UI (rail + chat pivot). Seed it
+                        // with the (auto-generated) branch name; the Haiku
+                        // auto-rename later replaces it with a task summary.
+                        let title = branch.Value
                         let conv = Conversation.empty convId wsId title
 
                         match! conversations.CreateAsync(conv, ct) with

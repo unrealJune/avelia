@@ -59,11 +59,11 @@ public sealed partial class MainWindow : Window
     {
         _themeService = themeService;
         _services = services;
-        ViewModel = new MainViewModel(services);
+        _uiDispatcher = new DispatcherQueueUiDispatcher(DispatcherQueue);
+        ViewModel = new MainViewModel(services, _uiDispatcher);
 
         InitializeComponent();
 
-        _uiDispatcher = new DispatcherQueueUiDispatcher(DispatcherQueue);
         _notifications = new WindowsAppNotificationService(() => _isWindowActive);
         Activated += OnWindowActivated;
 
@@ -599,7 +599,7 @@ public sealed partial class MainWindow : Window
                 Content = new WorkspaceTreeItem { Item = ws },
                 Tag = ws,
             };
-            AutomationProperties.SetName(wsItem, ws.Branch);
+            AutomationProperties.SetName(wsItem, ws.DisplayName);
 
             // Right-click → Delete worktree.
             var deleteItem = new MenuFlyoutItem
