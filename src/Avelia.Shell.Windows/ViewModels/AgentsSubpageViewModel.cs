@@ -20,7 +20,6 @@ public partial class AgentsSubpageViewModel : ObservableObject
     public AgentsSubpageViewModel(AveliaServices services)
     {
         _settings = services.Settings;
-
         ModelBar.ModelChanged = model =>
             FireAndForget(
                 _settings.SetDefaultModelAsync(model, CancellationToken.None),
@@ -44,6 +43,11 @@ public partial class AgentsSubpageViewModel : ObservableObject
     /// per-conversation.
     /// </summary>
     public ModelBarViewModel ModelBar { get; } = new();
+
+    /// <summary>True while the live model catalog is being fetched; drives a
+    /// progress indicator on the Agents subpage.</summary>
+    [ObservableProperty]
+    private bool _isLoadingModels;
 
     /// <summary>Bound from the PasswordBox (code-behind PasswordChanged).</summary>
     [ObservableProperty]

@@ -13,6 +13,7 @@
     <Compile Include="CopilotInteractiveSession.fs" />
     <Compile Include="CopilotHeadlessSession.fs" />
     <Compile Include="CopilotAgentSessionFactory.fs" />
+    <Compile Include="ModelCatalog.fs" />
   </ItemGroup>
 
   <ItemGroup>

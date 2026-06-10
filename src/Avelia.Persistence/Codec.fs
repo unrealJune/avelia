@@ -181,6 +181,9 @@ module Codec =
 
             w.WriteEndArray()
             writeTs w m.Timestamp
+        | TitleChanged title ->
+            w.WriteString("kind", "title")
+            w.WriteString("title", title)
 
         w.WriteEndObject()
         w.Flush()
@@ -266,6 +269,7 @@ module Codec =
                   Body = getStr e "body"
                   Items = items
                   Timestamp = ts e }
+        | "title" -> TitleChanged(getStr e "title")
         | _ -> // "user" and anything unrecognized degrade to a user message
             UserMessageAppended
                 { Id = msgId e

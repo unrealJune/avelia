@@ -33,7 +33,9 @@ let private record (repoId: RepositoryId) (convId: ConversationId) =
           Agent = Opus41
           LastUpdated = DateTimeOffset(2026, 1, 2, 3, 4, 5, TimeSpan.Zero)
           LastUpdatedDisplay = "yesterday"
-          PrNumber = 7 }
+          PrNumber = 7
+          ReasoningEffort = ""
+          ContextTier = "" }
 
     { Workspace = ws
       WorktreePath = RepoPath.Create("C:/wt/" + string (WorkspaceId.value wsId))
@@ -70,11 +72,19 @@ let runContract (stores: Stores) =
     Assert.Single((stores.Workspaces.ListByRepoAsync(r.Id, ct)).Result) |> ignore
 
     // Conversations (event-sourced)
-    (stores.Conversations.CreateAsync(Conversation.empty convId rec0.Workspace.Id "T", ct)).Result |> ignore
+    (stores.Conversations.CreateAsync(Conversation.empty convId rec0.Workspace.Id "T", ct)).Result
+    |> ignore
+
     Assert.True((stores.Conversations.GetByWorkspaceAsync(rec0.Workspace.Id, ct)).Result.IsSuccess)
-    let afterFirst = (stores.Conversations.AppendEventAsync(convId, userEvent "one", ct)).Result.Value
+
+    let afterFirst =
+        (stores.Conversations.AppendEventAsync(convId, userEvent "one", ct)).Result.Value
+
     Assert.Equal(1, afterFirst.LastSequence)
-    let afterSecond = (stores.Conversations.AppendEventAsync(convId, userEvent "two", ct)).Result.Value
+
+    let afterSecond =
+        (stores.Conversations.AppendEventAsync(convId, userEvent "two", ct)).Result.Value
+
     Assert.Equal(2, afterSecond.LastSequence)
     Assert.Equal(2, (stores.Conversations.GetAsync(convId, ct)).Result.Value.Messages.Length)
 
@@ -83,7 +93,11 @@ let runContract (stores: Stores) =
     | other -> failwithf "expected NotFound, got %A" other
 
     // Settings
-    let changed = { DesignData.defaultAppearance with Density = Density.Compact; Accent = AccentChoice.Sage }
+    let changed =
+        { DesignData.defaultAppearance with
+            Density = Density.Compact
+            Accent = AccentChoice.Sage }
+
     (stores.Settings.SaveAsync(changed, ct)).Result |> ignore
     Assert.Equal(changed, (stores.Settings.LoadAsync ct).Result)
 
@@ -94,7 +108,9 @@ let ``in-memory stores satisfy the contract`` () =
 [<Fact>]
 [<Trait("Category", "Integration")>]
 let ``sqlite stores satisfy the contract`` () =
-    let path = Path.Combine(Path.GetTempPath(), "avelia-sql-" + Guid.NewGuid().ToString("N") + ".db")
+    let path =
+        Path.Combine(Path.GetTempPath(), "avelia-sql-" + Guid.NewGuid().ToString("N") + ".db")
+
     let set = SqliteStores.create path DesignData.defaultAppearance
 
     try
@@ -103,12 +119,16 @@ let ``sqlite stores satisfy the contract`` () =
         finally
             (set :> IDisposable).Dispose()
     finally
-        try File.Delete path with _ -> ()
+        try
+            File.Delete path
+        with _ ->
+            ()
 
 [<Fact>]
 [<Trait("Category", "Integration")>]
 let ``sqlite persists across reopen`` () =
-    let path = Path.Combine(Path.GetTempPath(), "avelia-sql-" + Guid.NewGuid().ToString("N") + ".db")
+    let path =
+        Path.Combine(Path.GetTempPath(), "avelia-sql-" + Guid.NewGuid().ToString("N") + ".db")
 
     try
         let repoId = RepositoryId.create ()
@@ -121,10 +141,19 @@ let ``sqlite persists across reopen`` () =
         try
             (s1.Stores.Repositories.UpsertAsync(repo "persisted", ct)).Result |> ignore
             (s1.Stores.Workspaces.UpsertAsync(rec0, ct)).Result |> ignore
+
             (s1.Stores.Conversations.CreateAsync(Conversation.empty convId rec0.Workspace.Id "kept", ct)).Result
             |> ignore
-            (s1.Stores.Conversations.AppendEventAsync(convId, userEvent "first", ct)).Result |> ignore
-            (s1.Stores.Settings.SaveAsync({ DesignData.defaultAppearance with Transparency = false }, ct)).Result
+
+            (s1.Stores.Conversations.AppendEventAsync(convId, userEvent "first", ct)).Result
+            |> ignore
+
+            (s1.Stores.Settings.SaveAsync(
+                { DesignData.defaultAppearance with
+                    Transparency = false },
+                ct
+            ))
+                .Result
             |> ignore
         finally
             (s1 :> IDisposable).Dispose()
@@ -143,4 +172,7 @@ let ``sqlite persists across reopen`` () =
         finally
             (s2 :> IDisposable).Dispose()
     finally
-        try File.Delete path with _ -> ()
+        try
+            File.Delete path
+        with _ ->
+            ()

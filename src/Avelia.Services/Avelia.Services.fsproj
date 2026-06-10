@@ -11,6 +11,8 @@
     <Compile Include="WorkspaceService.fs" />
     <Compile Include="AgentConversationService.fs" />
     <Compile Include="InteractiveTerminalService.fs" />
+    <Compile Include="PullRequestService.fs" />
+    <Compile Include="DiffService.fs" />
     <Compile Include="Composition.fs" />
   </ItemGroup>
 

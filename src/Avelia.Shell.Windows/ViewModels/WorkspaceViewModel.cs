@@ -28,6 +28,7 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
     private CancellationTokenSource? _observeCts;
     private Task? _observeTask;
     private ConversationId? _conversationId;
+    private bool _diffRefreshPending;
 
     /// <summary>
     /// User messages shown optimistically (see <see cref="SendMessage"/>) that
@@ -85,6 +86,14 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
     [ObservableProperty]
     [NotifyCanExecuteChangedFor(nameof(SendMessageCommand))]
     private string _composerText = string.Empty;
+
+    /// <summary>
+    /// Live working-tree status summary for the workspace's worktree
+    /// (e.g. "Clean", "3 changed · ↑2 ↓1"). Populated from a real
+    /// <c>git status</c> read on load; empty until resolved.
+    /// </summary>
+    [ObservableProperty]
+    private string _gitStatusSummary = string.Empty;
 
     /// <summary>Indicates a load is in progress; bound to a progress ring.</summary>
     [ObservableProperty]
@@ -180,7 +189,15 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
 
         foreach (var ev in conversation.Messages)
         {
-            AppendProjected(MessageViewModel.FromEvent(ev));
+            var titleChange = TitleChangeOf(ev);
+            if (titleChange is not null)
+            {
+                Title = titleChange;
+            }
+            else
+            {
+                AppendProjected(MessageViewModel.FromEvent(ev));
+            }
         }
         // A loaded conversation isn't actively running, so settle the last turn's
         // activity block (drop its "working" spinner).
@@ -198,6 +215,11 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
         IsLoading = false;
 
         StartObserving(conversation.Id);
+
+        // Live git status for the worktree (clean/dirty + ahead/behind).
+        // Best-effort: a failure (e.g. worktree missing) just clears the line.
+        var statusResult = await _services.Workspaces.GetStatusAsync(id, ct).ConfigureAwait(true);
+        GitStatusSummary = statusResult.IsSuccess ? FormatStatus(statusResult.Value) : string.Empty;
 
         // Right pane loads after the chat is on screen — it's the slow part
         // (PR lookup over the network + git diff), so we never block the
@@ -275,6 +297,32 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
 
     // -------- Subscription lifecycle --------
 
+    /// <summary>
+    /// Re-fetch the workspace's changed-file list after agent activity so the
+    /// "Changes" view tracks edits live. Coalesced via a pending flag so a busy
+    /// agent stream doesn't queue a git diff per message.
+    /// </summary>
+    private void ScheduleDiffRefresh()
+    {
+        var wsId = WorkspaceId;
+        if (wsId is null || _diffRefreshPending)
+        {
+            return;
+        }
+        _diffRefreshPending = true;
+        _dispatcher.Post(async () =>
+        {
+            try
+            {
+                await PrPane.RefreshFilesAsync(wsId).ConfigureAwait(true);
+            }
+            finally
+            {
+                _diffRefreshPending = false;
+            }
+        });
+    }
+
     private void StartObserving(ConversationId conversationId)
     {
         _observeCts = new CancellationTokenSource();
@@ -307,7 +355,23 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
                 {
                     break;
                 }
-                _dispatcher.Post(() => ApplyUpdate(update));
+                // TitleChanged renames the conversation (e.g. the Haiku
+                // auto-rename) — apply to Title rather than the transcript.
+                var titleChange = update.Match<string?>(
+                    onMessage: TitleChangeOf,
+                    onTurnCompleted: () => null
+                );
+                if (titleChange is not null)
+                {
+                    _dispatcher.Post(() => Title = titleChange);
+                }
+                else
+                {
+                    _dispatcher.Post(() => ApplyUpdate(update));
+                    // The agent likely touched the worktree — refresh the
+                    // Changes list so edits show up live.
+                    ScheduleDiffRefresh();
+                }
             }
         }
         catch (OperationCanceledException)
@@ -325,7 +389,6 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
         }
     }
 
-<<<<<<< HEAD
     /// <summary>
     /// Apply one live conversation update on the UI thread (posted via
     /// <see cref="_dispatcher"/>). A <c>TurnCompleted</c> marker settles the
@@ -454,16 +517,41 @@ public partial class WorkspaceViewModel : ObservableObject, IAsyncDisposable
         }
     }
 
-    private static string FormatModel(ModelChoice agent) =>
-        agent.Match<string>(
-            sonnet45: () => "Sonnet 4.5",
-            opus41: () => "Opus 4.1",
-            haiku45: () => "Haiku 4.5",
-            custom: name => name
+    /// <summary>
+    /// Render a <see cref="WorktreeStatus"/> as a compact one-line summary:
+    /// "Clean" when nothing is pending, else "&lt;n&gt; changed" with an
+    /// "↑ahead ↓behind" suffix when the branch diverges from upstream.
+    /// </summary>
+    private static string FormatStatus(WorktreeStatus status)
+    {
+        var parts = new System.Collections.Generic.List<string>();
+        var changed = status.Files.Count;
+        parts.Add(changed == 0 ? "Clean" : $"{changed} changed");
+
+        var ab = status.AheadBehind;
+        if (ab.Ahead > 0 || ab.Behind > 0)
+        {
+            parts.Add($"↑{ab.Ahead} ↓{ab.Behind}");
+        }
+        return string.Join(" · ", parts);
+    }
+
+    /// <summary>
+    /// Returns the new title when <paramref name="ev"/> is a
+    /// <c>TitleChanged</c> rename, else <c>null</c>. Goes through the F#
+    /// <c>Match</c> visitor so adding an event kind forces a decision here.
+    /// </summary>
+    private static string? TitleChangeOf(MessageEvent ev) =>
+        ev.Match<string?>(
+            onUser: _ => null,
+            onAgent: _ => null,
+            onError: _ => null,
+            onTool: _ => null,
+            onChange: _ => null,
+            onMarkdown: _ => null,
+            onTitleChanged: t => t
         );
 
-=======
->>>>>>> origin/main
     private async Task StopObservingAsync()
     {
         if (_observeCts is null)

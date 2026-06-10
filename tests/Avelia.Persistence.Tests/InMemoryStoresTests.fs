@@ -32,7 +32,9 @@ let private workspaceRecord (repoId: RepositoryId) =
           Agent = Sonnet45
           LastUpdated = DateTimeOffset.UnixEpoch
           LastUpdatedDisplay = "now"
-          PrNumber = 0 }
+          PrNumber = 0
+          ReasoningEffort = ""
+          ContextTier = "" }
 
     { Workspace = ws
       WorktreePath = RepoPath.Create("C:/worktrees/" + string (WorkspaceId.value wsId))
@@ -85,7 +87,9 @@ let ``workspace list-by-repo filters to the owning repo`` () =
     let a1 = workspaceRecord repoA
     let a2 = workspaceRecord repoA
     let b1 = workspaceRecord repoB
-    for w in [ a1; a2; b1 ] do (store.UpsertAsync(w, ct)).Result |> ignore
+
+    for w in [ a1; a2; b1 ] do
+        (store.UpsertAsync(w, ct)).Result |> ignore
 
     let forA = (store.ListByRepoAsync(repoA, ct)).Result
     Assert.Equal(2, forA.Count)
@@ -98,7 +102,10 @@ let ``workspace upsert overwrites by id`` () =
     (store.UpsertAsync(w, ct)).Result |> ignore
 
     let updated =
-        { w with Workspace = { w.Workspace with Status = WorkspaceStatus.Active } }
+        { w with
+            Workspace =
+                { w.Workspace with
+                    Status = WorkspaceStatus.Active } }
 
     (store.UpsertAsync(updated, ct)).Result |> ignore
     Assert.Equal(1, (store.ListAllAsync ct).Result.Count)
@@ -134,12 +141,14 @@ let ``appending events folds the same as Conversation.replay`` (texts: NonEmptyA
     let events = texts.Get |> Array.map (fun s -> userEvent s.Get)
 
     let mutable last = Conversation.empty convId wsId "T"
+
     for e in events do
         last <- (store.AppendEventAsync(convId, e, ct)).Result.Value
 
     let expected = Conversation.replay convId wsId "T" events
     // Same message count and sequence; event identity is preserved in order.
-    last.LastSequence = expected.LastSequence && last.Messages.Length = expected.Messages.Length
+    last.LastSequence = expected.LastSequence
+    && last.Messages.Length = expected.Messages.Length
 
 // ---------------------------------------------------------------------------
 //  Settings store
@@ -151,6 +160,9 @@ let ``settings save then load round-trips`` () =
     let store = InMemorySettingsStore(initial) :> ISettingsStore
     Assert.Equal(initial, (store.LoadAsync ct).Result)
 
-    let changed = { initial with Density = Density.Compact }
+    let changed =
+        { initial with
+            Density = Density.Compact }
+
     (store.SaveAsync(changed, ct)).Result |> ignore
     Assert.Equal(changed, (store.LoadAsync ct).Result)

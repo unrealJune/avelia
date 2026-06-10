@@ -23,7 +23,7 @@ type FakeGitHubTokenSource(result: OperationResult<string>) =
 
 /// A configurable <c>IGitInspection</c>. <c>StatusResult</c> drives the
 /// validate-on-add gate in RepositoryService; the rest return empty success.
-type FakeGitInspection(?statusResult: OperationResult<WorktreeStatus>) =
+type FakeGitInspection(?statusResult: OperationResult<WorktreeStatus>, ?remoteUrlResult: OperationResult<string>) =
     let okStatus: WorktreeStatus =
         { Branch = BranchName.Create "main"
           AheadBehind = { Ahead = 0; Behind = 0 }
@@ -31,6 +31,10 @@ type FakeGitInspection(?statusResult: OperationResult<WorktreeStatus>) =
           HasUncommittedChanges = false }
 
     let status = defaultArg statusResult (Success okStatus)
+
+    let remoteUrl =
+        defaultArg remoteUrlResult (Success "https://github.com/octocat/hello-world.git")
+
     member val StatusCalls = 0 with get, set
 
     interface IGitInspection with
@@ -46,6 +50,11 @@ type FakeGitInspection(?statusResult: OperationResult<WorktreeStatus>) =
 
         member _.ListWorktreesAsync(_repo, _ct) =
             Task.FromResult(Success(([||]: Worktree[]) :> IReadOnlyList<_>))
+
+        member _.GetRemoteUrlAsync(_repo, _remote, _ct) = Task.FromResult remoteUrl
+
+        member _.DiffAsync(_worktree, _ct) =
+            Task.FromResult(Success(([||]: DiffFile[]) :> IReadOnlyList<_>))
 
 /// A configurable <c>IGitOperations</c> recording the last worktree-add request
 /// and returning a scripted result.

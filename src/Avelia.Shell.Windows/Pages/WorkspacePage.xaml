@@ -322,13 +322,27 @@
                 <RowDefinition Height="Auto" />
             </Grid.RowDefinitions>
 
-            <!-- Pivot strip -->
-            <controls:ChatPivot
-                Grid.Row="0"
-                Margin="0,0,0,8"
-                Threads="{x:Bind ViewModel.Threads, Mode=OneWay}"
-                ActiveThread="{x:Bind ViewModel.ActiveThread, Mode=TwoWay}"
-            />
+            <!-- Pivot strip + live git status line -->
+            <Grid Grid.Row="0" Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <controls:ChatPivot
+                    Grid.Column="0"
+                    Threads="{x:Bind ViewModel.Threads, Mode=OneWay}"
+                    ActiveThread="{x:Bind ViewModel.ActiveThread, Mode=TwoWay}"
+                />
+                <TextBlock
+                    Grid.Column="1"
+                    VerticalAlignment="Center"
+                    Margin="12,0,0,0"
+                    AutomationProperties.AutomationId="GitStatusSummary"
+                    Style="{StaticResource AveliaCaptionTextStyle}"
+                    Foreground="{ThemeResource AveliaTextSecondaryBrush}"
+                    Text="{x:Bind ViewModel.GitStatusSummary, Mode=OneWay}"
+                />
+            </Grid>
 
             <!-- Transcript: ListView for built-in UI virtualization. The
                  container style strips selection/hover chrome so it reads as

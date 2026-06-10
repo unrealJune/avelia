@@ -37,6 +37,28 @@ type IWorkspaceService =
 
     abstract ArchiveAsync: id: WorkspaceId * CancellationToken -> Task<OperationResult<unit>>
 
+    /// Permanently remove the workspace: tear down any running agent session,
+    /// remove the git worktree from disk (force — discards uncommitted work in
+    /// the worktree), best-effort delete its branch, and drop the store record.
+    /// Distinct from <c>ArchiveAsync</c>, which keeps the record and worktree.
+    abstract DeleteAsync: id: WorkspaceId * CancellationToken -> Task<OperationResult<unit>>
+
+    /// Live working-tree status for the workspace's worktree (branch,
+    /// ahead/behind, per-file dirty state). The real implementation shells out
+    /// to git via <c>IGitInspection</c>; the stub returns a clean snapshot.
+    /// Used by the shell to surface a live status indicator rather than the
+    /// metadata captured at creation time.
+    abstract GetStatusAsync: id: WorkspaceId * CancellationToken -> Task<OperationResult<WorktreeStatus>>
+
+    /// Update the workspace's agent configuration (model + thinking mode +
+    /// context tier), persist it, and tear down any running agent session so
+    /// the next message starts fresh with the new settings. <paramref
+    /// name="reasoningEffort"/> / <paramref name="contextTier"/> are empty for
+    /// "model default". Returns the updated shell-facing workspace.
+    abstract SetAgentConfigAsync:
+        id: WorkspaceId * model: ModelChoice * reasoningEffort: string * contextTier: string * CancellationToken ->
+            Task<OperationResult<Workspace>>
+
 /// A live update on a conversation stream: either a newly-appended transcript
 /// event, or a turn-lifecycle marker.
 ///
@@ -107,6 +129,13 @@ type IRunService =
 
 type IInboxService =
     abstract ListAsync: CancellationToken -> Task<IReadOnlyList<InboxItem>>
+
+/// Live catalog of agent models the user can pick from in Settings → Agents.
+/// The real implementation queries the Copilot backend's model list; the stub
+/// (and the real impl's offline/signed-out fallback) returns
+/// <c>ModelCatalog.presets</c> so the picker is never empty.
+type IModelCatalogService =
+    abstract ListModelsAsync: CancellationToken -> Task<OperationResult<IReadOnlyList<ModelInfo>>>
 
 // ----------------------------------------------------------------------------
 //  Appearance / settings
@@ -236,6 +265,20 @@ type IGitInspection =
     /// All worktrees attached to the repo, including the main checkout (the
     /// caller doesn't need to synthesize it separately).
     abstract ListWorktreesAsync: repo: RepoPath * CancellationToken -> Task<OperationResult<IReadOnlyList<Worktree>>>
+
+    /// URL configured for <paramref name="remote"/> (the
+    /// <c>git remote get-url</c> value, e.g.
+    /// <c>git@github.com:owner/name.git</c> or
+    /// <c>https://github.com/owner/name.git</c>). Callers parse the
+    /// <c>owner/name</c> coordinate out of it for GitHub API calls.
+    /// <c>NotFound</c> when the remote isn't configured.
+    abstract GetRemoteUrlAsync: repo: RepoPath * remote: Remote * CancellationToken -> Task<OperationResult<string>>
+
+    /// Per-file working-tree diff vs <c>HEAD</c>: every tracked change (staged
+    /// or unstaged) plus untracked files, with add/delete line counts and a
+    /// change kind. Drives the workspace "Changes" list so edits an agent makes
+    /// in the worktree surface immediately. Empty list = clean worktree.
+    abstract DiffAsync: worktree: RepoPath * CancellationToken -> Task<OperationResult<IReadOnlyList<DiffFile>>>
 
 // ----------------------------------------------------------------------------
 //  Agent — per-session driver + factory

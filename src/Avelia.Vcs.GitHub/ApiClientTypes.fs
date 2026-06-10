@@ -109,3 +109,36 @@ type RateLimitSnapshot =
       Remaining: int
       ResetAt: DateTimeOffset
       LastUpdated: DateTimeOffset }
+
+// ============================================================================
+//  Shared CI-check status mapping
+//
+//  GitHub's CheckStatusState / CheckConclusionState vocabulary → our
+//  CheckStatus. Shared by the GraphQL dashboard (which receives these
+//  UPPERCASE verbatim) and the REST check-runs path in ApiClient (which
+//  uppercases Octokit's lowercase StringValues before calling in) so both
+//  surfaces classify checks identically.
+// ============================================================================
+
+[<RequireQualifiedAccess>]
+module internal ChecksMapping =
+
+    /// A run that hasn't COMPLETED reports `status` (QUEUED/IN_PROGRESS/…) with
+    /// a null/empty conclusion; a completed run reports `conclusion`.
+    let mapCheckStatus (status: string) (conclusion: string) : CheckStatus =
+        if status <> "COMPLETED" then
+            CheckStatus.Running
+        else
+            match conclusion with
+            | "SUCCESS" -> CheckStatus.Passed
+            | "FAILURE"
+            | "TIMED_OUT"
+            | "STARTUP_FAILURE" -> CheckStatus.Failed
+            | "CANCELLED" -> CheckStatus.Failed
+            | "NEUTRAL"
+            | "SKIPPED" -> CheckStatus.Skipped
+            | "ACTION_REQUIRED"
+            | "STALE" -> CheckStatus.Warn
+            // Unknown / unmapped conclusion: surface as a warning rather than
+            // silently claiming success.
+            | _ -> CheckStatus.Warn

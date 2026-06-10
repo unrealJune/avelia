@@ -5,9 +5,9 @@ using Microsoft.UI.Xaml.Controls;
 namespace Avelia.Shell.Windows.Pages.SettingsSubpages;
 
 /// <summary>
-/// Agents &amp; Models subpage — pick the default model and toggle extended
-/// thinking. The model radio group binds two-way to <see cref="AgentModelOption.IsSelected"/>;
-/// the toggle is bound two-way to the VM. No visual-tree walks live here.
+/// Agents &amp; Models subpage — set the default model, reasoning effort, and
+/// context tier via the unified <see cref="ViewModels.ModelBarViewModel"/>, plus
+/// the GitHub token. No visual-tree walks live here.
 /// </summary>
 public sealed partial class AgentsSubpage : UserControl
 {

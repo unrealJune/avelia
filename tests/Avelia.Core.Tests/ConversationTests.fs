@@ -55,3 +55,38 @@ let ``applyEvent then replay subset matches incremental fold`` (events: MessageE
         events |> List.fold Conversation.applyEvent (Conversation.empty id wsId title)
 
     viaReplay = viaFold
+
+[<Fact>]
+let ``applyEvent TitleChanged renames without appending or bumping sequence`` () =
+    let c0 = emptyConv ()
+    let c1 = Conversation.applyEvent c0 (TitleChanged "New Title")
+
+    Assert.Equal("New Title", c1.Title)
+    Assert.Equal(0, c1.Messages.Length)
+    Assert.Equal(0, c1.LastSequence)
+
+[<Fact>]
+let ``replay folds TitleChanged into Title and keeps only real messages`` () =
+    let id = ConversationId.create ()
+    let wsId = WorkspaceId.create ()
+
+    let u1 =
+        UserMessageAppended
+            { Id = MessageId.create ()
+              Text = "a"
+              Refs = [||]
+              Timestamp = DateTimeOffset.UnixEpoch }
+
+    let a1 =
+        AgentMessageAppended
+            { Id = MessageId.create ()
+              Text = "b"
+              Timestamp = DateTimeOffset.UnixEpoch }
+
+    let c =
+        Conversation.replay id wsId "orig" [ u1; TitleChanged "First"; a1; TitleChanged "Second" ]
+
+    // Last rename wins; renames don't appear in the transcript or shift sequence.
+    Assert.Equal("Second", c.Title)
+    Assert.Equal(2, c.LastSequence)
+    Assert.Equal<MessageEvent[]>([| u1; a1 |], c.Messages)

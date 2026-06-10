@@ -83,6 +83,10 @@ let ``agent and error messages round-trip`` () =
     )
 
 [<Fact>]
+let ``title-changed rename round-trips`` () =
+    roundtrip (TitleChanged "Refactor Auth Module")
+
+[<Fact>]
 let ``tool batch round-trips`` () =
     roundtrip (
         ToolBatchAppended

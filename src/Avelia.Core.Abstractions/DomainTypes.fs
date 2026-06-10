@@ -1,6 +1,7 @@
 namespace Avelia.Core.Abstractions
 
 open System
+open System.Collections.Generic
 
 // ============================================================================
 //  Status DUs
@@ -102,6 +103,100 @@ type ContextTier =
 
     /// Both tiers in display order.
     static member All: ContextTier array = [| Default; LongContext |]
+
+/// Backend-neutral description of one model the agent can run, as surfaced by
+/// <c>IModelCatalogService</c>. Lets the shell's model picker list the live
+/// Copilot catalog instead of a hardcoded set; the <c>Id</c> maps back to a
+/// <c>ModelChoice</c> via <c>ModelCatalog.choiceOfId</c>.
+type ModelInfo =
+    {
+        /// Catalog id (e.g. <c>"claude-sonnet-4.5"</c>).
+        Id: string
+        /// Human-readable label for the picker row.
+        DisplayName: string
+        /// One-line capability blurb. Empty when the backend supplies none.
+        Description: string
+        /// Reasoning-effort levels this model supports (e.g. <c>"low"</c>,
+        /// <c>"medium"</c>, <c>"high"</c>). Empty when the model has no selectable
+        /// thinking level. The composer offers these as "thinking mode" options.
+        ReasoningEfforts: IReadOnlyList<string>
+    }
+
+/// Canonical model-id ⇄ <c>ModelChoice</c> mapping plus the built-in presets
+/// the shell falls back to when the live catalog is unavailable (offline or
+/// signed-out). The ids are the stable public catalog ids Copilot hosts the
+/// Claude models under; <c>Avelia.Agent.Copilot.ModelMapping</c> defers to
+/// <c>idOfChoice</c> so the outbound (session-config) and inbound (picker)
+/// mappings can't drift apart.
+[<RequireQualifiedAccess>]
+module ModelCatalog =
+
+    [<Literal>]
+    let SonnetId = "claude-sonnet-4.5"
+
+    [<Literal>]
+    let OpusId = "claude-opus-4.1"
+
+    [<Literal>]
+    let HaikuId = "claude-haiku-4.5"
+
+    /// Context-tier ids understood by the agent backend. <c>""</c> means "use
+    /// the model's default tier"; <c>LongContext</c> is the extended (≈1M-token)
+    /// window. These mirror the Copilot SDK's <c>ContextTier</c> string values.
+    [<Literal>]
+    let ContextDefault = "default"
+
+    [<Literal>]
+    let ContextLong = "long_context"
+
+    /// Reasoning-effort levels offered for the built-in presets when the live
+    /// catalog is unavailable. The live catalog reports each model's actual
+    /// supported set; this is the offline fallback.
+    let defaultReasoningEfforts: IReadOnlyList<string> =
+        [| "low"; "medium"; "high" |] :> IReadOnlyList<_>
+
+    /// <c>ModelChoice</c> → catalog id. <c>CustomModel</c> passes through; a
+    /// blank custom name yields <c>""</c> so the SDK picks its own default.
+    [<CompiledName("IdOfChoice")>]
+    let idOfChoice (m: ModelChoice) : string =
+        match m with
+        | Sonnet45 -> SonnetId
+        | Opus41 -> OpusId
+        | Haiku45 -> HaikuId
+        | CustomModel name -> if String.IsNullOrWhiteSpace name then "" else name
+
+    /// Catalog id → <c>ModelChoice</c>. Ids beyond the three presets become
+    /// <c>CustomModel id</c> so any live model the user picks round-trips
+    /// through the persisted setting.
+    [<CompiledName("ChoiceOfId")>]
+    let choiceOfId (id: string) : ModelChoice =
+        if String.IsNullOrWhiteSpace id then
+            CustomModel ""
+        elif String.Equals(id, SonnetId, StringComparison.OrdinalIgnoreCase) then
+            Sonnet45
+        elif String.Equals(id, OpusId, StringComparison.OrdinalIgnoreCase) then
+            Opus41
+        elif String.Equals(id, HaikuId, StringComparison.OrdinalIgnoreCase) then
+            Haiku45
+        else
+            CustomModel id
+
+    /// The three built-in presets: the stub catalog and the real catalog's
+    /// offline fallback. Descriptions mirror the shell's prior hardcoded copy.
+    [<CompiledName("Presets")>]
+    let presets: ModelInfo array =
+        [| { Id = SonnetId
+             DisplayName = "Sonnet 4.5"
+             Description = "Balanced — fastest default for most agent runs."
+             ReasoningEfforts = defaultReasoningEfforts }
+           { Id = OpusId
+             DisplayName = "Opus 4.1"
+             Description = "Most capable — pick this for tricky refactors and long contexts."
+             ReasoningEfforts = defaultReasoningEfforts }
+           { Id = HaikuId
+             DisplayName = "Haiku 4.5"
+             Description = "Lightweight — quickest token-throughput, smallest answers."
+             ReasoningEfforts = defaultReasoningEfforts } |]
 
 /// State of a pull request as Avelia tracks it.
 [<RequireQualifiedAccess>]
@@ -261,6 +356,14 @@ type Workspace =
         LastUpdatedDisplay: string
         /// Pull-request number associated with this workspace, or 0 if none.
         PrNumber: int
+        /// Agent reasoning-effort / "thinking mode" id (e.g. <c>"high"</c>).
+        /// Empty means "use the model's default". Maps to the Copilot SDK's
+        /// <c>ReasoningEffort</c>.
+        ReasoningEffort: string
+        /// Agent context-window tier (<c>ModelCatalog.ContextDefault</c> /
+        /// <c>ContextLong</c>). Empty means "use the model's default". Maps to
+        /// the Copilot SDK's <c>ContextTier</c>.
+        ContextTier: string
     }
 
 // ============================================================================
@@ -331,6 +434,11 @@ type MessageEvent =
     | ToolBatchAppended of ToolBatch
     | ChangeNoteAppended of ChangeNote
     | AgentMarkdownAppended of AgentMarkdown
+    /// Renames the conversation's display <c>Title</c> without appending a
+    /// transcript message. Folds into <c>Conversation.Title</c> only; the
+    /// branch/worktree name is unaffected. Emitted by the Haiku auto-rename
+    /// once a task's first assistant reply lands.
+    | TitleChanged of title: string
 
     /// Visitor over the union — the C#-side projection point. Mirrors the
     /// pattern used by <c>OperationResult.Match</c>: typed delegates per case
@@ -343,7 +451,8 @@ type MessageEvent =
             onError: System.Func<AgentErrorMessage, 'TResult>,
             onTool: System.Func<ToolBatch, 'TResult>,
             onChange: System.Func<ChangeNote, 'TResult>,
-            onMarkdown: System.Func<AgentMarkdown, 'TResult>
+            onMarkdown: System.Func<AgentMarkdown, 'TResult>,
+            onTitleChanged: System.Func<string, 'TResult>
         ) : 'TResult =
         match this with
         | UserMessageAppended u -> onUser.Invoke u
@@ -352,6 +461,7 @@ type MessageEvent =
         | ToolBatchAppended t -> onTool.Invoke t
         | ChangeNoteAppended c -> onChange.Invoke c
         | AgentMarkdownAppended m -> onMarkdown.Invoke m
+        | TitleChanged t -> onTitleChanged.Invoke t
 
 type Conversation =
     { Id: ConversationId

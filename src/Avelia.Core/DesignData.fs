@@ -74,7 +74,9 @@ module DesignData =
              Agent = Sonnet45
              LastUpdated = now
              LastUpdatedDisplay = "Just now"
-             PrNumber = 1432 }
+             PrNumber = 1432
+             ReasoningEffort = ""
+             ContextTier = "" }
 
            { Id = trayWorkspaceId
              RepoId = conductorRepoId
@@ -86,7 +88,9 @@ module DesignData =
              Agent = Opus41
              LastUpdated = now.AddMinutes(-4.0)
              LastUpdatedDisplay = "4 min ago"
-             PrNumber = 0 }
+             PrNumber = 0
+             ReasoningEffort = ""
+             ContextTier = "" }
 
            { Id = instrWorkspaceId
              RepoId = meltyHomeRepoId
@@ -98,7 +102,9 @@ module DesignData =
              Agent = Sonnet45
              LastUpdated = now.AddMinutes(-12.0)
              LastUpdatedDisplay = "12 min ago"
-             PrNumber = 0 }
+             PrNumber = 0
+             ReasoningEffort = ""
+             ContextTier = "" }
 
            { Id = agentWorkspaceId
              RepoId = meltyHomeRepoId
@@ -110,7 +116,9 @@ module DesignData =
              Agent = Haiku45
              LastUpdated = now.AddHours(-1.0)
              LastUpdatedDisplay = "1 h ago"
-             PrNumber = 0 }
+             PrNumber = 0
+             ReasoningEffort = ""
+             ContextTier = "" }
 
            { Id = meltyWorkspaceId
              RepoId = meltyHomeRepoId
@@ -122,7 +130,9 @@ module DesignData =
              Agent = Sonnet45
              LastUpdated = now.AddDays(-60.0)
              LastUpdatedDisplay = "2 mo ago"
-             PrNumber = 0 } |]
+             PrNumber = 0
+             ReasoningEffort = ""
+             ContextTier = "" } |]
         :> IReadOnlyList<_>
 
     // ----- Conversation transcript -----

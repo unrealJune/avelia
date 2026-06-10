@@ -99,25 +99,12 @@ module internal DashboardMapping =
         | Error _ -> Unchecked.defaultof<BranchName>
 
     /// GitHub's CheckStatusState / CheckConclusionState → our CheckStatus.
-    /// A run that hasn't COMPLETED reports `status` (QUEUED/IN_PROGRESS/...)
-    /// with a null conclusion; a completed run reports `conclusion`.
+    /// Delegates to the shared <see cref="ChecksMapping"/> so the GraphQL and
+    /// REST check surfaces classify identically. A run that hasn't COMPLETED
+    /// reports `status` with a null conclusion; a completed run reports
+    /// `conclusion`.
     let mapCheckStatus (status: string) (conclusion: string) : CheckStatus =
-        if status <> "COMPLETED" then
-            CheckStatus.Running
-        else
-            match conclusion with
-            | "SUCCESS" -> CheckStatus.Passed
-            | "FAILURE"
-            | "TIMED_OUT"
-            | "STARTUP_FAILURE" -> CheckStatus.Failed
-            | "CANCELLED" -> CheckStatus.Failed
-            | "NEUTRAL"
-            | "SKIPPED" -> CheckStatus.Skipped
-            | "ACTION_REQUIRED"
-            | "STALE" -> CheckStatus.Warn
-            // Unknown / unmapped conclusion: surface as a warning rather
-            // than silently claiming success.
-            | _ -> CheckStatus.Warn
+        ChecksMapping.mapCheckStatus status conclusion
 
     /// PR `state` + `isDraft` + `reviewDecision` → our PrStatus. Total over
     /// the inputs; we query `states: [OPEN]` so MERGED/CLOSED are unusual

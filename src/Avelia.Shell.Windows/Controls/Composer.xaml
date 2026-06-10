@@ -36,7 +36,7 @@
                 MaxHeight="200"
                 PlaceholderText="Send a message…"
                 TextWrapping="Wrap"
-                Text="{x:Bind Text, Mode=TwoWay, FallbackValue=''}"
+                Text="{x:Bind Text, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged, FallbackValue=''}"
                 PreviewKeyDown="OnInputPreviewKeyDown"
             />
 

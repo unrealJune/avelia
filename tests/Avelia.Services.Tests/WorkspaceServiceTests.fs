@@ -32,6 +32,7 @@ let private mkService (stores: Stores) (git: IGitOperations) (disposed: ResizeAr
         stores.Conversations,
         stores.Settings,
         git,
+        FakeGitInspection(),
         "C:/wt",
         now,
         (fun cid ->
@@ -77,7 +78,10 @@ let ``CreateAsync fails when the repo is unknown and touches no git`` () =
 let ``CreateAsync persists nothing when the worktree add fails`` () =
     let stores = InMemoryStores.create DesignData.defaultAppearance
     let repo = addRepo stores.Repositories
-    let git = FakeGitOperations(Failure(AveliaError.External("git", "branch already checked out")))
+
+    let git =
+        FakeGitOperations(Failure(AveliaError.External("git", "branch already checked out")))
+
     let svc = mkService stores git (ResizeArray())
 
     match (svc.CreateAsync(repo.Id, BranchName.Create "dup", BranchName.Create "main", ct)).Result with
@@ -89,13 +93,85 @@ let ``CreateAsync persists nothing when the worktree add fails`` () =
     Assert.False((stores.Conversations.GetByWorkspaceAsync(WorkspaceId.create (), ct)).Result.IsSuccess)
 
 [<Fact>]
+let ``CreateAsync auto-names the branch from the rail pool given the empty sentinel`` () =
+    let stores = InMemoryStores.create DesignData.defaultAppearance
+    let repo = addRepo stores.Repositories
+    let git = FakeGitOperations()
+    let svc = mkService stores git (ResizeArray())
+
+    // Unchecked.defaultof<BranchName> is the empty sentinel meaning "auto-name".
+    match (svc.CreateAsync(repo.Id, Unchecked.defaultof<BranchName>, BranchName.Create "main", ct)).Result with
+    | Success ws ->
+        Assert.False(String.IsNullOrWhiteSpace ws.Branch.Value)
+        Assert.Contains(ws.Branch.Value, WorktreeNames.all)
+        // The worktree was materialized for the generated branch.
+        Assert.Equal(ws.Branch.Value, git.LastWorktreeBranch)
+    | Failure e -> failwithf "expected success, got %A" e
+
+[<Fact>]
+let ``SetAgentConfigAsync persists model + thinking + context and disposes the session`` () =
+    let stores = InMemoryStores.create DesignData.defaultAppearance
+    let repo = addRepo stores.Repositories
+    let disposed = ResizeArray<ConversationId>()
+    let svc = mkService stores (FakeGitOperations()) disposed
+
+    let ws =
+        (svc.CreateAsync(repo.Id, BranchName.Create "f", BranchName.Create "main", ct)).Result.Value
+
+    let record = (stores.Workspaces.GetAsync(ws.Id, ct)).Result.Value
+
+    match (svc.SetAgentConfigAsync(ws.Id, Opus41, "high", "long_context", ct)).Result with
+    | Success updated ->
+        Assert.Equal(Opus41, updated.Agent)
+        Assert.Equal("high", updated.ReasoningEffort)
+        Assert.Equal("long_context", updated.ContextTier)
+        // Persisted to the store.
+        let reread = (stores.Workspaces.GetAsync(ws.Id, ct)).Result.Value.Workspace
+        Assert.Equal("high", reread.ReasoningEffort)
+        Assert.Equal("long_context", reread.ContextTier)
+        // Session torn down so the next message restarts with the new config.
+        Assert.Contains(record.ConversationId, disposed)
+    | Failure e -> failwithf "expected success, got %A" e
+
+[<Fact>]
+let ``DeleteAsync removes the worktree, disposes the session, and drops the record`` () =
+    let stores = InMemoryStores.create DesignData.defaultAppearance
+    let repo = addRepo stores.Repositories
+    let git = FakeGitOperations()
+    let disposed = ResizeArray<ConversationId>()
+    let svc = mkService stores git disposed
+
+    let ws =
+        (svc.CreateAsync(repo.Id, BranchName.Create "doomed", BranchName.Create "main", ct)).Result.Value
+
+    let record = (stores.Workspaces.GetAsync(ws.Id, ct)).Result.Value
+
+    match (svc.DeleteAsync(ws.Id, ct)).Result with
+    | Success() ->
+        Assert.Contains(record.ConversationId, disposed)
+        Assert.False((stores.Workspaces.GetAsync(ws.Id, ct)).Result.IsSuccess)
+        Assert.Empty((stores.Workspaces.ListAllAsync ct).Result)
+    | Failure e -> failwithf "expected success, got %A" e
+
+[<Fact>]
+let ``DeleteAsync fails for an unknown workspace`` () =
+    let stores = InMemoryStores.create DesignData.defaultAppearance
+    let svc = mkService stores (FakeGitOperations()) (ResizeArray())
+
+    match (svc.DeleteAsync(WorkspaceId.create (), ct)).Result with
+    | Failure(AveliaError.NotFound _) -> ()
+    | other -> failwithf "unexpected %A" other
+
+[<Fact>]
 let ``ArchiveAsync disposes the session and flips status`` () =
     let stores = InMemoryStores.create DesignData.defaultAppearance
     let repo = addRepo stores.Repositories
     let git = FakeGitOperations()
     let disposed = ResizeArray<ConversationId>()
     let svc = mkService stores git disposed
-    let ws = (svc.CreateAsync(repo.Id, BranchName.Create "f", BranchName.Create "main", ct)).Result.Value
+
+    let ws =
+        (svc.CreateAsync(repo.Id, BranchName.Create "f", BranchName.Create "main", ct)).Result.Value
 
     // Draft can't archive directly; move to Active first (store-level).
     let record = (stores.Workspaces.GetAsync(ws.Id, ct)).Result.Value
@@ -121,7 +197,10 @@ let ``ListAll projects the shell-facing workspace out of the record`` () =
     let stores = InMemoryStores.create DesignData.defaultAppearance
     let repo = addRepo stores.Repositories
     let svc = mkService stores (FakeGitOperations()) (ResizeArray())
-    let ws = (svc.CreateAsync(repo.Id, BranchName.Create "f", BranchName.Create "main", ct)).Result.Value
+
+    let ws =
+        (svc.CreateAsync(repo.Id, BranchName.Create "f", BranchName.Create "main", ct)).Result.Value
+
     let all = (svc.ListAllAsync ct).Result
     Assert.Single all |> ignore
     Assert.Equal(ws.Id, all.[0].Id)

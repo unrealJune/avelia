@@ -31,7 +31,9 @@ let private seed (stores: Stores) =
           Agent = Sonnet45
           LastUpdated = DateTimeOffset.UnixEpoch
           LastUpdatedDisplay = "now"
-          PrNumber = 0 }
+          PrNumber = 0
+          ReasoningEffort = ""
+          ContextTier = "" }
 
     let record =
         { Workspace = ws
@@ -175,11 +177,7 @@ let ``multiple subscribers all receive the broadcast`` () =
 
     let isUser =
         function
-<<<<<<< HEAD
         | [ MessageAppended(UserMessageAppended m) ] -> m.Text = "fanout"
-=======
-        | [ UserMessageAppended m ] -> m.Text = "fanout"
->>>>>>> origin/main
         | _ -> false
 
     Assert.True(isUser a.Result)

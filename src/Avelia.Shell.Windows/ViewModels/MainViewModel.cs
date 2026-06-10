@@ -145,7 +145,9 @@ public partial class MainViewModel : ObservableObject
         var repoResult = await _services.Repositories.GetAsync(repoId, CancellationToken.None);
         if (!repoResult.IsSuccess)
         {
-            return OperationResult<global::Avelia.Core.Abstractions.Workspace>.NewFailure(repoResult.Error);
+            return OperationResult<global::Avelia.Core.Abstractions.Workspace>.NewFailure(
+                repoResult.Error
+            );
         }
 
         var branchParse = BranchName.TryCreate(branchName);
@@ -177,6 +179,82 @@ public partial class MainViewModel : ObservableObject
             await OpenWorkspace(ws.Id);
         }
         return result;
+    }
+
+    /// <summary>
+    /// Create a workspace with an auto-generated rail-themed branch/worktree
+    /// name (no prompt) and open it as the active tab. An empty
+    /// <see cref="BranchName"/> sentinel tells the workspace service to pick an
+    /// unused name; the Haiku auto-rename later updates only the display title.
+    /// Creation failures come back in the result for the host to surface.
+    /// </summary>
+    public async System.Threading.Tasks.Task<
+        OperationResult<global::Avelia.Core.Abstractions.Workspace>
+    > CreateWorkspaceAutoAsync(RepositoryId repoId)
+    {
+        var repoResult = await _services.Repositories.GetAsync(repoId, CancellationToken.None);
+        if (!repoResult.IsSuccess)
+        {
+            return OperationResult<global::Avelia.Core.Abstractions.Workspace>.NewFailure(
+                repoResult.Error
+            );
+        }
+
+        // default(BranchName) is the empty sentinel the workspace service reads
+        // as "auto-name from the rail-name pool".
+        var result = await _services.Workspaces.CreateAsync(
+            repoId,
+            default,
+            repoResult.Value.DefaultBase,
+            CancellationToken.None
+        );
+
+        if (result.IsSuccess)
+        {
+            var ws = result.Value;
+            foreach (var group in RepoGroups)
+            {
+                if (group.Id.Equals(repoId))
+                {
+                    group.Workspaces.Add(WorkspaceItemViewModel.FromWorkspace(ws));
+                    break;
+                }
+            }
+            await OpenWorkspace(ws.Id);
+        }
+        return result;
+    }
+
+    /// <summary>
+    /// Delete a workspace (worktree + branch + record), remove it from the rail
+    /// tree, and close any open tab. Returns <c>null</c> on success or the error
+    /// for the host to surface.
+    /// </summary>
+    public async Task<AveliaError?> DeleteWorkspaceAsync(WorkspaceId id)
+    {
+        var result = await _services.Workspaces.DeleteAsync(id, CancellationToken.None);
+        if (!result.IsSuccess)
+        {
+            return result.Error;
+        }
+
+        foreach (var group in RepoGroups)
+        {
+            var item = group.Workspaces.FirstOrDefault(w => w.Id.Equals(id));
+            if (item is not null)
+            {
+                group.Workspaces.Remove(item);
+                break;
+            }
+        }
+
+        var tab = OpenTabs.FirstOrDefault(t => t.Id.Equals(id));
+        if (tab is not null)
+        {
+            CloseTab(tab);
+        }
+
+        return null;
     }
 
     [RelayCommand]
@@ -246,6 +324,72 @@ public partial class MainViewModel : ObservableObject
         if (first is not null)
         {
             await OpenWorkspace(first.Id);
+        }
+
+        // Drive the rail/tab status dots from live git state (best-effort,
+        // off the init path so startup isn't blocked on N git reads).
+        _ = RefreshWorkspaceStatusesAsync(CancellationToken.None);
+    }
+
+    /// <summary>
+    /// Map a live <see cref="WorktreeStatus"/> to the status-dot vocabulary:
+    /// conflicted files → Conflict; any uncommitted change → Active; clean but
+    /// ahead of upstream → Ready; otherwise the workspace's stored status.
+    /// </summary>
+    private static WorkspaceStatus DisplayStatus(WorktreeStatus status, WorkspaceStatus fallback)
+    {
+        foreach (var file in status.Files)
+        {
+            if (file.IsConflicted)
+            {
+                return WorkspaceStatus.Conflict;
+            }
+        }
+        if (status.HasUncommittedChanges)
+        {
+            return WorkspaceStatus.Active;
+        }
+        if (status.AheadBehind.Ahead > 0)
+        {
+            return WorkspaceStatus.Ready;
+        }
+        return fallback;
+    }
+
+    /// <summary>
+    /// Refresh every workspace's rail-item (and open-tab) status dot from a live
+    /// <c>git status</c> read. Best-effort; a failure leaves the stored status.
+    /// </summary>
+    public async Task RefreshWorkspaceStatusesAsync(CancellationToken ct)
+    {
+        foreach (var group in RepoGroups)
+        {
+            foreach (var item in group.Workspaces.ToList())
+            {
+                try
+                {
+                    var result = await _services
+                        .Workspaces.GetStatusAsync(item.Id, ct)
+                        .ConfigureAwait(true);
+                    if (!result.IsSuccess)
+                    {
+                        continue;
+                    }
+                    var display = DisplayStatus(result.Value, item.Status);
+                    item.Status = display;
+                    var tab = OpenTabs.FirstOrDefault(t => t.Id.Equals(item.Id));
+                    if (tab is not null)
+                    {
+                        tab.Status = display;
+                    }
+                }
+                catch (System.Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                        $"[MainViewModel] status refresh failed for {item.Id}: {ex.Message}"
+                    );
+                }
+            }
         }
     }
 

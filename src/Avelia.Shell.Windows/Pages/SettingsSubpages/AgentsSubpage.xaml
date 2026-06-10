@@ -4,8 +4,12 @@
     xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
     xmlns:controls="using:Avelia.Shell.Windows.Controls"
+    xmlns:conv="using:Avelia.Shell.Windows.Converters"
     xmlns:vm="using:Avelia.Shell.Windows.ViewModels"
 >
+    <UserControl.Resources>
+        <conv:BoolToVisibilityConverter x:Key="BoolToVisibility" />
+    </UserControl.Resources>
     <ScrollViewer
         Padding="4,4,4,16"
         HorizontalScrollMode="Disabled"
@@ -23,10 +27,36 @@
             >
                 <StackPanel Spacing="12">
                     <StackPanel Spacing="2">
-                        <TextBlock
-                            Style="{StaticResource AveliaBodyStrongTextStyle}"
-                            Text="Default model"
-                        />
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*" />
+                                <ColumnDefinition Width="Auto" />
+                            </Grid.ColumnDefinitions>
+                            <TextBlock
+                                Grid.Column="0"
+                                Style="{StaticResource AveliaBodyStrongTextStyle}"
+                                Text="Default model"
+                            />
+                            <StackPanel
+                                Grid.Column="1"
+                                Orientation="Horizontal"
+                                Spacing="6"
+                                VerticalAlignment="Center"
+                                AutomationProperties.AutomationId="ModelCatalogLoading"
+                                Visibility="{x:Bind ViewModel.IsLoadingModels, Mode=OneWay, Converter={StaticResource BoolToVisibility}, FallbackValue=Collapsed}"
+                            >
+                                <ProgressRing
+                                    Width="14"
+                                    Height="14"
+                                    IsActive="{x:Bind ViewModel.IsLoadingModels, Mode=OneWay}"
+                                />
+                                <TextBlock
+                                    Style="{StaticResource AveliaCaptionTextStyle}"
+                                    Foreground="{ThemeResource AveliaTextSecondaryBrush}"
+                                    Text="Loading models…"
+                                />
+                            </StackPanel>
+                        </Grid>
                         <TextBlock
                             Style="{StaticResource AveliaCaptionTextStyle}"
                             Foreground="{ThemeResource AveliaTextSecondaryBrush}"

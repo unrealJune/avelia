@@ -330,76 +330,88 @@ public sealed partial class MainWindow : Window
 
         if (item.Tag is NewWorkspaceAction action)
         {
-            _ = CreateWorkspaceInteractiveAsync(action.RepoId);
+            _ = CreateAndOpenWorkspaceAsync(action.RepoId);
         }
     }
 
     /// <summary>
-    /// Prompt for a branch name, then create + open a workspace. On success the
-    /// rail subtree is rebuilt so the new workspace appears under its repo.
+    /// Create + open a workspace with an auto-generated rail-themed name (no
+    /// prompt). On success the rail subtree is rebuilt so the new workspace
+    /// appears under its repo; a creation failure surfaces in a brief dialog
+    /// via the shared <see cref="FormatError"/>.
     /// </summary>
-    private async Task CreateWorkspaceInteractiveAsync(RepositoryId repoId)
+    private async Task CreateAndOpenWorkspaceAsync(RepositoryId repoId)
     {
-        var input = new TextBox
+        var result = await ViewModel.CreateWorkspaceAutoAsync(repoId);
+        if (result.IsSuccess)
         {
-            PlaceholderText = "feature/my-change",
-            AcceptsReturn = false,
-        };
-        AutomationProperties.SetAutomationId(input, "NewWorkspaceBranchInput");
-
-        var error = new TextBlock
-        {
-            Foreground = new SolidColorBrush(Microsoft.UI.Colors.OrangeRed),
-            TextWrapping = TextWrapping.Wrap,
-            Visibility = Visibility.Collapsed,
-            Margin = new Thickness(0, 8, 0, 0),
-        };
-
-        var panel = new StackPanel { Spacing = 4 };
-        panel.Children.Add(input);
-        panel.Children.Add(error);
-
-        var dialog = new ContentDialog
-        {
-            Title = "New workspace",
-            Content = panel,
-            PrimaryButtonText = "Create",
-            CloseButtonText = "Cancel",
-            DefaultButton = ContentDialogButton.Primary,
-            XamlRoot = Content.XamlRoot,
-        };
-
-        // Keep the dialog open on a creation error so the user can correct it.
-        dialog.PrimaryButtonClick += async (_, deferralArgs) =>
-        {
-            var deferral = deferralArgs.GetDeferral();
-            try
-            {
-                var result = await ViewModel.CreateWorkspaceAsync(repoId, input.Text);
-                if (!result.IsSuccess)
-                {
-                    deferralArgs.Cancel = true;
-                    error.Text = FormatError(result.Error);
-                    error.Visibility = Visibility.Visible;
-                }
-                else
-                {
-                    RebuildRepoTreeItems();
-                }
-            }
-            finally
-            {
-                deferral.Complete();
-            }
-        };
+            RebuildRepoTreeItems();
+            return;
+        }
 
         try
         {
+            var dialog = new ContentDialog
+            {
+                Title = "Couldn't create workspace",
+                Content = FormatError(result.Error),
+                CloseButtonText = "OK",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = Content.XamlRoot,
+            };
             await dialog.ShowAsync();
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"[MainWindow] New-workspace dialog failed: {ex}");
+            Debug.WriteLine($"[MainWindow] New-workspace error dialog failed: {ex}");
+        }
+    }
+
+    /// <summary>
+    /// Confirm, then delete a workspace's worktree. On success the rail subtree
+    /// is rebuilt; failures surface in a brief dialog via <see cref="FormatError"/>.
+    /// </summary>
+    private async Task DeleteWorkspaceInteractiveAsync(WorkspaceItemViewModel ws)
+    {
+        try
+        {
+            var confirm = new ContentDialog
+            {
+                Title = "Delete worktree?",
+                Content =
+                    $"This removes the worktree for \u201C{ws.Branch}\u201D from disk and discards any uncommitted "
+                    + "changes in it. This can't be undone.",
+                PrimaryButtonText = "Delete",
+                CloseButtonText = "Cancel",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = Content.XamlRoot,
+            };
+
+            if (await confirm.ShowAsync() != ContentDialogResult.Primary)
+            {
+                return;
+            }
+
+            var error = await ViewModel.DeleteWorkspaceAsync(ws.Id);
+            if (error is null)
+            {
+                RebuildRepoTreeItems();
+                return;
+            }
+
+            var errorDialog = new ContentDialog
+            {
+                Title = "Couldn't delete worktree",
+                Content = FormatError(error),
+                CloseButtonText = "OK",
+                DefaultButton = ContentDialogButton.Close,
+                XamlRoot = Content.XamlRoot,
+            };
+            await errorDialog.ShowAsync();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[MainWindow] Delete-worktree dialog failed: {ex}");
         }
     }
 
@@ -546,6 +558,18 @@ public sealed partial class MainWindow : Window
                 Tag = ws,
             };
             AutomationProperties.SetName(wsItem, ws.Branch);
+
+            // Right-click → Delete worktree.
+            var deleteItem = new MenuFlyoutItem
+            {
+                Text = "Delete worktree",
+                Icon = new SymbolIcon(Symbol.Delete),
+            };
+            AutomationProperties.SetAutomationId(deleteItem, "DeleteWorktreeItem");
+            var captured = ws;
+            deleteItem.Click += (_, _) => _ = DeleteWorkspaceInteractiveAsync(captured);
+            wsItem.ContextFlyout = new MenuFlyout { Items = { deleteItem } };
+
             repoItem.MenuItems.Add(wsItem);
         }
 

@@ -7,6 +7,7 @@ open Avelia.Core.Abstractions
 open Avelia.Core.Stubs
 open Avelia.Persistence
 open Avelia.Vcs.Git
+open Avelia.Vcs.GitHub
 open Avelia.Vcs.GitHub.Auth
 open Avelia.Agent.Copilot
 
@@ -37,6 +38,11 @@ module RealComposition =
         let auth = GitHubAuth(credentials) :> IGitHubAuth
         let tokenSource = GitHubTokenSource(auth, credentials) :> IGitHubTokenSource
 
+        // Lazy GitHub API client (built on first use from the first signed-in
+        // account; re-tried — and cached on success — so signing in after
+        // startup works without a restart).
+        let ghProvider = GitHubClientProvider(auth)
+
         let agentFactory =
             CopilotAgentSessionFactory(tokenSource, terminalFactory, CopilotSettings.defaults) :> IAgentSessionFactory
 
@@ -55,6 +61,7 @@ module RealComposition =
                 stores.Conversations,
                 stores.Settings,
                 gitOps,
+                inspection,
                 Storage.worktreesRoot (),
                 now,
                 conversations.DisposeConversationAsync
@@ -62,15 +69,10 @@ module RealComposition =
 
         // Surfaces not yet wired to a real backend keep the stub behaviour
         // (empty data, no crashes) until their own chunks land.
-        let diffs =
-            StubDiffService(
-                (fun _ -> emptyList<DiffFile> ()),
-                (fun _ -> emptyList<DiffFile> ()),
-                (fun _ -> emptyList<DiffHunk> ())
-            )
+        let diffs = DiffService(stores.Workspaces, inspection)
 
         let pullRequests =
-            StubPullRequestService((fun _ -> None), Dictionary<PullRequestId, PullRequest>())
+            PullRequestService((fun ct -> ghProvider.GetAsync ct), stores.Workspaces, stores.Repositories, inspection)
 
         { Repositories = RepositoryService(stores.Repositories, inspection) :> IRepositoryService
           Workspaces = workspaces :> IWorkspaceService
@@ -80,6 +82,7 @@ module RealComposition =
           Runs = StubRunService() :> IRunService
           Inbox = StubInboxService(Seq.empty<InboxItem>) :> IInboxService
           Settings = SettingsService(stores.Settings, credentials, tokenSource) :> ISettingsService
+          ModelCatalog = CopilotModelCatalog(tokenSource) :> IModelCatalogService
           Agents = agentFactory
           Terminals =
             InteractiveTerminalService(stores.Workspaces, stores.Settings, agentFactory) :> ITerminalLaunchService }

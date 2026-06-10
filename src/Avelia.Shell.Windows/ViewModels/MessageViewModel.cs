@@ -43,7 +43,14 @@ public abstract class MessageViewModel
             onError: AgentErrorViewModel.From,
             onTool: ToolBatchViewModel.From,
             onChange: ChangeNoteViewModel.From,
-            onMarkdown: AgentMarkdownViewModel.From
+            onMarkdown: AgentMarkdownViewModel.From,
+            // TitleChanged is a metadata rename, not a transcript entry: it
+            // updates the conversation title and is handled out-of-band by the
+            // workspace VM before projection. It must never reach here.
+            onTitleChanged: _ =>
+                throw new InvalidOperationException(
+                    "TitleChanged is handled out-of-band (it renames the conversation) and must not be projected to a transcript view-model."
+                )
         );
 }
 

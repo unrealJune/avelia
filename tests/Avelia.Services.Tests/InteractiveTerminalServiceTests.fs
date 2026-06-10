@@ -24,7 +24,9 @@ let private seedWorkspace (stores: Stores) (worktree: string) =
           Agent = Sonnet45
           LastUpdated = DateTimeOffset.UnixEpoch
           LastUpdatedDisplay = "now"
-          PrNumber = 0 }
+          PrNumber = 0
+          ReasoningEffort = ""
+          ContextTier = "" }
 
     let record =
         { Workspace = ws

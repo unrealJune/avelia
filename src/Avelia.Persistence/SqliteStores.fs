@@ -29,7 +29,8 @@ CREATE TABLE IF NOT EXISTS workspaces (
   id TEXT PRIMARY KEY, repo_id TEXT NOT NULL, branch TEXT NOT NULL, base TEXT NOT NULL,
   status TEXT NOT NULL, diff_add INTEGER NOT NULL, diff_del INTEGER NOT NULL,
   agent TEXT NOT NULL, last_updated TEXT NOT NULL, last_updated_display TEXT NOT NULL,
-  pr_number INTEGER NOT NULL, worktree_path TEXT NOT NULL, conversation_id TEXT NOT NULL);
+  pr_number INTEGER NOT NULL, worktree_path TEXT NOT NULL, conversation_id TEXT NOT NULL,
+  reasoning_effort TEXT NOT NULL DEFAULT '', context_tier TEXT NOT NULL DEFAULT '');
 CREATE TABLE IF NOT EXISTS conversations (
   id TEXT PRIMARY KEY, workspace_id TEXT NOT NULL, title TEXT NOT NULL, last_sequence INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS messages (
@@ -43,6 +44,15 @@ CREATE TABLE IF NOT EXISTS settings (
   default_model TEXT NOT NULL, reasoning_effort TEXT NOT NULL, context_tier TEXT NOT NULL);
 """
 
+    /// Idempotent column additions for databases created before a column
+    /// existed. <c>ADD COLUMN</c> throws if the column is already present (fresh
+    /// DBs get it from <c>CREATE TABLE</c>), so each runs best-effort.
+    let migrations =
+        [ "ALTER TABLE workspaces ADD COLUMN reasoning_effort TEXT NOT NULL DEFAULT ''"
+          "ALTER TABLE workspaces ADD COLUMN context_tier TEXT NOT NULL DEFAULT ''"
+          "ALTER TABLE settings ADD COLUMN reasoning_effort TEXT NOT NULL DEFAULT ''"
+          "ALTER TABLE settings ADD COLUMN context_tier TEXT NOT NULL DEFAULT ''" ]
+
 /// Shared connection + lock. All store access funnels through <c>run</c>.
 type private Db(connectionString: string) =
     let conn = new SqliteConnection(connectionString)
@@ -53,6 +63,14 @@ type private Db(connectionString: string) =
         use cmd = conn.CreateCommand()
         cmd.CommandText <- Schema.sql
         cmd.ExecuteNonQuery() |> ignore
+
+        for alter in Schema.migrations do
+            try
+                use mcmd = conn.CreateCommand()
+                mcmd.CommandText <- alter
+                mcmd.ExecuteNonQuery() |> ignore
+            with _ ->
+                () // column already exists
 
     /// Run <paramref name="f"/> against the connection under the lock.
     member _.run(f: SqliteConnection -> 'a) : 'a = lock gate (fun () -> f conn)
@@ -70,7 +88,10 @@ module private SqliteHelpers =
     let exec (conn: SqliteConnection) (sql: string) (binds: (string * obj) list) =
         use cmd = conn.CreateCommand()
         cmd.CommandText <- sql
-        for (n, v) in binds do param cmd n v
+
+        for (n, v) in binds do
+            param cmd n v
+
         cmd.ExecuteNonQuery() |> ignore
 
     let boolToInt (b: bool) : obj = (if b then 1 else 0) :> obj
@@ -88,13 +109,15 @@ module private SqliteHelpers =
               RepoId = RepositoryId(Guid.Parse(r.GetString 1))
               Branch = BranchName.Create(r.GetString 2)
               Base = BranchName.Create(r.GetString 3)
-              Status = Codec.statusOfString(r.GetString 4)
+              Status = Codec.statusOfString (r.GetString 4)
               DiffAdd = r.GetInt32 5
               DiffDel = r.GetInt32 6
-              Agent = Codec.modelOfString(r.GetString 7)
-              LastUpdated = Codec.dtoOfString(r.GetString 8)
+              Agent = Codec.modelOfString (r.GetString 7)
+              LastUpdated = Codec.dtoOfString (r.GetString 8)
               LastUpdatedDisplay = r.GetString 9
-              PrNumber = r.GetInt32 10 }
+              PrNumber = r.GetInt32 10
+              ReasoningEffort = r.GetString 13
+              ContextTier = r.GetString 14 }
 
         { Workspace = ws
           WorktreePath = RepoPath.Create(r.GetString 11)
@@ -105,7 +128,10 @@ module private SqliteHelpers =
         let header =
             use cmd = conn.CreateCommand()
             cmd.CommandText <- idSql
-            for (n, v) in binds do param cmd n v
+
+            for (n, v) in binds do
+                param cmd n v
+
             use r = cmd.ExecuteReader()
 
             if r.Read() then
@@ -123,7 +149,7 @@ module private SqliteHelpers =
             use r = cmd.ExecuteReader()
 
             while r.Read() do
-                events.Add(Codec.messageEventOfJson(r.GetString 0))
+                events.Add(Codec.messageEventOfJson (r.GetString 0))
 
             Some
                 { Id = ConversationId(Guid.Parse convId)
@@ -186,18 +212,24 @@ type private SqliteRepositoryStore(db: Db) =
             ct.ThrowIfCancellationRequested()
 
             db.run (fun conn ->
-                exec conn "DELETE FROM repositories WHERE id = $id" [ "$id", (RepositoryId.value id).ToString() :> obj ])
+                exec
+                    conn
+                    "DELETE FROM repositories WHERE id = $id"
+                    [ "$id", (RepositoryId.value id).ToString() :> obj ])
 
             Task.FromResult(Success())
 
 type private SqliteWorkspaceStore(db: Db) =
     let cols =
-        "id,repo_id,branch,base,status,diff_add,diff_del,agent,last_updated,last_updated_display,pr_number,worktree_path,conversation_id"
+        "id,repo_id,branch,base,status,diff_add,diff_del,agent,last_updated,last_updated_display,pr_number,worktree_path,conversation_id,reasoning_effort,context_tier"
 
     let readAll (conn: SqliteConnection) (sql: string) (binds: (string * obj) list) =
         use cmd = conn.CreateCommand()
         cmd.CommandText <- sql
-        for (n, v) in binds do param cmd n v
+
+        for (n, v) in binds do
+            param cmd n v
+
         use r = cmd.ExecuteReader()
         let xs = ResizeArray<WorkspaceRecord>()
 
@@ -209,7 +241,9 @@ type private SqliteWorkspaceStore(db: Db) =
     interface IWorkspaceStore with
         member _.ListAllAsync(ct) =
             ct.ThrowIfCancellationRequested()
-            db.run (fun conn -> (readAll conn (sprintf "SELECT %s FROM workspaces" cols) []).ToArray() :> IReadOnlyList<_>)
+
+            db.run (fun conn ->
+                (readAll conn (sprintf "SELECT %s FROM workspaces" cols) []).ToArray() :> IReadOnlyList<_>)
             |> Task.FromResult
 
         member _.ListByRepoAsync(repoId, ct) =
@@ -247,9 +281,9 @@ type private SqliteWorkspaceStore(db: Db) =
             db.run (fun conn ->
                 exec
                     conn
-                    "INSERT INTO workspaces (id,repo_id,branch,base,status,diff_add,diff_del,agent,last_updated,last_updated_display,pr_number,worktree_path,conversation_id)
-                     VALUES ($id,$repo,$branch,$base,$status,$da,$dd,$agent,$lu,$lud,$pr,$wt,$conv)
-                     ON CONFLICT(id) DO UPDATE SET repo_id=$repo,branch=$branch,base=$base,status=$status,diff_add=$da,diff_del=$dd,agent=$agent,last_updated=$lu,last_updated_display=$lud,pr_number=$pr,worktree_path=$wt,conversation_id=$conv"
+                    "INSERT INTO workspaces (id,repo_id,branch,base,status,diff_add,diff_del,agent,last_updated,last_updated_display,pr_number,worktree_path,conversation_id,reasoning_effort,context_tier)
+                     VALUES ($id,$repo,$branch,$base,$status,$da,$dd,$agent,$lu,$lud,$pr,$wt,$conv,$re,$ctx)
+                     ON CONFLICT(id) DO UPDATE SET repo_id=$repo,branch=$branch,base=$base,status=$status,diff_add=$da,diff_del=$dd,agent=$agent,last_updated=$lu,last_updated_display=$lud,pr_number=$pr,worktree_path=$wt,conversation_id=$conv,reasoning_effort=$re,context_tier=$ctx"
                     [ "$id", (WorkspaceId.value ws.Id).ToString() :> obj
                       "$repo", (RepositoryId.value ws.RepoId).ToString() :> obj
                       "$branch", ws.Branch.Value :> obj
@@ -262,7 +296,9 @@ type private SqliteWorkspaceStore(db: Db) =
                       "$lud", ws.LastUpdatedDisplay :> obj
                       "$pr", ws.PrNumber :> obj
                       "$wt", record.WorktreePath.Value :> obj
-                      "$conv", (ConversationId.value record.ConversationId).ToString() :> obj ])
+                      "$conv", (ConversationId.value record.ConversationId).ToString() :> obj
+                      "$re", ws.ReasoningEffort :> obj
+                      "$ctx", ws.ContextTier :> obj ])
 
             Task.FromResult(Success())
 
@@ -351,20 +387,40 @@ type private SqliteConversationStore(db: Db) =
                 | None -> Failure(AveliaError.NotFound(sprintf "conversation:%O" id))
                 | Some seq ->
                     use tx = conn.BeginTransaction()
-                    let newSeq = seq + 1
 
-                    exec
-                        conn
-                        "INSERT INTO messages (conversation_id,sequence,event_json) VALUES ($c,$s,$j)"
-                        [ "$c", convId :> obj
-                          "$s", newSeq :> obj
-                          "$j", Codec.messageEventToJson event :> obj ]
+                    // TitleChanged is a metadata rename: update the persisted
+                    // title column (so it survives restart) without appending a
+                    // transcript row or advancing the sequence — keeping the
+                    // SQLite message stream consistent with the in-memory fold.
+                    // Every other event appends to the transcript.
+                    match event with
+                    | TitleChanged title ->
+                        exec
+                            conn
+                            "UPDATE conversations SET title = $t WHERE id = $id"
+                            [ "$t", title :> obj; "$id", convId :> obj ]
+                    | _ ->
+                        let newSeq = seq + 1
 
-                    exec conn "UPDATE conversations SET last_sequence = $s WHERE id = $id" [ "$s", newSeq :> obj; "$id", convId :> obj ]
+                        exec
+                            conn
+                            "INSERT INTO messages (conversation_id,sequence,event_json) VALUES ($c,$s,$j)"
+                            [ "$c", convId :> obj
+                              "$s", newSeq :> obj
+                              "$j", Codec.messageEventToJson event :> obj ]
+
+                        exec
+                            conn
+                            "UPDATE conversations SET last_sequence = $s WHERE id = $id"
+                            [ "$s", newSeq :> obj; "$id", convId :> obj ]
+
                     tx.Commit()
 
                     match
-                        loadConversation conn "SELECT id,workspace_id,title FROM conversations WHERE id = $k" [ "$k", convId :> obj ]
+                        loadConversation
+                            conn
+                            "SELECT id,workspace_id,title FROM conversations WHERE id = $k"
+                            [ "$k", convId :> obj ]
                     with
                     | Some c -> Success c
                     | None -> Failure(AveliaError.NotFound(sprintf "conversation:%O" id)))
@@ -378,8 +434,8 @@ type private SqliteSettingsStore(db: Db, initial: AppearanceSettings) =
 
         if r.Read() then
             Some
-                { Accent = Codec.accentOfString(r.GetString 0)
-                  Density = Codec.densityOfString(r.GetString 1)
+                { Accent = Codec.accentOfString (r.GetString 0)
+                  Density = Codec.densityOfString (r.GetString 1)
                   Transparency = r.GetInt32 2 <> 0
                   OpenWithRightPanel = r.GetInt32 3 <> 0
                   DefaultModel = Codec.modelOfString(r.GetString 4)
@@ -403,12 +459,21 @@ type private SqliteSettingsStore(db: Db, initial: AppearanceSettings) =
               "$c", Codec.contextTierToString s.ContextTier :> obj ]
 
     // Seed the row from the initial defaults if the table is empty.
-    do db.run (fun conn -> match read conn with Some _ -> () | None -> write conn initial)
+    do
+        db.run (fun conn ->
+            match read conn with
+            | Some _ -> ()
+            | None -> write conn initial)
 
     interface ISettingsStore with
         member _.LoadAsync(ct) =
             ct.ThrowIfCancellationRequested()
-            db.run (fun conn -> match read conn with Some s -> s | None -> initial) |> Task.FromResult
+
+            db.run (fun conn ->
+                match read conn with
+                | Some s -> s
+                | None -> initial)
+            |> Task.FromResult
 
         member _.SaveAsync(settings, ct) =
             ct.ThrowIfCancellationRequested()

@@ -1,3 +1,6 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
 using System.Windows.Input;
 using Avelia.Shell.Windows.ViewModels;
 using Microsoft.UI.Input;

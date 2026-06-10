@@ -110,10 +110,50 @@ type StubWorkspaceService(initial: seq<Workspace>) =
                   Agent = Sonnet45
                   LastUpdated = DateTimeOffset.UtcNow
                   LastUpdatedDisplay = "just now"
-                  PrNumber = 0 }
+                  PrNumber = 0
+                  ReasoningEffort = ""
+                  ContextTier = "" }
 
             store.[id] <- ws
             Task.FromResult(Success ws)
+
+        member _.GetStatusAsync(id, ct) =
+            ct.ThrowIfCancellationRequested()
+
+            match store.TryGetValue id with
+            | true, w ->
+                let status: WorktreeStatus =
+                    { Branch = w.Branch
+                      AheadBehind = { Ahead = 0; Behind = 0 }
+                      Files = Array.empty<WorkingTreeFileStatus> :> IReadOnlyList<_>
+                      HasUncommittedChanges = false }
+
+                Task.FromResult(Success status)
+            | _ -> Task.FromResult(notFound $"Workspace {id}")
+
+        member _.DeleteAsync(id, ct) =
+            ct.ThrowIfCancellationRequested()
+
+            match store.TryGetValue id with
+            | true, _ ->
+                store.Remove id |> ignore
+                Task.FromResult(Success())
+            | _ -> Task.FromResult(notFound $"Workspace {id}")
+
+        member _.SetAgentConfigAsync(id, model, reasoningEffort, contextTier, ct) =
+            ct.ThrowIfCancellationRequested()
+
+            match store.TryGetValue id with
+            | true, w ->
+                let updated =
+                    { w with
+                        Agent = model
+                        ReasoningEffort = reasoningEffort
+                        ContextTier = contextTier }
+
+                store.[id] <- updated
+                Task.FromResult(Success updated)
+            | _ -> Task.FromResult(notFound $"Workspace {id}")
 
         member _.ArchiveAsync(id, ct) =
             ct.ThrowIfCancellationRequested()
@@ -281,9 +321,22 @@ type StubPullRequestService
             | _ -> Task.FromResult(notFound $"PullRequest {id}")
 
 // ============================================================================
-//  Stub: Run
+//  Stub: Model catalog
+//
+//  Returns the three built-in presets so the Settings → Agents picker renders
+//  on the design-time / stub graph. The real catalog (Avelia.Agent.Copilot)
+//  queries Copilot and falls back to these same presets when offline.
 // ============================================================================
 
+type StubModelCatalogService() =
+    interface IModelCatalogService with
+        member _.ListModelsAsync(ct) =
+            ct.ThrowIfCancellationRequested()
+            Task.FromResult(Success(ModelCatalog.presets :> IReadOnlyList<ModelInfo>))
+
+// ============================================================================
+//  Stub: Run
+// ============================================================================
 type StubRunService() =
     interface IRunService with
         member _.ListAsync(_workspaceId, ct) =

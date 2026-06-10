@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="WorktreeNames.fs" />
     <Compile Include="Domain.fs" />
     <Compile Include="DesignData.fs" />
     <Compile Include="Stubs.fs" />

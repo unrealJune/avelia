@@ -34,6 +34,7 @@ public class WorkspaceViewModelTests
             s.Runs,
             s.Inbox,
             s.Settings,
+            s.ModelCatalog,
             s.Agents,
             s.Terminals
         );

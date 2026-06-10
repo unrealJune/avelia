@@ -15,6 +15,7 @@
     <Compile Include="BackendDomainTests.fs" />
     <Compile Include="WorkspaceTests.fs" />
     <Compile Include="ConversationTests.fs" />
+    <Compile Include="WorktreeNamesTests.fs" />
     <Compile Include="IdsTests.fs" />
     <Compile Include="DesignDataTests.fs" />
   </ItemGroup>

@@ -13,6 +13,7 @@ open Avelia.Core.Abstractions
 /// headless session, its event-pump task, and the synchronization primitives
 /// that keep session start/stop single-flighted.
 type private ConvState() =
+    let mutable renameClaimed = 0
     /// Live observers; mutated under <c>SubGate</c>.
     member val Subscribers = ResizeArray<Channel<ConversationUpdate>>()
     member val SubGate = obj ()
@@ -22,6 +23,12 @@ type private ConvState() =
     member val Session: IHeadlessAgentSession option = None with get, set
     member val Pump: Task = Task.CompletedTask with get, set
     member val Cts: CancellationTokenSource option = None with get, set
+
+    /// One-shot claim for the Haiku auto-rename. Returns <c>true</c> exactly
+    /// once per conversation (per process); every later call returns
+    /// <c>false</c> so the rename fires at most once.
+    member _.TryClaimRename() =
+        System.Threading.Interlocked.Exchange(&renameClaimed, 1) = 0
 
 /// Real <c>IConversationService</c>: drives a per-workspace headless Copilot
 /// session and projects its <c>AgentEvent</c> stream into the conversation's
@@ -77,6 +84,107 @@ type AgentConversationService
             broadcast state (MessageAppended ev)
         }
 
+    /// Clean a model's raw reply into a short display title: first non-empty
+    /// line, stripped of wrapping quotes / surrounding whitespace / a trailing
+    /// period, clamped to ~60 chars. Empty when nothing usable remains.
+    let sanitizeTitle (raw: string) : string =
+        let s = if String.IsNullOrEmpty raw then "" else raw
+
+        let firstLine =
+            s.Split([| '\n'; '\r' |], StringSplitOptions.RemoveEmptyEntries)
+            |> Array.tryHead
+            |> Option.defaultValue ""
+
+        let trimmed = firstLine.Trim([| '"'; '\''; '\u201C'; '\u201D'; ' '; '.'; '\t' |])
+
+        if trimmed.Length > 60 then
+            trimmed.Substring(0, 60).Trim()
+        else
+            trimmed
+
+    /// Best-effort one-shot rename: open a headless Haiku session against the
+    /// worktree (read-only), ask for a 3–6 word Title-Case summary of the
+    /// task's first user message, take the first assistant reply, and persist
+    /// it as a <c>TitleChanged</c> event. Failures (no token, timeout, blank
+    /// reply) leave the original title untouched. Runs off the pump.
+    let renameConversation
+        (convId: ConversationId)
+        (state: ConvState)
+        (workspaceId: WorkspaceId)
+        (firstUserText: string)
+        : Task<unit> =
+        task {
+            match! workspaces.GetAsync(workspaceId, lifetime.Token) with
+            | Failure _ -> ()
+            | Success record ->
+                let prompt =
+                    "Summarize this coding task as a 3-6 word title in Title Case. "
+                    + "No punctuation, no quotes, no trailing period. Respond with only the title. "
+                    + "Task: "
+                    + firstUserText
+
+                let config: AgentSessionConfig =
+                    { Workspace = record.WorktreePath
+                      Model = Haiku45
+                      ReasoningEffort = ReasoningEffort.Medium
+                      ContextTier = ContextTier.Default
+                      SystemPromptAppend = ""
+                      AllowedTools = [||]
+                      PermissionMode = PermissionMode.ReadOnly
+                      McpServers = emptyMcp
+                      ResumeSessionId = "" }
+
+                match! factory.StartHeadlessAsync(config, lifetime.Token) with
+                | Failure _ -> ()
+                | Success session ->
+                    let mutable title = ""
+
+                    try
+                        use timeoutCts = CancellationTokenSource.CreateLinkedTokenSource lifetime.Token
+                        timeoutCts.CancelAfter(TimeSpan.FromSeconds 30.0)
+
+                        match! session.SendUserMessageAsync(prompt, [||], timeoutCts.Token) with
+                        | Failure _ -> ()
+                        | Success() ->
+                            for ev in session.Events timeoutCts.Token do
+                                match ev with
+                                | AgentEvent.Conversation(AgentMessageAppended a) when title = "" ->
+                                    title <- sanitizeTitle a.Text
+                                    // Got the title — stop draining the stream.
+                                    timeoutCts.Cancel()
+                                | _ -> ()
+                    with _ ->
+                        ()
+
+                    do! session.DisposeAsync()
+
+                    if not (String.IsNullOrWhiteSpace title) then
+                        let! _ = conversations.AppendEventAsync(convId, TitleChanged title, lifetime.Token)
+                        broadcast state (MessageAppended(TitleChanged title))
+        }
+
+    /// Fire the Haiku rename if <paramref name="conv"/> is the conversation's
+    /// very first assistant reply (so a restart's later replies don't re-rename)
+    /// and a first user message exists. One-shot via <c>TryClaimRename</c>.
+    let maybeStartRename (convId: ConversationId) (state: ConvState) (conv: Conversation) =
+        let assistantCount =
+            conv.Messages
+            |> Array.sumBy (function
+                | AgentMessageAppended _ -> 1
+                | _ -> 0)
+
+        let firstUser =
+            conv.Messages
+            |> Array.tryPick (function
+                | UserMessageAppended u -> Some u.Text
+                | _ -> None)
+
+        match firstUser with
+        | Some userText when assistantCount = 1 && not (String.IsNullOrWhiteSpace userText) ->
+            Task.Run(fun () -> renameConversation convId state conv.WorkspaceId userText :> Task)
+            |> ignore
+        | _ -> ()
+
     /// Pump one session's events into the store + observers. The only consumer
     /// of <c>session.Events</c>. On exit (normal or fault) it clears
     /// <c>state.Session</c> so the next post restarts cleanly.
@@ -91,8 +199,15 @@ type AgentConversationService
                 for ev in session.Events token do
                     match ev with
                     | AgentEvent.Conversation msgEvent ->
-                        let! _ = conversations.AppendEventAsync(convId, msgEvent, token)
+                        let! appended = conversations.AppendEventAsync(convId, msgEvent, token)
                         broadcast state (MessageAppended msgEvent)
+
+                        // First assistant reply of a brand-new conversation:
+                        // kick off the one-shot Haiku display-title rename.
+                        match msgEvent, appended with
+                        | AgentMessageAppended _, Success conv when state.TryClaimRename() ->
+                            maybeStartRename convId state conv
+                        | _ -> ()
                     | AgentEvent.TurnEnded -> broadcast state TurnCompleted
                     | AgentEvent.Warning w -> do! pushError convId state w
                     | AgentEvent.Ended(code, _) when code <> 0 ->

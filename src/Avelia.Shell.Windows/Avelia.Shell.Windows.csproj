@@ -62,6 +62,19 @@
     </ItemGroup>
 
     <!--
+        Bootstrap guard: the xterm.js bundle is fetched by scripts/vendor-xterm.ps1
+        rather than committed (see Assets/terminal/vendor/.gitignore). Without it the
+        terminal panel loads to a blank WebView2 with no obvious cause. Fail the build
+        early with an actionable message instead.
+    -->
+    <Target Name="EnsureXtermVendored" BeforeTargets="BeforeBuild">
+        <Error
+            Condition="!Exists('$(MSBuildProjectDirectory)\Assets\terminal\vendor\xterm.js')"
+            Text="xterm.js terminal bundle is missing. Run scripts/vendor-xterm.ps1 to fetch it before building (it is intentionally not committed)."
+        />
+    </Target>
+
+    <!--
         Defining the "Msix" ProjectCapability here allows the Single-project MSIX Packaging
         Tools extension to be activated for this project even if the Windows App SDK Nuget
         package has not yet been restored.

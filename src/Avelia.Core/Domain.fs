@@ -70,10 +70,16 @@ module Conversation =
           LastSequence = 0 }
 
     /// Append a single event to a conversation. Pure — returns a new value.
+    /// <c>TitleChanged</c> is special: it renames the conversation's display
+    /// title without appending a transcript message or advancing the sequence,
+    /// so a rename never shows up as a chat bubble or shifts message ordering.
     let applyEvent (conv: Conversation) (event: MessageEvent) : Conversation =
-        { conv with
-            Messages = Array.append conv.Messages [| event |]
-            LastSequence = conv.LastSequence + 1 }
+        match event with
+        | TitleChanged title -> { conv with Title = title }
+        | _ ->
+            { conv with
+                Messages = Array.append conv.Messages [| event |]
+                LastSequence = conv.LastSequence + 1 }
 
     /// Replay a sequence of events from the empty conversation. Equivalent to
     /// <c>events |> Array.fold applyEvent (empty ...)</c>.

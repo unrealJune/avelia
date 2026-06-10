@@ -8,19 +8,24 @@ open Avelia.Core.Stubs
 /// the composition root a one-liner and gives ViewModels a typed object to
 /// destructure rather than threading 7+ ctor parameters.
 type AveliaServices =
-    { Repositories: IRepositoryService
-      Workspaces: IWorkspaceService
-      Conversations: IConversationService
-      Diffs: IDiffService
-      PullRequests: IPullRequestService
-      Runs: IRunService
-      Inbox: IInboxService
-      Settings: ISettingsService
-      /// Agent-session factory for the interactive terminal panel (and reused by
-      /// the real conversation service). The stub path supplies a no-op factory.
-      Agents: IAgentSessionFactory
-      /// Launches an interactive terminal session for a workspace.
-      Terminals: ITerminalLaunchService }
+    {
+        Repositories: IRepositoryService
+        Workspaces: IWorkspaceService
+        Conversations: IConversationService
+        Diffs: IDiffService
+        PullRequests: IPullRequestService
+        Runs: IRunService
+        Inbox: IInboxService
+        Settings: ISettingsService
+        /// Live model catalog for the Settings → Agents picker. The stub path
+        /// returns the built-in presets; the real path queries Copilot.
+        ModelCatalog: IModelCatalogService
+        /// Agent-session factory for the interactive terminal panel (and reused by
+        /// the real conversation service). The stub path supplies a no-op factory.
+        Agents: IAgentSessionFactory
+        /// Launches an interactive terminal session for a workspace.
+        Terminals: ITerminalLaunchService
+    }
 
 module Composition =
 
@@ -70,5 +75,6 @@ module Composition =
           Runs = StubRunService() :> IRunService
           Inbox = StubInboxService(DesignData.inboxItems) :> IInboxService
           Settings = StubSettingsService(DesignData.defaultAppearance) :> ISettingsService
+          ModelCatalog = StubModelCatalogService() :> IModelCatalogService
           Agents = StubAgentSessionFactory() :> IAgentSessionFactory
           Terminals = StubTerminalLaunchService() :> ITerminalLaunchService }

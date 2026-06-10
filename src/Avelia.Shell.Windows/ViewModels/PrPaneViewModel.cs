@@ -236,6 +236,38 @@ public partial class PrPaneViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Re-fetch just the workspace's changed-file list (not the PR header). Used
+    /// to refresh the "Changes" view live as the agent edits the worktree.
+    /// Swallows cancellation/errors — a transient git failure shouldn't disturb
+    /// the pane.
+    /// </summary>
+    public async Task RefreshFilesAsync(WorkspaceId workspaceId, CancellationToken ct = default)
+    {
+        try
+        {
+            var files = await _services
+                .Diffs.GetWorkspaceDiffAsync(workspaceId, ct)
+                .ConfigureAwait(true);
+            Files.Clear();
+            var totalAdd = 0;
+            var totalDel = 0;
+            foreach (var file in files)
+            {
+                Files.Add(new DiffFileViewModel(file, OnFileOpened));
+                totalAdd += file.Add;
+                totalDel += file.Del;
+            }
+            TotalAdd = totalAdd;
+            TotalDel = totalDel;
+            FileCount = files.Count;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[PrPaneViewModel] RefreshFiles failed: {ex}");
+        }
+    }
+
     private void OnFileOpened(RelativePath path)
     {
         // Single-select focus echo so the row visually highlights even before

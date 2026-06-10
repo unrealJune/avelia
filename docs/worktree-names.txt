@@ -1,0 +1,378 @@
+# Worktree names — curated picks
+
+The shortlist. Pulled from trains, planes, callsigns, and trams. Single-word where possible; for multi-word service names I've suggested shortened forms inline.
+
+⭐ = picks I'd grab first.
+
+---
+
+## S-tier (just grab these)
+
+| Name | Source |
+|---|---|
+| ⭐ **amfleet** | Amtrak's NEC coach fleet |
+| ⭐ **superliner** | Amtrak's bi-level long-distance |
+| ⭐ **speedbird** | British Airways ATC callsign |
+| ⭐ **hayabusa** | Tōhoku Shinkansen — "peregrine falcon" |
+| ⭐ **zephyr** | Burlington Zephyr, first US streamliner |
+| ⭐ **shamrock** | Aer Lingus ATC callsign |
+| ⭐ **sapsan** | Russian HSR — "peregrine falcon" |
+| ⭐ **mallard** | LNER A4 — held the world steam speed record |
+| ⭐ **concorde** | the supersonic |
+| ⭐ **foxbat** | NATO name for MiG-25 |
+| ⭐ **blackbird** | SR-71 |
+| ⭐ **habu** | SR-71 nickname (the Okinawan snake) |
+| ⭐ **dreamliner** | 787 |
+| ⭐ **cactus** | US Airways callsign (Hudson landing) |
+| ⭐ **clipper** | Pan Am callsign |
+| ⭐ **dynasty** | China Airlines callsign |
+| ⭐ **valkyrie** | XB-70 Valkyrie |
+| ⭐ **mistral** | classic French intercity |
+| ⭐ **ruslan** | An-124 |
+| ⭐ **caravelle** | Sud Aviation jetliner — pure French swagger |
+| ⭐ **kuroshio** | JR West limited express — "the black current" |
+
+---
+
+## Rolling stock models
+
+The equipment names. Each of these has appeared on the side of an actual train car.
+
+### North America
+
+- **amfleet** — Amtrak NEC coach (Budd, 1975-)
+- **superliner** — Amtrak bi-level
+- **viewliner** — Amtrak single-level long-distance (NE-clearance)
+- **horizon** — Amtrak single-level
+- **airo** — Amtrak's new Siemens trainset 🆕
+- **surfliner** — Pacific Surfliner cars (also a service)
+- **genesis** — GE P42DC nickname
+- **charger** — Siemens diesel loco (doubles as Tu-144 NATO name)
+- **toaster** — AEM-7 nickname (mostly retired, the name lives on)
+- **bilevel** — Bombardier BiLevel commuter coach (GO, Caltrain, NJT, Metra…)
+- **multilevel** — Kawasaki/Bombardier MultiLevel
+- **renaissance** — VIA Rail Renaissance fleet
+- **venture** — Siemens Venture (VIA Corridor, Brightline)
+
+### UK
+
+- **azuma** — LNER's 800-series ("east")
+- **javelin** — Class 395 Southeastern HS
+- **pendolino** — Class 390 (Avanti)
+- **aventra** — Bombardier modular EMU
+- **electrostar** — Class 375/377/378/379
+- **turbostar** — Class 170/171/172
+- **networker** — Class 365/465/466
+- **voyager** — Class 220/221
+- **meridian** — Class 222
+- **sprinter** — Class 150/153/156/158 (also NL Sprinter)
+- **flirt** — Stadler (technically an acronym but who cares)
+- **kiss** — Stadler bi-level (also acronym)
+- **civity** — CAF platform
+- **desiro** — Siemens family
+- **coradia** — Alstom family
+- **twindexx** — Bombardier bi-level
+- **movia** — Bombardier metro
+
+### Continental & global platforms
+
+- **velaro** — Siemens HSR (ICE 3, Sapsan, Velaro E)
+- **avelia** — Alstom HSR (Liberty, Horizon, Pendolino)
+- **talgo** — Spanish trainset family
+- **giruno** — Stadler SMILE (Switzerland)
+- **traxx** — Bombardier loco
+- **vectron** — Siemens loco
+- **inspiro** — Siemens metro
+- **mireo** — Siemens regional
+- **talent** — Bombardier regional
+- **regiolis** — Alstom (Coradia Polyvalent)
+- **rock** / **pop** — Hitachi/Alstom Italian regional (literally)
+
+### Australia / NZ
+
+- **tangara** — Sydney suburban
+- **waratah** — Sydney's current workhorse
+- **mariyung** — NSW new intercity
+- **matangi** — Wellington
+- **comeng** — Melbourne classic
+- **xtrapolis** — Alstom regional (Melbourne, Perth)
+
+---
+
+## Japanese named services
+
+The most stylistically consistent set — themed run candidate.
+
+- **hayabusa** — peregrine falcon
+- **komachi** — the poet Ono no Komachi
+- **nozomi** — "hope"
+- **hikari** — "light"
+- **kodama** — "echo" / tree spirit
+- **kagayaki** — "radiance"
+- **sakura** — cherry blossom
+- **mizuho** — "golden ear of rice"
+- **hayate** — "gale"
+- **tsubasa** — "wing"
+- **tsubame** — "swallow"
+- **toki** — crested ibis
+- **asama** — the volcano
+- **sonic** — JR Kyushu limited express
+- **kamome** — "seagull"
+- **odoriko** — "dancer"
+- **kuroshio** — black current
+- **yakumo** — "eight clouds"
+- **shiokaze** — "sea breeze"
+- **kamui** — Ainu deity
+- **soya** — northernmost Hokkaidō
+- **ozora** — "great sky"
+- **raicho** — thunderbird/ptarmigan
+- **shirasagi** — "white heron"
+- **kirameki** — "sparkle"
+- **laview** — Seibu's poetic luxury commuter
+- **skyliner** — Keisei airport express
+- **spacia** — Tobu (and Spacia X)
+- **romancecar** — Odakyu (yes, that's its real name)
+
+---
+
+## Aviation callsigns
+
+Pilots actually say these.
+
+- **speedbird** — BA
+- **shamrock** — Aer Lingus
+- **cactus** — US Airways
+- **clipper** — Pan Am
+- **dynasty** — China Airlines
+- **springbok** — South African
+- **giant** — Atlas Air
+- **polar** — Polar Air Cargo
+- **reach** — US Air Mobility Command
+- **pegasus** — Pegasus Airlines
+- **volga** — Volga-Dnepr (An-124 operator)
+- **logan** — Loganair
+
+---
+
+## NATO reporting names (Soviet aircraft)
+
+Unfairly stacked. Take any 20 of these and your fleet is themed.
+
+| Name | Aircraft |
+|---|---|
+| **foxbat** | MiG-25 |
+| **foxhound** | MiG-31 |
+| **fulcrum** | MiG-29 |
+| **flanker** | Su-27 |
+| **flogger** | MiG-23 |
+| **fishbed** | MiG-21 |
+| **backfire** | Tu-22M |
+| **blinder** | Tu-22 |
+| **blackjack** | Tu-160 |
+| **badger** | Tu-16 |
+| **bear** | Tu-95 |
+| **bison** | M-4 |
+| **mainstay** | A-50 AWACS |
+| **midas** | Il-78 tanker |
+| **candid** | Il-76 |
+| **mongol** | MiG-21 trainer |
+| **halo** | Mi-26 |
+| **helix** | Ka-27/29/31 |
+| **hind** | Mi-24 |
+| **hip** | Mi-8/17 |
+| **hokum** | Ka-50/52 |
+| **havoc** | Mi-28 |
+| **charger** | Tu-144 |
+| **careless** | Tu-154 |
+| **classic** | Il-62 |
+
+---
+
+## Aircraft nicknames
+
+- **hercules** — C-130
+- **globemaster** — C-17
+- **galaxy** — C-5
+- **starlifter** — C-141
+- **warthog** — A-10
+- **mustang** — P-51
+- **spitfire** — Supermarine
+- **lightning** — P-38 (and F-35)
+- **thunderbolt** — P-47
+- **phantom** — F-4
+- **raptor** — F-22
+- **viper** — F-16
+- **hornet** — F/A-18
+- **tomcat** — F-14
+- **prowler** — EA-6B
+- **growler** — EA-18G
+- **harrier** — AV-8B
+- **mirage** — Dassault Mirage
+- **typhoon** — Eurofighter
+- **rafale** — Dassault
+- **gripen** — Saab JAS 39
+- **draken** — Saab 35
+- **viggen** — Saab 37
+- **vulcan** — Avro Vulcan
+- **canberra** — English Electric Canberra
+- **nimrod** — Hawker Siddeley
+- **chinook** — CH-47
+- **apache** — AH-64
+- **osprey** — V-22
+- **valor** — V-280
+- **gooney** — DC-3 (Gooney Bird)
+- **connie** — Lockheed Constellation
+- **tristar** — L-1011
+- **caravelle** — Sud Aviation
+- **trident** — Hawker Siddeley
+- **comet** — de Havilland (also a train, also an actual comet)
+- **friendship** — Fokker F27
+- **fellowship** — Fokker F28
+- **islander** — Britten-Norman
+- **dakota** — DC-3 / C-47
+- **whisperjet** — 727 / BAe 146
+- **stratocruiser** — Boeing 377
+
+---
+
+## European train names
+
+- **pendolino** — the tilting platform
+- **italo** — Italian private HSR
+- **settebello** — 1950s Italian flagship ("the beautiful seven")
+- **frecciarossa** — "red arrow" (long but iconic — or trim to **freccia**)
+- **cisalpino** — Italy-Switzerland
+- **helvetia** — classic German-Swiss express
+- **rheingold** — legendary Rhine express
+- **mistral** — Paris-Côte d'Azur
+- **lastochka** — "swallow" (Russia)
+- **strizh** — "swift" (Russia)
+- **sapsan** — "peregrine" (Russia)
+- **allegro** — Helsinki–St. Petersburg ⚠️
+- **aurora** — St. Petersburg–Moscow
+- **nevsky** — Nevsky Express
+- **railjet** — ÖBB premium
+- **nightjet** — ÖBB night service
+- **eurostar** — Channel Tunnel
+
+---
+
+## UK named trains
+
+The Brits have been naming trains for 100+ years.
+
+- **scotsman** — Flying Scotsman (loco + service)
+- **mallard** — A4 record holder
+- **tornado** — new-build A1 steam
+- **jacobite** — the Hogwarts Express in real life
+- **mancunian** — to Manchester
+- **cornishman** — to Cornwall
+- **bristolian** — to Bristol
+- **cutler** — Master Cutler (Sheffield)
+- **dragon** — Red Dragon (Cardiff)
+- **riviera** — Cornish Riviera / Night Riviera
+- **brighton** — Brighton Belle ⚠️
+- **bournemouth** — Bournemouth Belle ⚠️
+- **pullman** — Yorkshire/Tees-Tyne/Master Cutler Pullman
+- **waverley** — Edinburgh service
+
+---
+
+## Americana
+
+Current Amtrak + the historic gems. For multi-word services I've noted the shortening.
+
+**Current Amtrak**:
+
+- **acela** — current NEC HSR
+- **cardinal** — NY–Chicago via WV
+- **crescent** — NY–New Orleans
+- **adirondack** — NY–Montreal
+- **vermonter** — NY–St. Albans
+- **downeaster** — Boston–Brunswick
+- **pennsylvanian** — NY–Pittsburgh
+- **palmetto** — NY–Savannah
+- **piedmont** — NC service
+- **borealis** — Chicago–Twin Cities 🆕
+- **carolinian** — NY–Charlotte
+- **hiawatha** — Chicago–Milwaukee (Milwaukee Road legacy)
+- **wolverine** — Chicago–Pontiac
+- Empire Builder → **builder**
+- Coast Starlight → **starlight**
+- Sunset Limited → **sunset**
+- Texas Eagle → **eagle**
+- Silver Meteor → **meteor**
+- Silver Star → **silver**
+- Lake Shore Limited → **lakeshore**
+- Capitol Limited → **capitol**
+- Auto Train → **autotrain**
+- Pacific Surfliner → **surfliner**
+- Maple Leaf → **maple**
+- Heartland Flyer → **heartland**
+
+**Historic streamliners** — these were the names of legend:
+
+- **zephyr** — Burlington
+- **metroliner** — PRR/Amtrak NEC
+- **mercury** — NYC
+- **pacemaker** — NYC
+- **knickerbocker** — NYC
+- **pioneer** — UP Pioneer Limited
+- **broadway** — Broadway Limited (PRR)
+- **daylight** — SP
+- **lark** — SP
+- **cascade** — SP
+- **champion** — ACL
+- **olympian** — Milwaukee Road
+- **wabash** — Wabash Cannonball
+- **liberty** — Liberty Limited
+- 20th Century Limited → **century**
+- Super Chief → **chief**
+- El Capitan → **capitan**
+- Spirit of St. Louis → **spirit**
+- Phoebe Snow → **phoebe** ⭐ (named after a fictional ad character — pure personality)
+- Florida Special → **florida**
+
+---
+
+## Trams & streetcars
+
+- **tatra** — the Czech trams that conquered Eastern Europe
+- **flexity** — Bombardier/Alstom
+- **combino** — Siemens
+- **avenio** — Siemens (Combino's successor)
+- **cobra** — Bombardier, Zurich
+- **tango** — Stadler
+- **urbos** — CAF
+- **citadis** — Alstom
+- **birney** — the classic safety car
+- **brill** — J.G. Brill streetcars
+- **ulf** — Vienna Ultra Low Floor (great short name)
+- **variobahn** — Stadler/Bombardier
+
+---- **mriya** — beautiful name; the actual An-225 was destroyed in Hostomel in 2022 and the name carries weight now
+
+- **concorde** — totally fine; just know everyone reads it as "the failed one"
+
+## Picking heuristics
+
+If you want a quick rubric:
+
+1. **Long-lived feature branch** — pick something you like *saying*. **speedbird, hayabusa, kuroshio, kagayaki, settebello, phoebe**.
+2. **Quick hotfix** — short and snappy. **toki, sonic, viper, foxbat, habu, ulf**.
+3. **Experimental / risky** — military codenames feel right. **warthog, prowler, growler, hokum, foxbat, fishbed**.
+4. **Elegant** — European. **settebello, mistral, helvetia, cisalpino, caravelle**.
+5. **Fast** — **sapsan, hayabusa, hayate, mallard, concorde**.
+6. **Workhorse / reliable** — rolling stock models. **amfleet, superliner, electrostar, turbostar, tangara, waratah**.
+7. **Refactor** — something steady. **kodama, hikari, shamrock**.
+
+Keep a fleet within a theme if you can. **amfleet** next to **foxbat** next to **settebello** is going to make your brain do extra work.
+
+---
+
+## Don't pick these (just a heads-up, not a real warning)
+
+- **main, master, trunk, head** — reserved or confusing
+- **cassiopeia, hokutosei** — retired Japanese sleeper trains whose retirements were genuinely mourned; fine but heavy
+
+Use whatever you want. These are vibes notes, not gates.

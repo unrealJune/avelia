@@ -260,6 +260,47 @@ type GitHubClient
           Checks = Array.empty
           MergeReady = pr.Mergeable.GetValueOrDefault false }
 
+    /// Best-effort CI checks for a head SHA. Returns an empty array on any
+    /// failure (a checks fetch must never fail the parent PR read) or when the
+    /// SHA is unknown. Maps Octokit's lowercase status/conclusion
+    /// <c>StringValue</c>s through the shared <see cref="ChecksMapping"/>
+    /// vocabulary (uppercased to match the GraphQL wire form).
+    let fetchChecks (repo: RepoCoordinate) (sha: string) : Task<Check array> =
+        task {
+            if String.IsNullOrWhiteSpace sha then
+                return Array.empty
+            else
+                let! result = invoke (fun () -> client.Check.Run.GetAllForReference(repo.Owner, repo.Name, sha))
+
+                match result with
+                | Failure _ -> return Array.empty
+                | Success response ->
+                    let toUpper (s: string | null) =
+                        match s with
+                        | null -> ""
+                        | v -> v.ToUpperInvariant()
+
+                    return
+                        [| for run in response.CheckRuns do
+                               if not (isNull run) then
+                                   let statusRaw = toUpper run.Status.StringValue
+
+                                   let conclusionRaw =
+                                       if run.Conclusion.HasValue then
+                                           toUpper run.Conclusion.Value.StringValue
+                                       else
+                                           ""
+
+                                   { Name = (if isNull run.Name then "" else run.Name)
+                                     Status = ChecksMapping.mapCheckStatus statusRaw conclusionRaw
+                                     Description =
+                                       (if statusRaw <> "COMPLETED" then
+                                            statusRaw
+                                        else
+                                            conclusionRaw)
+                                     Count = "" } |]
+        }
+
     let toNotification (n: Octokit.Notification) : Avelia.Vcs.GitHub.Notification =
         // GitHub's notifications API returns UpdatedAt as an ISO-8601
         // string (the wire format), Octokit doesn't parse it for us.
@@ -382,10 +423,18 @@ type GitHubClient
             task {
                 let! result = invoke (fun () -> client.PullRequest.Get(repo.Owner, repo.Name, prNumber))
 
-                return
-                    match result with
-                    | Failure e -> Failure e
-                    | Success pr -> Success(toPullRequest pr)
+                match result with
+                | Failure e -> return Failure e
+                | Success pr ->
+                    // Best-effort CI checks for the PR head; a checks failure
+                    // falls back to an empty list rather than failing the PR.
+                    let headSha = if isNull pr.Head then "" else pr.Head.Sha
+                    let! checks = fetchChecks repo headSha
+
+                    return
+                        Success
+                            { toPullRequest pr with
+                                Checks = checks }
             }
 
         member _.ListPrsForUserAsync(ct: CancellationToken) =
@@ -448,3 +497,47 @@ type GitHubClient
 
                         Success(mapped :> IReadOnlyList<_>)
             }
+
+// ============================================================================
+//  GitHubClientProvider — lazy, single-flighted client resolution
+//
+//  Composition is synchronous, but building a client is async (it loads a
+//  stored token). This provider defers construction to first use, single-
+//  flights it under a SemaphoreSlim, and caches the result ONLY on success —
+//  so a user who signs in after startup gets a working client without a
+//  restart. Higher-level services (PullRequestService) take this rather than
+//  an eagerly-built IGitHubClient.
+// ============================================================================
+
+/// Lazily builds and caches one <see cref="IGitHubClient"/> for the first
+/// signed-in account. <c>Unauthorized</c> until an account is available.
+type GitHubClientProvider(auth: IGitHubAuth) =
+    let gate = new SemaphoreSlim(1, 1)
+    let mutable cached: IGitHubClient option = None
+
+    /// Resolve the shared client, building it on first success. Returns
+    /// <c>Failure AveliaError.Unauthorized</c> when no account is signed in.
+    member _.GetAsync(ct: CancellationToken) : Task<OperationResult<IGitHubClient>> =
+        task {
+            match cached with
+            | Some c -> return Success c
+            | None ->
+                do! gate.WaitAsync ct
+
+                try
+                    match cached with
+                    | Some c -> return Success c
+                    | None ->
+                        match! auth.ListStoredAccountsAsync ct with
+                        | Failure e -> return Failure e
+                        | Success logins when logins.Count = 0 -> return Failure AveliaError.Unauthorized
+                        | Success logins ->
+                            match! GitHubClient.CreateAsync(auth, logins.[0], ct) with
+                            | Failure e -> return Failure e
+                            | Success client ->
+                                let asInterface = client :> IGitHubClient
+                                cached <- Some asInterface
+                                return Success asInterface
+                finally
+                    gate.Release() |> ignore
+        }
