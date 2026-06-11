@@ -115,7 +115,16 @@ module RealComposition =
         // loopback port on exit, matching the store-connection lifetime model.
         let mcpServerInstance =
             new AveliaMcpServer(
-                (fun ws title ct -> conversations.SetTitleForWorkspaceAsync(ws, title, ct)),
+                (fun ws title ct ->
+                    task {
+                        // Rename persists the title + slugs/renames the git branch
+                        // (so the tab/rail and the local branch both update); the
+                        // conversation title change drives the live broadcast the
+                        // open detail pane + rail/tab relay listen on.
+                        match! (workspaces :> IWorkspaceService).RenameAsync(ws, title, ct) with
+                        | Failure e -> return Failure e
+                        | Success _ -> return! conversations.SetTitleForWorkspaceAsync(ws, title, ct)
+                    }),
                 (fun ws title body draft ct ->
                     (pullRequests :> IPullRequestService).CreateForWorkspaceAsync(ws, title, body, draft, ct))
             )

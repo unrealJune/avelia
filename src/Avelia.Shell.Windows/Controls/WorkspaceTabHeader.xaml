@@ -37,7 +37,7 @@
             FontSize="13"
             TextTrimming="CharacterEllipsis"
             VerticalAlignment="Center"
-            Text="{x:Bind Tab.Branch, Mode=OneWay, FallbackValue=''}"
+            Text="{x:Bind Tab.DisplayName, Mode=OneWay, FallbackValue=''}"
         />
 
         <TextBlock

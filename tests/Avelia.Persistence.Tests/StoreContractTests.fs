@@ -28,6 +28,7 @@ let private record (repoId: RepositoryId) (convId: ConversationId) =
           RepoId = repoId
           Branch = BranchName.Create "feature/x"
           Base = BranchName.Create "main"
+          Title = ""
           Status = WorkspaceStatus.Active
           DiffAdd = 4
           DiffDel = 1

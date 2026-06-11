@@ -39,7 +39,7 @@
             FontSize="13"
             TextTrimming="CharacterEllipsis"
             VerticalAlignment="Center"
-            Text="{x:Bind Item.Branch, Mode=OneWay, FallbackValue=''}"
+            Text="{x:Bind Item.DisplayName, Mode=OneWay, FallbackValue=''}"
         />
 
         <StackPanel Grid.Column="2" Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">

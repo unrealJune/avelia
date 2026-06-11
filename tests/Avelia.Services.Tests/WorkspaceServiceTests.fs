@@ -257,3 +257,56 @@ let ``ListAll projects the shell-facing workspace out of the record`` () =
     let all = (svc.ListAllAsync ct).Result
     Assert.Single all |> ignore
     Assert.Equal(ws.Id, all.[0].Id)
+
+[<Fact>]
+let ``RenameAsync renames the git branch, persists the title and the slug`` () =
+    let stores = InMemoryStores.create DesignData.defaultAppearance
+    let repo = addRepo stores.Repositories
+    let git = FakeGitOperations()
+    let svc = mkService stores git (ResizeArray())
+
+    let ws =
+        (svc.CreateAsync(repo.Id, BranchName.Create "speedbird", BranchName.Create "main", ct)).Result.Value
+
+    let record = (stores.Workspaces.GetAsync(ws.Id, ct)).Result.Value
+
+    match (svc.RenameAsync(ws.Id, "Add MCP Server", ct)).Result with
+    | Success updated ->
+        Assert.Equal("Add MCP Server", updated.Title)
+        Assert.Equal("add-mcp-server", updated.Branch.Value)
+        // The git branch was renamed from the worktree.
+        Assert.Equal(1, git.BranchRenameCalls)
+        Assert.Equal(record.WorktreePath.Value, git.LastRenameWorktree)
+        Assert.Equal("add-mcp-server", git.LastRenameBranch)
+        // Persisted.
+        let reread = (stores.Workspaces.GetAsync(ws.Id, ct)).Result.Value.Workspace
+        Assert.Equal("Add MCP Server", reread.Title)
+        Assert.Equal("add-mcp-server", reread.Branch.Value)
+    | Failure e -> failwithf "expected success, got %A" e
+
+[<Fact>]
+let ``RenameAsync rejects a title with no slug-able characters and touches no git`` () =
+    let stores = InMemoryStores.create DesignData.defaultAppearance
+    let repo = addRepo stores.Repositories
+    let git = FakeGitOperations()
+    let svc = mkService stores git (ResizeArray())
+
+    let ws =
+        (svc.CreateAsync(repo.Id, BranchName.Create "speedbird", BranchName.Create "main", ct)).Result.Value
+
+    match (svc.RenameAsync(ws.Id, "!!!", ct)).Result with
+    | Failure(AveliaError.Validation _) -> ()
+    | other -> failwithf "unexpected %A" other
+
+    Assert.Equal(0, git.BranchRenameCalls)
+    // Branch unchanged.
+    Assert.Equal("speedbird", (stores.Workspaces.GetAsync(ws.Id, ct)).Result.Value.Workspace.Branch.Value)
+
+[<Fact>]
+let ``RenameAsync fails for an unknown workspace`` () =
+    let stores = InMemoryStores.create DesignData.defaultAppearance
+    let svc = mkService stores (FakeGitOperations()) (ResizeArray())
+
+    match (svc.RenameAsync(WorkspaceId.create (), "Anything", ct)).Result with
+    | Failure(AveliaError.NotFound _) -> ()
+    | other -> failwithf "unexpected %A" other

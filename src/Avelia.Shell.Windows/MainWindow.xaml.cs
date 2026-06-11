@@ -64,6 +64,7 @@ public sealed partial class MainWindow : Window
     private WorkspaceViewModel? _wiredWorkspaceViewModel;
     private EventHandler<bool>? _workspaceWorkingHandler;
     private EventHandler? _workspaceMergedHandler;
+    private EventHandler<string>? _workspaceTitleHandler;
 
     public MainWindow(ThemeService themeService, AveliaServices services)
     {
@@ -245,9 +246,11 @@ public sealed partial class MainWindow : Window
 
         _workspaceWorkingHandler = (_, working) => ViewModel.SetWorkspaceAgentWorking(id, working);
         _workspaceMergedHandler = (_, _) => ViewModel.SetWorkspaceMerged(id);
+        _workspaceTitleHandler = (_, title) => ViewModel.SetWorkspaceTitle(id, title);
 
         vm.AgentWorkingChanged += _workspaceWorkingHandler;
         vm.WorkMerged += _workspaceMergedHandler;
+        vm.TitleRenamed += _workspaceTitleHandler;
         _wiredWorkspaceViewModel = vm;
 
         // Seed the current state in case the agent is already mid-run.
@@ -268,9 +271,14 @@ public sealed partial class MainWindow : Window
         {
             _wiredWorkspaceViewModel.WorkMerged -= _workspaceMergedHandler;
         }
+        if (_workspaceTitleHandler is not null)
+        {
+            _wiredWorkspaceViewModel.TitleRenamed -= _workspaceTitleHandler;
+        }
         _wiredWorkspaceViewModel = null;
         _workspaceWorkingHandler = null;
         _workspaceMergedHandler = null;
+        _workspaceTitleHandler = null;
     }
 
     private void ApplyRailDisplayMode()

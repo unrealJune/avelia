@@ -171,6 +171,60 @@ let ``BranchDelete removes a branch from the repo`` () =
 
 [<Trait("Category", "Integration")>]
 [<Fact>]
+let ``BranchRename renames the branch checked out in a worktree`` () =
+    use repo = new TempRepo()
+    let cli = GitCli() :> IGitOperations
+    let branch = BranchName.Create "speedbird"
+    let worktreePath = siblingPath repo.Path ("wt-" + Guid.NewGuid().ToString("N"))
+
+    let wt =
+        cli.WorktreeAddAsync(repo.RepoPath, branch, worktreePath, ct).GetAwaiter().GetResult()
+        |> assertSuccess "setup WorktreeAddAsync"
+
+    let renamed = BranchName.Create "add-mcp-server"
+
+    cli.BranchRenameAsync(wt.Path, renamed, ct).GetAwaiter().GetResult()
+    |> assertSuccess "BranchRenameAsync"
+    |> ignore
+
+    // The worktree's HEAD now points at the renamed branch.
+    let revParse =
+        (GitProcess.runAsync wt.Path.Value [| "rev-parse"; "--abbrev-ref"; "HEAD" |] ct).Result
+
+    Assert.Equal(0, revParse.ExitCode)
+    Assert.Equal("add-mcp-server", GitProcess.trimmedStdOut revParse)
+
+    // The old branch name is gone from the repo.
+    let oldList =
+        (GitProcess.runAsync repo.Path [| "branch"; "--list"; "speedbird" |] ct).Result
+
+    Assert.True(String.IsNullOrWhiteSpace oldList.StdOut)
+
+    let _ = cli.WorktreeRemoveAsync(wt.Path, true, ct).GetAwaiter().GetResult()
+    ()
+
+[<Trait("Category", "Integration")>]
+[<Fact>]
+let ``BranchRename to an existing name returns an External error`` () =
+    use repo = new TempRepo()
+    let cli = GitCli() :> IGitOperations
+    let branch = BranchName.Create "wisteria"
+    let worktreePath = siblingPath repo.Path ("wt-" + Guid.NewGuid().ToString("N"))
+
+    let wt =
+        cli.WorktreeAddAsync(repo.RepoPath, branch, worktreePath, ct).GetAwaiter().GetResult()
+        |> assertSuccess "setup WorktreeAddAsync"
+
+    // `main` already exists, so renaming onto it must fail rather than clobber.
+    match cli.BranchRenameAsync(wt.Path, BranchName.Create "main", ct).GetAwaiter().GetResult() with
+    | Failure(AveliaError.External("git", _)) -> ()
+    | other -> failwithf "expected an External git error, got %A" other
+
+    let _ = cli.WorktreeRemoveAsync(wt.Path, true, ct).GetAwaiter().GetResult()
+    ()
+
+[<Trait("Category", "Integration")>]
+[<Fact>]
 let ``Fetch against a nonexistent remote returns External error`` () =
     use repo = new TempRepo()
     let cli = GitCli() :> IGitOperations

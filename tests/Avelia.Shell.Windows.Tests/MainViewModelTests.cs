@@ -63,6 +63,36 @@ public class MainViewModelTests
     }
 
     [Fact]
+    public async Task SetWorkspaceTitle_UpdatesTabAndRailDisplayName()
+    {
+        var vm = MakeVm();
+        await vm.InitializeAsync();
+        var id = vm.OpenTabs[0].Id;
+        var tab = vm.OpenTabs[0];
+        var item = vm.RepoGroups.SelectMany(g => g.Workspaces).First(w => w.Id.Equals(id));
+
+        vm.SetWorkspaceTitle(id, "Add MCP Server");
+
+        Assert.Equal("Add MCP Server", tab.Title);
+        Assert.Equal("Add MCP Server", item.Title);
+        Assert.Equal("Add MCP Server", tab.DisplayName);
+        Assert.Equal("Add MCP Server", item.DisplayName);
+    }
+
+    [Fact]
+    public async Task SetWorkspaceTitle_EmptyTitle_FallsBackToBranchInDisplayName()
+    {
+        var vm = MakeVm();
+        await vm.InitializeAsync();
+        var id = vm.OpenTabs[0].Id;
+        var tab = vm.OpenTabs[0];
+
+        vm.SetWorkspaceTitle(id, "");
+
+        Assert.Equal(tab.Branch, tab.DisplayName);
+    }
+
+    [Fact]
     public async Task RefreshWorkspaceStatuses_DoesNotClobberWorkingDot()
     {
         var vm = MakeVm();

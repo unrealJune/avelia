@@ -25,6 +25,7 @@ let private seed (stores: Stores) =
           RepoId = repoId
           Branch = BranchName.Create "feature/x"
           Base = BranchName.Create "main"
+          Title = ""
           Status = WorkspaceStatus.Active
           DiffAdd = 0
           DiffDel = 0
