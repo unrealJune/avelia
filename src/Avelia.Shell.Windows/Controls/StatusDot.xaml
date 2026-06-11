@@ -52,6 +52,33 @@
                     </VisualState.Setters>
                 </VisualState>
             </VisualStateGroup>
+
+            <!--
+                Independent group driving the "agent working" pulse. Kept separate
+                from StatusStates (which only sets Fill) so the colour and the
+                pulse compose. The opacity animation lives here as a VSM-managed
+                storyboard rather than a hand-rolled one in code-behind: the
+                framework re-asserts the active state when the dot is recycled by
+                the tab strip / nav-rail list, so the pulse survives reload — a
+                code-behind Storyboard.Begin() did not, leaving the dot stuck on
+                solid amber after the first streamed events.
+            -->
+            <VisualStateGroup x:Name="ActivityStates">
+                <VisualState x:Name="StaticActivity" />
+                <VisualState x:Name="PulsingActivity">
+                    <Storyboard>
+                        <DoubleAnimation
+                            Storyboard.TargetName="Dot"
+                            Storyboard.TargetProperty="Opacity"
+                            From="1.0"
+                            To="0.25"
+                            Duration="0:0:0.65"
+                            AutoReverse="True"
+                            RepeatBehavior="Forever"
+                        />
+                    </Storyboard>
+                </VisualState>
+            </VisualStateGroup>
         </VisualStateManager.VisualStateGroups>
 
         <Ellipse

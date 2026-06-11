@@ -1,8 +1,6 @@
-using System;
 using Avelia.Core.Abstractions;
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Controls;
-using Microsoft.UI.Xaml.Media.Animation;
 
 namespace Avelia.Shell.Windows.Controls;
 
@@ -15,14 +13,16 @@ namespace Avelia.Shell.Windows.Controls;
 /// merged dictionary's ThemeDictionaries, and so always rendered grey).
 ///
 /// When <see cref="IsBusy"/> is set the dot pulses (opacity fade in/out) to
-/// signal the agent is mid-run. This replaces a 14×14 <c>ProgressRing</c> overlay
-/// that rendered invisibly at that size (its Lottie visual needs a larger box),
-/// which left the "working" state looking identical to the static dot.
+/// signal the agent is mid-run. The pulse is a VSM-managed storyboard
+/// (<c>PulsingActivity</c> in <c>StatusDot.xaml</c>) rather than a hand-rolled
+/// <c>Storyboard.Begin()</c>: the framework re-asserts the active state when the
+/// dot is recycled by the tab/rail list, so the pulse keeps running for the
+/// whole turn instead of dropping to solid amber after the first streamed
+/// events. It replaces a 14×14 <c>ProgressRing</c> overlay that rendered
+/// invisibly at that size (its Lottie visual needs a larger box).
 /// </summary>
 public sealed partial class StatusDot : UserControl
 {
-    private Storyboard? _pulse;
-
     public StatusDot()
     {
         InitializeComponent();
@@ -31,7 +31,6 @@ public sealed partial class StatusDot : UserControl
             ApplyStatusVisualState();
             UpdatePulse();
         };
-        Unloaded += (_, _) => _pulse?.Stop();
     }
 
     public static readonly DependencyProperty StatusProperty = DependencyProperty.Register(
@@ -85,37 +84,15 @@ public sealed partial class StatusDot : UserControl
 
     private void UpdatePulse()
     {
+        // Reset the group first so re-entering PulsingActivity restarts the
+        // storyboard even when the VSM still considers it the active state (e.g.
+        // after the dot is recycled by the tab/rail list, where the state sticks
+        // but the storyboard has been torn down). Without the reset, a no-op
+        // GoToState would leave the dot frozen on solid amber.
+        VisualStateManager.GoToState(this, "StaticActivity", false);
         if (IsBusy)
         {
-            EnsurePulse();
-            _pulse!.Begin();
+            VisualStateManager.GoToState(this, "PulsingActivity", false);
         }
-        else
-        {
-            _pulse?.Stop();
-            Dot.Opacity = 1.0;
-        }
-    }
-
-    private void EnsurePulse()
-    {
-        if (_pulse is not null)
-        {
-            return;
-        }
-
-        var anim = new DoubleAnimation
-        {
-            From = 1.0,
-            To = 0.25,
-            Duration = new Duration(TimeSpan.FromMilliseconds(650)),
-            AutoReverse = true,
-            RepeatBehavior = RepeatBehavior.Forever,
-        };
-        Storyboard.SetTarget(anim, Dot);
-        Storyboard.SetTargetProperty(anim, "Opacity");
-
-        _pulse = new Storyboard();
-        _pulse.Children.Add(anim);
     }
 }
